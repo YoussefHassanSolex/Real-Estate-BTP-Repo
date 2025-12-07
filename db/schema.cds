@@ -105,12 +105,14 @@ entity Measurements : managed {
 }
 
 entity Conditions : managed {
-    key ID          : UUID;
-        unit        : Association to Units;
-        code        : String(20);
-        description : String(60);
-        amount      : Decimal(15, 2);
-        currency    : String(3);
+    key ID            : UUID;
+        unit          : Association to Units;
+        code          : String(20);
+        description   : String(60);
+        amount        : Decimal(15, 2);
+        currency      : String(3);
+        numberOfYears : Integer;
+
 }
 
 
@@ -143,7 +145,6 @@ entity PaymentPlanSchedules : managed {
         frequency            : Association to Frequencies;
 
 
-
         percentage           : Decimal(5, 2);
         dueInMonth           : Integer;
         numberOfInstallments : Integer;
@@ -156,22 +157,22 @@ entity PaymentPlanProjects : managed {
         project     : Association to Projects;
 }
 
-entity ConditionTypes  {
+entity ConditionTypes {
     key code        : String(4);
         description : String(60);
 }
 
-entity BasePrices  {
+entity BasePrices {
     key code        : String(4);
         description : String(60);
 }
 
-entity CalculationMethods  {
+entity CalculationMethods {
     key code        : String(4);
         description : String(60);
 }
 
-entity Frequencies  {
+entity Frequencies {
     key code        : String(4);
         description : String(60);
 }

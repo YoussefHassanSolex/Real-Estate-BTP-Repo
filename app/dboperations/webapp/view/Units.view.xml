@@ -19,219 +19,218 @@
             />
         </headerContent>
         <content>
-            <!-- FILTER AREA -->
+            <!-- FILTER AREA (Flat, No Panels or Headers) -->
             <Panel
                 id="_IDGenPanel"
                 backgroundDesign="Transparent"
                 class="sapUiSmallMargin"
             >
-                <!-- Header Data -->
-                <Panel
-                    id="_IDGenPanel1"
-                    expandable="true"
-                    expanded="true"
-                    headerText="Header Data"
+                <!-- Adjust spans for responsive layout -->
+                <l:Grid
+                    id="_IDGenGrid"
+                    class="sapUiSmallMarginTop sapUiSmallMarginBottom"
+                    vSpacing="1"
+                    hSpacing="1"
+                    defaultSpan="L4 M6 S12"
                 >
-                    <l:Grid
-                        id="_IDGenGrid"
-                        class="sapUiSmallMarginTop sapUiSmallMarginBottom"
-                        vSpacing="1"
-                        hSpacing="1"
+                    <!-- Company -->
+                    <Label
+                        id="_IDGenLabel20"
+                        text="Company Code:"
+                        labelFor="companyCodeFilter"
+                    />
+                    <Select
+                        id="companyCodeFilter"
+                        width="150px"
+                        forceSelection="false"
+                        selectedKey="{view>/selectedCompanyCodeId}"
+                        items="{
+                            path: 'companyCodesList>/',
+                            templateShareable: false
+                        }"
+                        change="onCompanyCodeChange"
                     >
-                        <Label
-                            id="_IDGenLabel19"
-                            text="Unit Type:"
-                            labelFor="unitTypeFilter"
+                        <core:Item
+                            id="_IDGenItem1"
+                            key="{companyCodesList>companyCodeId}"
+                            text="{companyCodesList>companyCodeId}"
                         />
-                        <Select
-                            id="unitTypeFilter"
-                            items="{
-                                path: 'view>/UnitType',
-                                templateShareable: false
-                            }"
-                        >
-                            <core:Item
-                                id="_IDGenItem"
-                                key="{view>type}"
-                                text="{view>type}"
-                            />
-                        </Select>
+                    </Select>
 
-                        <Label
-                            id="_IDGenLabel20"
-                            text="Company Code:"
-                            labelFor="companyCodeFilter"
-                        />
-                        <Select
-                            id="companyCodeFilter"
-                            items="{
-                                path: 'companyCodesList>/',
-                                templateShareable: false
-                            }"
-                            change="onCompanyCodeChange"
-                        >
-                            <core:Item
-                                id="_IDGenItem1"
-                                key="{companyCodesList>companyCodeId}"
-                                text="{companyCodesList>companyCodeId}"
-                            />
-                        </Select>
+                    <!-- Project -->
+                    <Label
+                        id="_IDGenLabel21"
+                        text="Project ID:"
+                        labelFor="projectIdFilter"
+                    />
+                    <Select
+                        id="projectIdFilter"
+                        width="150px"
+                        selectedKey="{view>/selectedProjectId}"
+                                    forceSelection="false"
 
-                        <Label
-                            id="_IDGenLabel21"
-                            text="Project ID:"
-                            labelFor="projectIdFilter"
-                        />
-                        <Select
-                            id="projectIdFilter"
-                            items="{
-                                path: 'projectsList>/',
-                                templateShareable: false
-                            }"
-                        >
-                            <core:Item
-                                id="_IDGenItem2"
-                                key="{projectsList>projectId}"
-                                text="{projectsList>projectId}"
-                            />
-                        </Select>
-
-                        <Label
-                            id="_IDGenLabel22"
-                            text="Lead ID:"
-                            labelFor="_IDGenInput6"
-                        />
-                        <Input
-                            id="_IDGenInput6"
-                            placeholder="e.g. L12345"
-                        />
-
-                        <Label
-                            id="_IDGenLabel23"
-                            text="From Floor:"
-                            labelFor="_IDGenInput17"
-                        />
-                        <Input
-                            id="_IDGenInput17"
-                            type="Number"
-                            placeholder="e.g. 1"
-                        />
-
-                        <Label
-                            id="_IDGenLabel24"
-                            text="To Floor:"
-                            labelFor="_IDGenInput18"
-                        />
-                        <Input
-                            id="_IDGenInput18"
-                            type="Number"
-                            placeholder="e.g. 10"
-                        />
-                    </l:Grid>
-                </Panel>
-
-                <!-- Measurement Criteria -->
-                <Panel
-                    id="_IDGenPanel2"
-                    expandable="true"
-                    expanded="false"
-                    headerText="Measurement Criteria"
-                >
-                    <l:Grid
-                        id="_IDGenGrid1"
-                        class="sapUiSmallMarginTop sapUiSmallMarginBottom"
-                        vSpacing="1"
-                        hSpacing="1"
+                        items="{
+                            path: 'projectsList>/',
+                            templateShareable: false
+                        }"
                     >
-                        <Label
-                            id="_IDGenLabel25"
-                            text="Measurement ID:"
-                            labelFor="measurementFilter"
+                        <core:Item
+                            id="_IDGenItem2"
+                            key="{projectsList>projectId}"
+                            text="{projectsList>projectId}"
                         />
-                        <Select
-                            id="measurementFilter"
-                            items="{
-                                path: 'measurementsList>/',
-                                templateShareable: false
-                            }"
-                        >
-                            <core:Item
-                                id="_IDGenItem3"
-                                key="{measurementsList>code}"
-                                text="{measurementsList>code}"
-                            />
-                        </Select>
+                    </Select>
 
-                        <Label
-                            id="_IDGenLabel26"
-                            text="From:"
-                            labelFor="_IDGenInput15"
-                        />
-                        <Input
-                            id="_IDGenInput15"
-                            type="Number"
-                            placeholder="Min value"
-                        />
+                    <!-- Unit Type -->
+                    <Label
+                        id="_IDGenLabel19"
+                        text="Unit Type:"
+                        labelFor="unitTypeFilter"
+                    />
+                    <Select
+                        id="unitTypeFilter"
+                        width="150px"
+                        selectedKey="{view>/selectedUnitType}"
+                                    forceSelection="false"
 
-                        <Label
-                            id="_IDGenLabel27"
-                            text="To:"
-                            labelFor="_IDGenInput16"
-                        />
-                        <Input
-                            id="_IDGenInput16"
-                            type="Number"
-                            placeholder="Max value"
-                        />
-
-                        <Label
-                            id="_IDGenLabel28"
-                            text="UOM:"
-                            labelFor="_IDGenInput19"
-                        />
-                        <Input
-                            id="_IDGenInput19"
-                            placeholder="e.g. m², ft²"
-                        />
-                    </l:Grid>
-                </Panel>
-
-                <!-- Price Plan -->
-                <Panel
-                    id="_IDGenPanel3"
-                    expandable="true"
-                    expanded="false"
-                    headerText="Price Plan"
-                >
-                    <l:Grid
-                        id="_IDGenGrid2"
-                        defaultSpan="L6 M12 S12"
-                        class="sapUiSmallMarginTop sapUiSmallMarginBottom"
-                        vSpacing="1"
-                        hSpacing="1"
+                        items="{
+                            path: 'view>/UnitType',
+                            templateShareable: false
+                        }"
                     >
-                        <Label
-                            id="_IDGenLabel29"
-                            text="Price Plan Years:"
-                            labelFor="_IDGenInput20"
+                        <core:Item
+                            id="_IDGenItem"
+                            key="{view>type}"
+                            text="{view>type}"
                         />
-                        <Input
-                            id="_IDGenInput20"
-                            type="Number"
-                            placeholder="e.g. 5yrs"
-                        />
+                    </Select>
 
-                        <Label
-                            id="_IDGenLabel30"
-                            text="Currency:"
-                            labelFor="_IDGenInput21"
+                    <!-- Floor From -->
+                    <Label
+                        id="_IDGenLabel23"
+                        text="From Floor:"
+                        labelFor="_IDGenInput17"
+                    />
+                    <Input
+                        id="_IDGenInput17"
+                        width="150px"
+                        type="Number"
+                        placeholder="e.g. 1"
+                    />
+
+                    <!-- Floor To -->
+                    <Label
+                        id="_IDGenLabel24"
+                        text="To Floor:"
+                        labelFor="_IDGenInput18"
+                    />
+                    <Input
+                        id="_IDGenInput18"
+                        width="150px"
+                        type="Number"
+                        placeholder="e.g. 10"
+                    />
+
+                    <!-- BUA -->
+                    <Label
+                        id="buaLabel"
+                        text="BUA:"
+                        labelFor="buaFilter"
+                    />
+                    <Input
+                        id="buaFilter"
+                        width="150px"
+                        type="Number"
+                        placeholder="e.g. 100"
+                    />
+
+                    <!-- Price Plan Years -->
+                    <Label
+                        id="_IDGenLabel29"
+                        text="Price Plan Years:"
+                        labelFor="_IDGenInput20"
+                    />
+                    <Input
+                        id="_IDGenInput20"
+                        width="150px"
+                        type="Number"
+                        placeholder="e.g. 5yrs"
+                    />
+
+                    <!-- Measurement ID -->
+                    <Label
+                        id="_IDGenLabel25"
+                        text="Measurement ID:"
+                        labelFor="measurementFilter"
+                    />
+                    <Select
+                        id="measurementFilter"
+                        width="150px"
+                        selectedKey="{view>/selectedMeasurement}"
+                                    forceSelection="false"
+
+                        items="{
+                            path: 'measurementsList>/',
+                            templateShareable: false
+                        }"
+                    >
+                        <core:Item
+                            id="_IDGenItem3"
+                            key="{measurementsList>code}"
+                            text="{measurementsList>code}"
                         />
-                        <Input
-                            id="_IDGenInput21"
-                            placeholder="e.g. USD, EUR"
-                        />
-                    </l:Grid>
-                </Panel>
+                    </Select>
+
+                    <!-- From (Measurement) -->
+                    <Label
+                        id="_IDGenLabel26"
+                        text="From:"
+                        labelFor="_IDGenInput15"
+                    />
+                    <Input
+                        id="_IDGenInput15"
+                        width="150px"
+                        type="Number"
+                        placeholder="Min value"
+                    />
+
+                    <!-- To (Measurement) -->
+                    <Label
+                        id="_IDGenLabel27"
+                        text="To:"
+                        labelFor="_IDGenInput16"
+                    />
+                    <Input
+                        id="_IDGenInput16"
+                        width="150px"
+                        type="Number"
+                        placeholder="Max value"
+                    />
+
+                    <!-- UOM -->
+                    <Label
+                        id="_IDGenLabel28"
+                        text="UOM:"
+                        labelFor="_IDGenInput19"
+                    />
+                    <Input
+                        id="_IDGenInput19"
+                        width="150px"
+                        placeholder="e.g. m², ft²"
+                    />
+
+                    <!-- Currency -->
+                    <Label
+                        id="_IDGenLabel30"
+                        text="Currency:"
+                        labelFor="_IDGenInput21"
+                    />
+                    <Input
+                        id="_IDGenInput21"
+                        width="150px"
+                        placeholder="e.g. USD, EUR"
+                    />
+                </l:Grid>
 
                 <!-- Filter Actions -->
                 <Toolbar id="_IDGenToolbar2">
@@ -494,8 +493,7 @@
                                         id="_IDGenButton220"
                                         icon="sap-icon://simulate"
                                         press="onOpenPaymentSimulation"
-                                        tooltip="Open Payment Plan Simulation"
-                                        visible="{= ${unitStatusDescription} === 'Available' }"
+                                        tooltip="Simulate"
                                     />
                                     <Button
                                         id="_IDGenButton21"
@@ -507,19 +505,18 @@
                                         icon="sap-icon://edit"
                                         press="onEditUnit"
                                     />
-                                    <Button
+                                    <!-- <Button
                                         id="_IDGenButton23"
                                         icon="sap-icon://delete"
                                         type="Reject"
                                         press="onDelete"
-                                    />
+                                    /> -->
                                 </HBox>
                                 <Button
                                     id="_IDGenButton24"
                                     text="Create Reservation"
                                     icon="sap-icon://add-document"
                                     press="onCreateReservation"
-                                    visible="{= ${unitStatusDescription} === 'Available' }"
                                 />
                             </cells>
                         </ColumnListItem>

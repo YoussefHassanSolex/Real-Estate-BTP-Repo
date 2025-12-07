@@ -310,13 +310,13 @@ sap.ui.define([
     }
 
     // Validation: Date span must match plan years
-    const planYears = parseInt(oData.planYears) || 0;
-    const expectedValidTo = new Date(validFromDate);
-    expectedValidTo.setFullYear(expectedValidTo.getFullYear() + planYears);
-    if (validToDate < expectedValidTo) {
-        MessageBox.error(`Valid To must be at least ${planYears} years after Valid From. Expected: ${expectedValidTo.toISOString().split('T')[0]} or later.`);
-        return;
-    }
+    // const planYears = parseInt(oData.planYears) || 0;
+    // const expectedValidTo = new Date(validFromDate);
+    // expectedValidTo.setFullYear(expectedValidTo.getFullYear() + planYears);
+    // if (validToDate < expectedValidTo) {
+    //     MessageBox.error(`Valid To must be at least ${planYears} years after Valid From. Expected: ${expectedValidTo.toISOString().split('T')[0]} or later.`);
+    //     return;
+    // }
 
     try {
         // 🔹 Fixed: Map schedules to send foreign keys (not objects)
@@ -365,11 +365,11 @@ sap.ui.define([
         }
 
         // Validation: Total years in schedules must equal plan years
-        const totalYears = (oData.schedules || []).reduce((sum, s) => sum + (parseInt(s.numberOfYears) || 0), 0);
-        if (totalYears !== planYears) {
-            MessageBox.error(`Total years in schedules must equal plan years (${planYears}). Current: ${totalYears}`);
-            return;  // Prevent save
-        }
+        // const totalYears = (oData.schedules || []).reduce((sum, s) => sum + (parseInt(s.numberOfYears) || 0), 0);
+        // if (totalYears !== planYears) {
+        //     MessageBox.error(`Total years in schedules must equal plan years (${planYears}). Current: ${totalYears}`);
+        //     return;  // Prevent save
+        // }
 
         const res = await fetch(url, {
             method,
@@ -528,10 +528,6 @@ sap.ui.define([
         },
 
 
-
-        // ----------------------------
-        // Frequency
-        // ----------------------------
         // ----------------------------
         // Frequency (Custom to trigger calculation on selection)
         // ----------------------------

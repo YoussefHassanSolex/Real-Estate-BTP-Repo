@@ -57,6 +57,7 @@ sap.ui.define([
 
             // For Payment Plan Simulations (PPS) - initialize counter
             this._idCounter = parseInt(localStorage.getItem("simulationIdCounter")) || 0;
+            this._unitIdCounter = parseInt(localStorage.getItem("unitIdCounter")) || 0;
 
         },
 
@@ -144,47 +145,46 @@ sap.ui.define([
                 .catch(err => console.error("Failed to load Payment Plans for filter:", err));
         },
         // Fetch measurements config for dropdown
-        _loadMeasurementsList: function () {
-            /*const uniqueCompanyCodes = data.value.reduce((acc, curr) => {
-                       if (!acc.find(c => c.companyCodeId === curr.companyCodeId)) {
-                           acc.push({
-                               companyCodeId: curr.companyCodeId,
-                               companyCodeDescription: curr.companyCodeDescription
-                           });
-                       }
-                       return acc;
-                   }, []); */
-            fetch("/odata/v4/real-estate/Measurements")
-                .then(res => res.json())
-                .then(data => {
-                    const measurementsId = data.value.reduce((acc, curr) => {
-                        if (!acc.find(c => c.code === curr.description)) {
-                            acc.push({
-                                code: curr.code,
-                                description: curr.description
-                            });
-                        }
-                        return acc;
-                    }, []);
-                    this.getView().setModel(new JSONModel(measurementsId), "measurementsList");
-                    console.log("MeasList", data.value);
-
-                })
-                .catch(err => console.error("Failed to load Measurements list:", err));
-        },
+       _loadMeasurementsList: function () {
+    fetch("/odata/v4/real-estate/Measurements")
+        .then(res => res.json())
+        .then(data => {
+            const uniqueMeasurements = data.value.reduce((acc, curr) => {
+                if (!acc.find(c => c.code === curr.code)) {  // Fixed: compare code to code
+                    acc.push({
+                        code: curr.code,
+                        description: curr.description
+                    });
+                }
+                return acc;
+            }, []);
+            this.getView().setModel(new JSONModel(uniqueMeasurements), "measurementsList");
+            console.log("MeasList (deduplicated)", uniqueMeasurements);
+        })
+        .catch(err => console.error("Failed to load Measurements list:", err));
+},
 
         // Fetch conditions config for dropdown
-        _loadConditionsList: function () {
-            fetch("/odata/v4/real-estate/Conditions")
-                .then(res => res.json())
-                .then(data => {
-                    this.getView().setModel(new JSONModel(data.value || []), "conditionsList");
-                    console.log("CondList", data.value);
-
-                })
-
-                .catch(err => console.error("Failed to load Conditions list:", err));
-        },
+    _loadConditionsList: function () {
+    fetch("/odata/v4/real-estate/Conditions")
+        .then(res => res.json())
+        .then(data => {
+            // Deduplicate by 'code' (assuming code is unique; adjust if needed)
+            const uniqueConditions = data.value.reduce((acc, curr) => {
+                if (!acc.find(c => c.code === curr.code)) {  // Check for unique code
+                    acc.push({
+                        code: curr.code,
+                        description: curr.description
+                    });
+                }
+                return acc;
+            }, []);
+            
+            this.getView().setModel(new JSONModel(uniqueConditions), "conditionsList");
+            console.log("CondList (deduplicated)", uniqueConditions);
+        })
+        .catch(err => console.error("Failed to load Conditions list:", err));
+},
 
         // New: Fetch unique company codes from Projects
         _loadCompanyCodesList: function () {
@@ -217,7 +217,9 @@ sap.ui.define([
                         if (!acc.find(c => c.projectId === curr.projectId)) {
                             acc.push({
                                 projectId: curr.projectId,
-                                projectDescription: curr.projectDescription
+                                projectDescription: curr.projectDescription,
+                                profitCenter: curr.profitCenter,
+                                functionalArea: curr.functionalArea
                             });
                         }
                         return acc;
@@ -250,7 +252,7 @@ sap.ui.define([
             // If dialog is not yet created, create it once
             if (!this._oAddDialog) {
                 var oNewUnitModel = new sap.ui.model.json.JSONModel({
-                    unitId: "",
+                    // unitId: "",
                     unitDescription: "",
                     companyCodeId: "",
                     companyCodeDescription: "",
@@ -264,8 +266,8 @@ sap.ui.define([
                     zone: "",
                     salesPhase: "",
                     finishingSpexDescription: "",
-                    profitCenter: "",
-                    functionalArea: "",
+                    profitCenter: "",  // Will be auto-populated from building
+                    functionalArea: "",  // Will be auto-populated from building
                     unitDeliveryDate: "",
                     supplementaryText: "",
                     measurements: [],
@@ -277,11 +279,11 @@ sap.ui.define([
                     title: "Add New Unit",
                     content: new sap.m.VBox({
                         items: [
-                            new sap.m.Label({ text: "Unit ID", required: true }),
-                            new sap.m.Input("unitIdInput", {
-                                value: "{/unitId}",
-                                tooltip: "Must be 8 characters or fewer"
-                            }),
+                            // new sap.m.Label({ text: "Unit ID", required: true }),
+                            // new sap.m.Input("unitIdInput", {
+                            //     value: "{/unitId}",
+                            //     tooltip: "Must be 8 characters or fewer"
+                            // }),
 
                             new sap.m.Label({ text: "Unit Description", required: true }),
                             new sap.m.Input("unitDescInput", {
@@ -308,11 +310,10 @@ sap.ui.define([
                                 value: "{/companyCodeDescription}",
                                 tooltip: "Up to 60 characters"
                             }),
-
                             new sap.m.Label({ text: "Project ID", required: true }),
                             new ComboBox("projectIdInput", {
                                 selectedKey: "{/projectId}",
-                                change: this.onProjectChange.bind(this),
+                                change: this.onProjectChange.bind(this),  // Auto-populates profitCenter/functionalArea
                                 items: {
                                     path: "projectsList>/",
                                     template: new Item({
@@ -362,11 +363,11 @@ sap.ui.define([
                             new sap.m.Label({ text: "Finishing Spex Description", required: true }),
                             new sap.m.Input("finishingSpexDescInput", { value: "{/finishingSpexDescription}" }),
 
-                            new sap.m.Label({ text: "Profit Center", required: true }),
-                            new sap.m.Input("profitCenterInput", { value: "{/profitCenter}" }),
-
-                            new sap.m.Label({ text: "Functional Area", required: true }),
-                            new sap.m.Input("functionalAreaInput", { value: "{/functionalArea}" }),
+                            // NEW: Replaced inputs with read-only Text fields (auto-populated from building)
+                            new sap.m.Label({ text: "Profit Center" }),
+                            new sap.m.Text({ text: "{/profitCenter}" }),  // Read-only display
+                            new sap.m.Label({ text: "Functional Area" }),
+                            new sap.m.Text({ text: "{/functionalArea}" }),  // Read-only display
 
                             new sap.m.Label({ text: "Delivery Date", required: true }),
                             new sap.m.DatePicker("unitDeliveryDateInput", {
@@ -424,7 +425,9 @@ sap.ui.define([
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Code" }) }),
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Description" }) }),
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
-                                    new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) })
+                                    new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
+                                    new sap.m.Column({ header: new sap.m.Label({ text: "Number of Years" }) })  // NEW: Add column
+
                                 ],
                                 items: {
                                     path: "/conditions",
@@ -443,7 +446,9 @@ sap.ui.define([
                                             }),
                                             new Text({ text: "{description}" }),
                                             new Input({ value: "{amount}", type: "Number" }),
-                                            new Input({ value: "{currency}" })
+                                            new Input({ value: "{currency}" }),
+                                            new Input({ value: "{numberOfYears}", type: "Number" })  // NEW: Editable input for numberOfYears
+
                                         ]
                                     })
                                 }
@@ -459,7 +464,7 @@ sap.ui.define([
 
                             // 🧩 Required field validation
                             var aRequiredFields = [
-                                { id: "unitIdInput", name: "Unit ID" },
+                                // { id: "unitIdInput", name: "Unit ID" },
                                 { id: "unitDescInput", name: "Unit Description" },
                                 { id: "companyCodeIdInput", name: "Company Code ID" },
                                 { id: "companyCodeDescInput", name: "Company Code Description" },
@@ -473,8 +478,8 @@ sap.ui.define([
                                 { id: "zoneInput", name: "Zone" },
                                 { id: "salesPhaseInput", name: "Sales Phase" },
                                 { id: "finishingSpexDescInput", name: "Finishing Spex Description" },
-                                { id: "profitCenterInput", name: "Profit Center" },
-                                { id: "functionalAreaInput", name: "Functional Area" },
+                                // { id: "profitCenterInput", name: "Profit Center" },  // REMOVED: Auto-populated
+                                // { id: "functionalAreaInput", name: "Functional Area" },  // REMOVED: Auto-populated
                                 { id: "unitDeliveryDateInput", name: "Delivery Date" },
                                 { id: "supplementaryTextInput", name: "Supplementary Text" }
                             ];
@@ -496,9 +501,13 @@ sap.ui.define([
                                 return;
                             }
 
-                            // Revert to original POST logic with defaults
+                            // NEW: Auto-generate unitId in format "U000x" (increment counter)
+                            this._unitIdCounter = (this._unitIdCounter || 0) + 1;
+                            const generatedUnitId = "U" + ("000" + this._unitIdCounter).slice(-4);  // e.g., U0001, U0002, etc.
+                            localStorage.setItem("unitIdCounter", this._unitIdCounter);  // Persist counter
+                            // Revert to original POST logic with auto-generated unitId
                             const payload = {
-                                unitId: oData.unitId || Date.now().toString().slice(-8),
+                                unitId: generatedUnitId,  // NEW: Use auto-generated ID
                                 unitDescription: oData.unitDescription,
                                 companyCodeId: oData.companyCodeId,
                                 companyCodeDescription: oData.companyCodeDescription,
@@ -579,7 +588,7 @@ sap.ui.define([
         _resetAddDialogFields: function () {
             var oModel = this._oAddDialog.getModel();
             oModel.setData({
-                unitId: "",
+                // unitId: "",
                 unitDescription: "",
                 companyCodeId: "",
                 companyCodeDescription: "",
@@ -604,10 +613,12 @@ sap.ui.define([
 
             // Reset value states for validation
             [
-                "unitIdInput", "unitDescInput", "companyCodeIdInput", "companyCodeDescInput",
+                // "unitIdInput", 
+                "unitDescInput", "companyCodeIdInput", "companyCodeDescInput",
                 "projectIdInput", "projectDescInput", "buildingIdInput", "unitTypeDescInput",
                 "usageTypeDescInput", "unitStatusDescInput", "floorDescInput", "zoneInput",
-                "salesPhaseInput", "finishingSpexDescInput", "profitCenterInput", "functionalAreaInput",
+                "salesPhaseInput", "finishingSpexDescInput",
+                // "profitCenterInput", "functionalAreaInput",  // REMOVED
                 "unitDeliveryDateInput", "supplementaryTextInput"
             ].forEach(function (id) {
                 var oControl = sap.ui.getCore().byId(id);
@@ -796,7 +807,9 @@ sap.ui.define([
                                                 new sap.m.Column({ header: new sap.m.Label({ text: "Code" }) }),
                                                 new sap.m.Column({ header: new sap.m.Label({ text: "Description" }) }),
                                                 new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
-                                                new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) })
+                                                new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
+                                                new sap.m.Column({ header: new sap.m.Label({ text: "Number of Years" }) }),  // NEW: Add column
+
                                             ],
                                             items: {
                                                 path: "/conditions",
@@ -805,7 +818,9 @@ sap.ui.define([
                                                         new sap.m.Text({ text: "{code}" }),
                                                         new sap.m.Text({ text: "{description}" }),
                                                         new sap.m.Text({ text: "{amount}" }),
-                                                        new sap.m.Text({ text: "{currency}" })
+                                                        new sap.m.Text({ text: "{currency}" }),
+                                                        new sap.m.Text({ text: "{numberOfYears}" })  // NEW: Read-only text for numberOfYears
+
                                                     ]
                                                 })
                                             }
@@ -1022,7 +1037,9 @@ sap.ui.define([
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Code" }) }),
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Description" }) }),
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
-                                    new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) })
+                                    new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
+                                    new sap.m.Column({ header: new sap.m.Label({ text: "Number of Years" }) })  // NEW: Add column
+
                                 ],
                                 items: {
                                     path: "/conditions",
@@ -1041,7 +1058,9 @@ sap.ui.define([
                                             }),
                                             new Text({ text: "{description}" }),
                                             new Input({ value: "{amount}", type: "Number" }),
-                                            new Input({ value: "{currency}" })
+                                            new Input({ value: "{currency}" }),
+                                            new Input({ value: "{numberOfYears}", type: "Number" })  // NEW: Editable input for numberOfYears
+
                                         ]
                                     })
                                 }
@@ -1203,7 +1222,7 @@ sap.ui.define([
         },
         onAddConditionRow: function (oEvent) {
             const oModel = oEvent.getSource().getModel();
-            oModel.getProperty("/conditions").push({ code: "", description: "", amount: 0, currency: "" });
+            oModel.getProperty("/conditions").push({ code: "", description: "", amount: 0, currency: "", numberOfYears: 0 });
             oModel.refresh();
         },
         onDeleteConditionRow: function (oEvent) {
@@ -1321,15 +1340,14 @@ sap.ui.define([
                     // No match → force empty result
                     aFilters.push(new sap.ui.model.Filter("projectId", sap.ui.model.FilterOperator.EQ, null));
                 }
-                
-           
-        }
+
+
+            }
 
             // Apply all filters
             var oCombinedFilter = aFilters.length > 0 ? new sap.ui.model.Filter(aFilters, true) : null;
-        oBinding.filter(oCombinedFilter ? [oCombinedFilter] : []);
-    },
-
+            oBinding.filter(oCombinedFilter ? [oCombinedFilter] : []);
+        },
 
         onCreateReservation: function (oEvent) {
             var oUnit = oEvent.getSource().getBindingContext().getObject();
@@ -1351,6 +1369,15 @@ sap.ui.define([
             var oTable = this.byId("unitsTable");
             oTable.getBinding("items").filter([]);
         },
+
+
+
+
+
+
+//#region Payment Plan Simulation Part 
+
+
 
         onOpenPaymentSimulation: function (oEvent) {
             var unitId = oEvent.getSource().getBindingContext().getObject().unitId;
@@ -1376,7 +1403,7 @@ sap.ui.define([
                         new sap.m.Label({ text: "Project Description" }),
                         new sap.m.Input({ id: "projectDescriptionInputPPS", value: "{local>/projectDescription}", editable: false }),
                         new sap.m.Label({ text: "Price Plan (Years)" }),
-                        new sap.m.Input({  // <-- Changed back to Input (ComboBox doesn't support showValueHelp/valueHelpRequest)
+                        new sap.m.Input({  // NOW: Editable with value help for manual selection
                             id: "pricePlanInputPPS",
                             showValueHelp: true,
                             valueHelpRequest: this.onOpenPricePlanValueHelpPPS.bind(this),
@@ -1392,7 +1419,6 @@ sap.ui.define([
                         new sap.m.Input({ id: "userIdInputPPS", value: "currentUser", editable: false }),
                         new sap.m.HBox({
                             items: [
-                                new sap.m.Button({ id: "simulateBtnPPS", text: "Simulate", press: this.onSimulatePPS.bind(this) }),
                                 new sap.m.Button({ id: "saveBtnPPS", text: "Save Simulation", press: this.onSaveSimulationPPS.bind(this) })
                             ]
                         }),
@@ -1447,25 +1473,30 @@ sap.ui.define([
                 this.getView().addDependent(this._oSimulationDialog);
             }
 
-            // Pre-fill unitId and related data
-            var oLocal = this._oSimulationDialog.getModel("local");
-            oLocal.setProperty("/unitId", unitId);
+            // Add safety check to ensure dialog exists before accessing model
+            if (this._oSimulationDialog) {
+                // Pre-fill unitId and related data
+                var oLocal = this._oSimulationDialog.getModel("local");
+                oLocal.setProperty("/unitId", unitId);
 
-            // Find unit and set project/final price (adapted from onUnitChange)
-            var units = this.getView().getModel("view").getProperty("/Units");
-            var unit = units.find(u => u.unitId === unitId);
-            if (unit) {
-                oLocal.setProperty("/projectId", unit.projectId);
-                oLocal.setProperty("/projectDescription", unit.projectDescription);
-                // Set the display value for the unit input (e.g., "Unit Description (Unit ID)")
-                sap.ui.getCore().byId("unitIdInputPPS").setValue(`${unit.unitDescription} (${unitId})`);
-                // Calculate final price
-                this._calculateFinalPricePPS(unitId, oLocal);
+                // Find unit and set project/final price
+                var units = this.getView().getModel("view").getProperty("/Units");
+                var unit = units.find(u => u.unitId === unitId);
+                if (unit) {
+                    oLocal.setProperty("/projectId", unit.projectId);
+                    oLocal.setProperty("/projectDescription", unit.projectDescription);
+                    sap.ui.getCore().byId("unitIdInputPPS").setValue(`${unit.unitDescription} (${unitId})`);
+                    this._calculateFinalPricePPS(unitId, oLocal);
+                }
+
+                this._oSimulationDialog.open();
+            } else {
+                console.error("Simulation dialog could not be created.");
             }
-
-            this._oSimulationDialog.open();
         },
-        // New: Value help for Price Plan (Years) - filtered by project
+
+
+        // Updated: Value help for Price Plan (Years) - shows all available years for the project, user selects, then runs simulation
         onOpenPricePlanValueHelpPPS: function () {
             const oView = this._oSimulationDialog;
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
@@ -1478,14 +1509,14 @@ sap.ui.define([
                         path: "filteredPlans>/",
                         template: new StandardListItem({
                             title: "{filteredPlans>planYears} Years",
-                            description: "{filteredPlans>description}"  // <-- Fixed field name from CDS
+                            description: "{filteredPlans>description}"
                         })
                     },
                     search: function (oEvent) {
                         const sValue = oEvent.getParameter("value") || "";
                         const aFilters = [
                             new sap.ui.model.Filter("planYears", sap.ui.model.FilterOperator.Contains, sValue),
-                            new sap.ui.model.Filter("description", sap.ui.model.FilterOperator.Contains, sValue)  // <-- Fixed field name
+                            new sap.ui.model.Filter("description", sap.ui.model.FilterOperator.Contains, sValue)
                         ];
                         oEvent.getSource().getBinding("items").filter(new sap.ui.model.Filter(aFilters, false));
                     },
@@ -1496,7 +1527,7 @@ sap.ui.define([
                             const oPlan = oContext.getObject();
                             const planYears = oPlan.planYears;
                             const paymentPlanId = oPlan.paymentPlanId;
-                            const description = oPlan.description || "";  // <-- Fixed field name
+                            const description = oPlan.description || "";
 
                             console.log("Selected plan:", oPlan);  // Debug log
 
@@ -1688,16 +1719,16 @@ sap.ui.define([
         onPricePlanChangePPS: function (oEvent) {
             const pricePlanYears = parseInt(oEvent.getParameter("value"));
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
-            const oPlansModel = this._oSimulationDialog.getModel("paymentPlans");
-            const aPlans = oPlansModel ? oPlansModel.getData() : [];
+                            const oPlansModel = this._oSimulationDialog.getModel("paymentPlans");
+                            const aPlans = oPlansModel ? oPlansModel.getData() : [];
             const oSelectedPlan = aPlans.find(p =>
                 p.planYears === pricePlanYears &&
-                Array.isArray(p.assignedProjects) &&
-                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
-            );
+                                Array.isArray(p.assignedProjects) &&
+                                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+                            );
             if (oSelectedPlan) {
                 sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue(oSelectedPlan.paymentPlanId);
-            } else {
+                            } else {
                 sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");
             }
         },
@@ -1748,6 +1779,7 @@ sap.ui.define([
                 const today = new Date();
 
                 aSchedules.forEach(schedule => {
+                    debugger
                     const basePriceCode = schedule.basePrice?.code;
                     const condition = aConditions.find(c => c.code === basePriceCode);
                     const baseAmount = condition ? Number(condition.amount) : 0;
@@ -1862,5 +1894,61 @@ sap.ui.define([
             const paddedNumber = ("00000" + this._idCounter).slice(-5);  // Pad to 5 digits
             return "PPS" + paddedNumber;
         },
+        onProjectChange: function (oEvent) {
+            var oComboBox = oEvent.getSource();
+            var sSelectedKey = oComboBox.getSelectedKey();
+            var oSelectedItem = oComboBox.getSelectedItem();
+            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
+
+            // FIX: Use the dialog model instead of oComboBox.getModel()
+            var oModel = this._oAddDialog.getModel();
+            oModel.setProperty("/projectDescription", sDescription);
+
+            // Find selected project to get profit and functional
+            const projects = this.getView().getModel("projectsList").getData();
+            const selectedProject = projects.find(p => p.projectId === sSelectedKey);
+            if (selectedProject) {
+                console.log(selectedProject);
+
+                oModel.setProperty("/profitCenter", selectedProject.profitCenter || 0);  // Set on dialog model
+                oModel.setProperty("/functionalArea", selectedProject.functionalArea || 0);  // Set on dialog model
+            } else {
+                // Clear if no project selected
+                oModel.setProperty("/profitCenter", "");
+                oModel.setProperty("/functionalArea", "");
+            }
+
+            // Update filtered buildings (if needed elsewhere, but not here)
+            // this._updateFilteredBuildings(sSelectedKey, oModel);
+        },
+
+
+        //#endregion
+
+
+   onConditionCodeChange: function (oEvent) {
+       var oComboBox = oEvent.getSource();
+       var sSelectedKey = oComboBox.getSelectedKey();
+       var oSelectedItem = oComboBox.getSelectedItem();
+       var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
+       var oContext = oComboBox.getBindingContext();
+       if (oContext) {
+           oContext.getModel().setProperty(oContext.getPath() + "/description", sDescription);
+           
+           // NEW: Set numberOfYears based on selected condition code
+           var numberOfYears = 0;  // Default
+           if (sSelectedKey === "CASH") {
+               numberOfYears = 0;
+           } else if (sSelectedKey === "5YP") {
+               numberOfYears = 5;
+           } else if (sSelectedKey === "7YP") {
+               numberOfYears = 7;
+           }
+           oContext.getModel().setProperty(oContext.getPath() + "/numberOfYears", numberOfYears);
+       }
+   },
+   
+
+
     });
 });
