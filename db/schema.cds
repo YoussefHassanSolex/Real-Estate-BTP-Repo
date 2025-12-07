@@ -49,52 +49,52 @@ entity Projects : managed {
 }
 
 entity Units : managed {
-        companyCodeId            : String(4);
-        companyCodeDescription   : String(60);
+    companyCodeId            : String(4);
+    companyCodeDescription   : String(60);
 
-        project                  : Association to Projects;
-        projectId                : String(8);
-        projectDescription       : String(60);
+    project                  : Association to Projects;
+    projectId                : String(8);
+    projectDescription       : String(60);
 
-        building                 : Association to Buildings;
-        buildingId               : String(8);
-        buildingOldCode          : String(20);
+    building                 : Association to Buildings;
+    buildingId               : String(8);
+    buildingOldCode          : String(20);
+    buildingDescription      : String(60);  // <-- ADD THIS FIELD HERE
 
-    key unitId                   : String(8);
-        unitOldCode              : String(20);
-        unitDescription          : String(60);
+    key unitId               : String(8);
+    unitOldCode              : String(20);
+    unitDescription          : String(60);
 
-        unitTypeCode             : String(4);
-        unitTypeDescription      : String(60);
+    unitTypeCode             : String(4);
+    unitTypeDescription      : String(60);
 
-        usageTypeCode            : String(4);
-        usageTypeDescription     : String(60);
+    usageTypeCode            : String(4);
+    usageTypeDescription     : String(60);
 
-        unitStatusCode           : String(4);
-        unitStatusDescription    : String(60);
+    unitStatusCode           : String(4);
+    unitStatusDescription    : String(60);
 
-        floorCode                : String(4);
-        floorDescription         : String(60);
+    floorCode                : String(4);
+    floorDescription         : String(60);
 
-        zone                     : String(60);
-        salesPhase               : String(60);
+    zone                     : String(60);
+    salesPhase               : String(60);
 
-        finishingSpexCode        : String(4);
-        finishingSpexDescription : String(60);
+    finishingSpexCode        : String(4);
+    finishingSpexDescription : String(60);
 
-        unitDeliveryDate         : Date;
+    unitDeliveryDate         : Date;
 
-        profitCenter             : Integer;
-        functionalArea           : Integer;
+    profitCenter             : Integer;
+    functionalArea           : Integer;
 
-        supplementaryText        : String(255);
+    supplementaryText        : String(255);
 
-        measurements             : Composition of many Measurements
-                                       on measurements.unit = $self;
-        conditions               : Composition of many Conditions
-                                       on conditions.unit = $self;
+    measurements             : Composition of many Measurements
+                                   on measurements.unit = $self;
+    conditions               : Composition of many Conditions
+                                   on conditions.unit = $self;
 }
-
 entity Measurements : managed {
     key ID          : UUID;
         unit        : Association to Units;

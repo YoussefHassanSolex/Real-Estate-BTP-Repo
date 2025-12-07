@@ -145,46 +145,46 @@ sap.ui.define([
                 .catch(err => console.error("Failed to load Payment Plans for filter:", err));
         },
         // Fetch measurements config for dropdown
-       _loadMeasurementsList: function () {
-    fetch("/odata/v4/real-estate/Measurements")
-        .then(res => res.json())
-        .then(data => {
-            const uniqueMeasurements = data.value.reduce((acc, curr) => {
-                if (!acc.find(c => c.code === curr.code)) {  // Fixed: compare code to code
-                    acc.push({
-                        code: curr.code,
-                        description: curr.description
-                    });
-                }
-                return acc;
-            }, []);
-            this.getView().setModel(new JSONModel(uniqueMeasurements), "measurementsList");
-            console.log("MeasList (deduplicated)", uniqueMeasurements);
-        })
-        .catch(err => console.error("Failed to load Measurements list:", err));
-},
+        _loadMeasurementsList: function () {
+            fetch("/odata/v4/real-estate/Measurements")
+                .then(res => res.json())
+                .then(data => {
+                    const uniqueMeasurements = data.value.reduce((acc, curr) => {
+                        if (!acc.find(c => c.code === curr.code)) {  // Fixed: compare code to code
+                            acc.push({
+                                code: curr.code,
+                                description: curr.description
+                            });
+                        }
+                        return acc;
+                    }, []);
+                    this.getView().setModel(new JSONModel(uniqueMeasurements), "measurementsList");
+                    console.log("MeasList (deduplicated)", uniqueMeasurements);
+                })
+                .catch(err => console.error("Failed to load Measurements list:", err));
+        },
 
         // Fetch conditions config for dropdown
-    _loadConditionsList: function () {
-    fetch("/odata/v4/real-estate/Conditions")
-        .then(res => res.json())
-        .then(data => {
-            // Deduplicate by 'code' (assuming code is unique; adjust if needed)
-            const uniqueConditions = data.value.reduce((acc, curr) => {
-                if (!acc.find(c => c.code === curr.code)) {  // Check for unique code
-                    acc.push({
-                        code: curr.code,
-                        description: curr.description
-                    });
-                }
-                return acc;
-            }, []);
-            
-            this.getView().setModel(new JSONModel(uniqueConditions), "conditionsList");
-            console.log("CondList (deduplicated)", uniqueConditions);
-        })
-        .catch(err => console.error("Failed to load Conditions list:", err));
-},
+        _loadConditionsList: function () {
+            fetch("/odata/v4/real-estate/Conditions")
+                .then(res => res.json())
+                .then(data => {
+                    // Deduplicate by 'code' (assuming code is unique; adjust if needed)
+                    const uniqueConditions = data.value.reduce((acc, curr) => {
+                        if (!acc.find(c => c.code === curr.code)) {  // Check for unique code
+                            acc.push({
+                                code: curr.code,
+                                description: curr.description
+                            });
+                        }
+                        return acc;
+                    }, []);
+
+                    this.getView().setModel(new JSONModel(uniqueConditions), "conditionsList");
+                    console.log("CondList (deduplicated)", uniqueConditions);
+                })
+                .catch(err => console.error("Failed to load Conditions list:", err));
+        },
 
         // New: Fetch unique company codes from Projects
         _loadCompanyCodesList: function () {
@@ -241,7 +241,6 @@ sap.ui.define([
                 .catch(err => console.error("Failed to load Buildings list:", err));
         },
 
-        // New: Update filtered buildings based on projectId
         _updateFilteredBuildings: function (sProjectId, oModel) {
             const allBuildings = this.getView().getModel("buildingsList").getData();
             const filtered = allBuildings.filter(b => b.projectId === sProjectId);
@@ -259,6 +258,7 @@ sap.ui.define([
                     projectId: "",
                     projectDescription: "",
                     buildingId: "",
+                    buildingDescription: "",  // Added: for building description
                     unitTypeDescription: "",
                     usageTypeDescription: "",
                     unitStatusDescription: "",
@@ -330,17 +330,24 @@ sap.ui.define([
                                 tooltip: "Up to 60 characters"
                             }),
 
-                            // new sap.m.Label({ text: "Building ID", required: true }),
-                            // new ComboBox("buildingIdInput", {
-                            //     selectedKey: "{/buildingId}",
-                            //     items: {
-                            //         path: "/filteredBuildings",
-                            //         template: new Item({
-                            //             key: "{buildingId}",
-                            //             text: "{buildingId} - {buildingDescription}"
-                            //         })
-                            //     }
-                            // }),
+                            new sap.m.Label({ text: "Building ID", required: true }),
+                            new ComboBox("buildingIdInput", {
+                                selectedKey: "{/buildingId}",
+                                change: this.onBuildingChange.bind(this),  // Added: to set building description
+                                items: {
+                                    path: "/filteredBuildings",
+                                    template: new Item({
+                                        key: "{buildingId}",
+                                        text: "{buildingId} - {buildingDescription}"
+                                    })
+                                }
+                            }),
+
+                            new sap.m.Label({ text: "Building Description", required: true }),
+                            new sap.m.Input("buildingDescInput", {
+                                value: "{/buildingDescription}",
+                                tooltip: "Up to 60 characters"
+                            }),
 
                             new sap.m.Label({ text: "Unit Type Description", required: true }),
                             new sap.m.Input("unitTypeDescInput", { value: "{/unitTypeDescription}" }),
@@ -470,7 +477,8 @@ sap.ui.define([
                                 { id: "companyCodeDescInput", name: "Company Code Description" },
                                 { id: "projectIdInput", name: "Project ID" },
                                 { id: "projectDescInput", name: "Project Description" },
-                                // { id: "buildingIdInput", name: "Building ID" },
+                                { id: "buildingIdInput", name: "Building ID" },  // Added: Building ID is now required
+                                { id: "buildingDescInput", name: "Building Description" },  // Added: Building Description is now required
                                 { id: "unitTypeDescInput", name: "Unit Type Description" },
                                 { id: "usageTypeDescInput", name: "Usage Type Description" },
                                 { id: "unitStatusDescInput", name: "Unit Status Description" },
@@ -513,7 +521,8 @@ sap.ui.define([
                                 companyCodeDescription: oData.companyCodeDescription,
                                 projectId: oData.projectId,
                                 projectDescription: oData.projectDescription,
-                                // buildingId: oData.buildingId,
+                                buildingId: oData.buildingId,  // Added: Include buildingId
+                                buildingDescription: oData.buildingDescription,  // Added: Include buildingDescription
                                 unitTypeDescription: oData.unitTypeDescription,
                                 usageTypeDescription: oData.usageTypeDescription,
                                 unitStatusDescription: oData.unitStatusDescription,
@@ -583,6 +592,38 @@ sap.ui.define([
 
             this._oAddDialog.open();
         },
+        onProjectChange: function (oEvent) {
+            var oComboBox = oEvent.getSource();
+            var sSelectedKey = oComboBox.getSelectedKey();
+            var oSelectedItem = oComboBox.getSelectedItem();
+            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
+            var oModel = oComboBox.getModel();
+            oModel.setProperty("/projectDescription", sDescription);
+
+            // Find selected project to get profit and functional
+            const projects = this.getView().getModel("projectsList").getData();
+            const selectedProject = projects.find(p => p.projectId === sSelectedKey);
+            if (selectedProject) {
+                oModel.setProperty("/profitCenter", selectedProject.profitCenter);
+                oModel.setProperty("/functionalArea", selectedProject.functionalArea);
+            }
+
+            // Update filtered buildings
+            this._updateFilteredBuildings(sSelectedKey, oModel);
+
+            // Clear building selection when project changes
+            oModel.setProperty("/buildingId", "");
+            oModel.setProperty("/buildingDescription", "");
+        },
+        onBuildingChange: function (oEvent) {  // Added: New handler for building selection
+            var oComboBox = oEvent.getSource();
+            var sSelectedKey = oComboBox.getSelectedKey();
+            var oSelectedItem = oComboBox.getSelectedItem();
+            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
+            var oModel = oComboBox.getModel();
+            oModel.setProperty("/buildingDescription", sDescription);
+        },
+
 
         // 🧹 Helper function to reset dialog data and value states
         _resetAddDialogFields: function () {
@@ -942,17 +983,21 @@ sap.ui.define([
                             new sap.m.Label({ text: "Project Description", required: true }),
                             new sap.m.Input("editProjectDescInput", { value: "{/projectDescription}" }),
 
-                            // new sap.m.Label({ text: "Building ID", required: true }),
-                            // new ComboBox("editBuildingIdInput", {
-                            //     selectedKey: "{/buildingId}",
-                            //     items: {
-                            //         path: "/filteredBuildings",
-                            //         template: new Item({
-                            //             key: "{buildingId}",
-                            //             text: "{buildingId} - {buildingDescription}"
-                            //         })
-                            //     }
-                            // }),
+                            new sap.m.Label({ text: "Building ID", required: true }),
+                            new ComboBox("editBuildingIdInput", {
+                                selectedKey: "{/buildingId}",
+                                change: this.onBuildingChange.bind(this),  // Added: to set building description
+                                items: {
+                                    path: "/filteredBuildings",
+                                    template: new Item({
+                                        key: "{buildingId}",
+                                        text: "{buildingId} - {buildingDescription}"
+                                    })
+                                }
+                            }),
+
+                            new sap.m.Label({ text: "Building Description", required: true }),
+                            new sap.m.Input("editBuildingDescInput", { value: "{/buildingDescription}" }),
 
                             new sap.m.Label({ text: "Unit Type Description", required: true }),
                             new sap.m.Input("editUnitTypeDescInput", { value: "{/unitTypeDescription}" }),
@@ -1081,7 +1126,8 @@ sap.ui.define([
                                 { id: "editCompanyCodeDescInput", name: "Company Code Description" },
                                 { id: "editProjectIdInput", name: "Project ID" },
                                 { id: "editProjectDescInput", name: "Project Description" },
-                                // { id: "editBuildingIdInput", name: "Building ID" },
+                                { id: "editBuildingIdInput", name: "Building ID" },  // Added: Building ID is now required
+                                { id: "editBuildingDescInput", name: "Building Description" },  // Added: Building Description is now required
                                 { id: "editUnitTypeDescInput", name: "Unit Type Description" },
                                 { id: "editUsageTypeDescInput", name: "Usage Type Description" },
                                 { id: "editUnitStatusDescInput", name: "Unit Status Description" },
@@ -1120,7 +1166,8 @@ sap.ui.define([
                                 companyCodeDescription: oUpdatedData.companyCodeDescription,
                                 projectId: oUpdatedData.projectId,
                                 projectDescription: oUpdatedData.projectDescription,
-                                // buildingId: oUpdatedData.buildingId,
+                                buildingId: oUpdatedData.buildingId,  // Added: Include buildingId
+                                buildingDescription: oUpdatedData.buildingDescription,  // Added: Include buildingDescription
                                 unitTypeDescription: oUpdatedData.unitTypeDescription,
                                 usageTypeDescription: oUpdatedData.usageTypeDescription,
                                 unitStatusDescription: oUpdatedData.unitStatusDescription,
@@ -1190,25 +1237,7 @@ sap.ui.define([
                 oComboBox.getModel().setProperty("/companyCodeDescription", sDescription);
             }
         },
-        onProjectChange: function (oEvent) {
-            var oComboBox = oEvent.getSource();
-            var sSelectedKey = oComboBox.getSelectedKey();
-            var oSelectedItem = oComboBox.getSelectedItem();
-            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
-            var oModel = oComboBox.getModel();
-            oModel.setProperty("/projectDescription", sDescription);
 
-            // Find selected project to get profit and functional
-            const projects = this.getView().getModel("projectsList").getData();
-            const selectedProject = projects.find(p => p.projectId === sSelectedKey);
-            if (selectedProject) {
-                oModel.setProperty("/profitCenter", selectedProject.profitCenter);
-                oModel.setProperty("/functionalArea", selectedProject.functionalArea);
-            }
-
-            // Update filtered buildings
-            this._updateFilteredBuildings(sSelectedKey, oModel);
-        },
         onAddMeasurementRow: function (oEvent) {
             const oModel = oEvent.getSource().getModel();
             oModel.getProperty("/measurements").push({ code: "", description: "", quantity: 0, uom: "" });
@@ -1375,7 +1404,7 @@ sap.ui.define([
 
 
 
-//#region Payment Plan Simulation Part 
+        //#region Payment Plan Simulation Part 
 
 
 
@@ -1719,16 +1748,16 @@ sap.ui.define([
         onPricePlanChangePPS: function (oEvent) {
             const pricePlanYears = parseInt(oEvent.getParameter("value"));
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
-                            const oPlansModel = this._oSimulationDialog.getModel("paymentPlans");
-                            const aPlans = oPlansModel ? oPlansModel.getData() : [];
+            const oPlansModel = this._oSimulationDialog.getModel("paymentPlans");
+            const aPlans = oPlansModel ? oPlansModel.getData() : [];
             const oSelectedPlan = aPlans.find(p =>
                 p.planYears === pricePlanYears &&
-                                Array.isArray(p.assignedProjects) &&
-                                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
-                            );
+                Array.isArray(p.assignedProjects) &&
+                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+            );
             if (oSelectedPlan) {
                 sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue(oSelectedPlan.paymentPlanId);
-                            } else {
+            } else {
                 sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");
             }
         },
@@ -1894,60 +1923,33 @@ sap.ui.define([
             const paddedNumber = ("00000" + this._idCounter).slice(-5);  // Pad to 5 digits
             return "PPS" + paddedNumber;
         },
-        onProjectChange: function (oEvent) {
-            var oComboBox = oEvent.getSource();
-            var sSelectedKey = oComboBox.getSelectedKey();
-            var oSelectedItem = oComboBox.getSelectedItem();
-            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
-
-            // FIX: Use the dialog model instead of oComboBox.getModel()
-            var oModel = this._oAddDialog.getModel();
-            oModel.setProperty("/projectDescription", sDescription);
-
-            // Find selected project to get profit and functional
-            const projects = this.getView().getModel("projectsList").getData();
-            const selectedProject = projects.find(p => p.projectId === sSelectedKey);
-            if (selectedProject) {
-                console.log(selectedProject);
-
-                oModel.setProperty("/profitCenter", selectedProject.profitCenter || 0);  // Set on dialog model
-                oModel.setProperty("/functionalArea", selectedProject.functionalArea || 0);  // Set on dialog model
-            } else {
-                // Clear if no project selected
-                oModel.setProperty("/profitCenter", "");
-                oModel.setProperty("/functionalArea", "");
-            }
-
-            // Update filtered buildings (if needed elsewhere, but not here)
-            // this._updateFilteredBuildings(sSelectedKey, oModel);
-        },
 
 
         //#endregion
 
 
-   onConditionCodeChange: function (oEvent) {
-       var oComboBox = oEvent.getSource();
-       var sSelectedKey = oComboBox.getSelectedKey();
-       var oSelectedItem = oComboBox.getSelectedItem();
-       var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
-       var oContext = oComboBox.getBindingContext();
-       if (oContext) {
-           oContext.getModel().setProperty(oContext.getPath() + "/description", sDescription);
-           
-           // NEW: Set numberOfYears based on selected condition code
-           var numberOfYears = 0;  // Default
-           if (sSelectedKey === "CASH") {
-               numberOfYears = 0;
-           } else if (sSelectedKey === "5YP") {
-               numberOfYears = 5;
-           } else if (sSelectedKey === "7YP") {
-               numberOfYears = 7;
-           }
-           oContext.getModel().setProperty(oContext.getPath() + "/numberOfYears", numberOfYears);
-       }
-   },
-   
+        onConditionCodeChange: function (oEvent) {
+            var oComboBox = oEvent.getSource();
+            var sSelectedKey = oComboBox.getSelectedKey();
+            var oSelectedItem = oComboBox.getSelectedItem();
+            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
+            var oContext = oComboBox.getBindingContext();
+            if (oContext) {
+                oContext.getModel().setProperty(oContext.getPath() + "/description", sDescription);
+
+                // NEW: Set numberOfYears based on selected condition code
+                var numberOfYears = 0;  // Default
+                if (sSelectedKey === "CASH") {
+                    numberOfYears = 0;
+                } else if (sSelectedKey === "5YP") {
+                    numberOfYears = 5;
+                } else if (sSelectedKey === "7YP") {
+                    numberOfYears = 7;
+                }
+                oContext.getModel().setProperty(oContext.getPath() + "/numberOfYears", numberOfYears);
+            }
+        },
+
 
 
     });
