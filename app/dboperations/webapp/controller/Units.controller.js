@@ -1481,25 +1481,28 @@ sap.ui.define([
         },
         onCreateReservation: function (oEvent) {
             var oUnit = oEvent.getSource().getBindingContext().getObject();
+            console.log("Unit selected:", oUnit);
 
             // Prepare the data to send
             var oReservationData = {
-                bua: oUnit.bua,
+                bua: oUnit.measurements?.find(m => m.code.trim() === "BUA")?.quantity || 0,
                 companyCodeId: oUnit.companyCodeId,
-                projectId: oUnit.projectId,
-                unitId: oUnit.unitId,
-                unitPrice: oUnit.unitPrice,
-                paymentPlan: oUnit.paymentPlan
+                project_projectId: oUnit.projectId,
+                buildingId:oUnit.buildingId,
+                unit_unitId: oUnit.unitId,
+                unitPrice: oUnit.originalPrice || 0,
+                paymentPlan_paymentPlanId: oUnit.conditions?.[0]?.ID || ""
             };
+
+            console.log("Reservation initial data:", oReservationData);
 
             // Convert to string for routing
             var sData = encodeURIComponent(JSON.stringify(oReservationData));
 
-            // Navigate to Reservation view
+            // Navigate to CreateReservation screen
             var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             oRouter.navTo("CreateReservation", { reservationData: sData });
-        }
-        ,
+        },
         onClearFilter: function () {
             var oModel = this.getView().getModel("view");
 
@@ -1683,7 +1686,7 @@ sap.ui.define([
         },
 
         // Added: Print function for the simulation dialog
-               _printSimulation: function () {
+        _printSimulation: function () {
             // Get the dialog's model data
             var oLocal = this._oSimulationDialog.getModel("local");
             var oSimulationOutput = this._oSimulationDialog.getModel("simulationOutput");

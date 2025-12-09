@@ -6,17 +6,17 @@
 
     <Page id="_IDGenPage1" title="Reservations">
         <headerContent>
-            <Button
+            <!-- <Button
                 id="btnAddReservation"
                 icon="sap-icon://add"
                 tooltip="Add"
                 text="New Reservation"
                 press="onAddReservation"
-            />
+            /> -->
         </headerContent>
 
         <content>
-            <ScrollContainer
+            <ScrollContainer id="_IDGenScrollContainer5"
                 horizontal="true"
                 vertical="false"
                 width="100%"
@@ -33,38 +33,38 @@
                     class="noPaddingTable">
 
                     <columns>
-                        <Column><Text text="Reservation ID"/></Column>
-                        <Column><Text text="Company Code"/></Column>
-                        <Column><Text text="Old Reservation ID"/></Column>
-                        <Column><Text text="EOI ID"/></Column>
-                        <Column><Text text="Description"/></Column>
-                        <Column><Text text="Sales Type"/></Column>
-                        <Column><Text text="Valid From"/></Column>
-                        <Column><Text text="Customer Type"/></Column>
-                        <Column><Text text="Currency"/></Column>
-                        <Column><Text text="After Sales"/></Column>
-                        <Column><Text text="Status"/></Column>
-                        <Column><Text text="Actions"/></Column>
+                        <Column id="_IDGenColumn69"><Text id="_IDGenText120" text="Reservation ID"/></Column>
+                        <Column id="_IDGenColumn70"><Text id="_IDGenText121" text="Company Code"/></Column>
+                        <Column id="_IDGenColumn71"><Text id="_IDGenText122" text="Old Reservation ID"/></Column>
+                        <Column id="_IDGenColumn72"><Text id="_IDGenText123" text="EOI ID"/></Column>
+                        <Column id="_IDGenColumn73"><Text id="_IDGenText124" text="Description"/></Column>
+                        <Column id="_IDGenColumn74"><Text id="_IDGenText125" text="Sales Type"/></Column>
+                        <Column id="_IDGenColumn75"><Text id="_IDGenText126" text="Valid From"/></Column>
+                        <Column id="_IDGenColumn76"><Text id="_IDGenText127" text="Customer Type"/></Column>
+                        <Column id="_IDGenColumn77"><Text id="_IDGenText128" text="Currency"/></Column>
+                        <Column id="_IDGenColumn78"><Text id="_IDGenText129" text="After Sales"/></Column>
+                        <Column id="_IDGenColumn79"><Text id="_IDGenText130" text="Status"/></Column>
+                        <Column id="_IDGenColumn80"><Text id="_IDGenText131" text="Actions"/></Column>
                     </columns>
 
                     <items>
-                        <ColumnListItem>
+                        <ColumnListItem id="_IDGenColumnListItem7">
                             <cells>
-                                <Text text="{reservations>reservationId}"/>
-                                <Text text="{reservations>companyCodeId}"/>
-                                <Text text="{reservations>oldReservationId}"/>
-                                <Text text="{reservations>eoiId}"/>
-                                <Text text="{reservations>description}"/>
-                                <Text text="{reservations>salesType}"/>
-                                <Text text="{reservations>validFrom}"/>
-                                <Text text="{reservations>customerType}"/>
-                                <Text text="{reservations>currency}"/>
-                                <Text text="{reservations>afterSales}"/>
-                                <Text text="{reservations>status}"/>
-                                <HBox>
-                                    <Button icon="sap-icon://information" tooltip="Details" press="onShowReservationDetails"/>
-                                    <Button icon="sap-icon://edit" tooltip="Edit" press="onEditReservation"/>
-                                    <Button icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDeleteReservation"/>
+                                <Text id="_IDGenText132" text="{reservations>reservationId}"/>
+                                <Text id="_IDGenText133" text="{reservations>companyCodeId}"/>
+                                <Text id="_IDGenText134" text="{reservations>oldReservationId}"/>
+                                <Text id="_IDGenText135" text="{reservations>eoiId}"/>
+                                <Text id="_IDGenText136" text="{reservations>description}"/>
+                                <Text id="_IDGenText137" text="{reservations>salesType}"/>
+                                <Text id="_IDGenText138" text="{reservations>validFrom}"/>
+                                <Text id="_IDGenText139" text="{reservations>customerType}"/>
+                                <Text id="_IDGenText140" text="{reservations>currency}"/>
+                                <Text id="_IDGenText141" text="{reservations>afterSales}"/>
+                                <Text id="_IDGenText142" text="{reservations>status}"/>
+                                <HBox id="_IDGenHBox5">
+                                    <Button id="_IDGenButton17" icon="sap-icon://information" tooltip="Details" press="onShowReservationDetails"/>
+                                    <Button id="_IDGenButton20" icon="sap-icon://edit" tooltip="Edit" press="onEditReservation"/>
+                                    <Button id="_IDGenButton25" icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDeleteReservation"/>
                                 </HBox>
                             </cells>
                         </ColumnListItem>
@@ -73,217 +73,6 @@
             </ScrollContainer>
         </content>
     </Page>
-
-    <!-- ✅ Add / Edit Dialog -->
- <!-- ✅ Add / Edit Dialog -->
-<Dialog id="reservationDialog" title="Add / Edit Reservation" stretchOnPhone="true">
-    <content>
-        <VBox class="sapUiSmallMargin">
-
-            <!-- General Data -->
-            <!-- <Label text="Reservation ID"/>
-            <Input value="{local>/reservationId}" placeholder="Auto-generated if empty"/> -->
-
-            <Label text="Company Code ID"/>
-            <Input value="{local>/companyCodeId}"/>
-
-            <Label text="Old Reservation ID"/>
-            <Input value="{local>/oldReservationId}"/>
-
-            <Label text="EOI ID"/>
-            <Input value="{local>/eoiId}"/>
-
-            <Label text="Sales Type"/>
-            <Input value="{local>/salesType}"/>
-
-            <Label text="Description"/>
-            <Input value="{local>/description}"/>
-
-            <Label text="Valid From"/>
-            <DatePicker value="{local>/validFrom}" displayFormat="yyyy-MM-dd" valueFormat="yyyy-MM-dd"/>
-
-            <Label text="Status"/>
-            <Input value="{local>/status}" placeholder="A / I"/>
-
-            <Label text="Customer Type"/>
-            <Input value="{local>/customerType}"/>
-
-            <Label text="Currency"/>
-            <Input value="{local>/currency}"/>
-
-            <Label text="After Sales"/>
-            <Input value="{local>/afterSales}"/>
-
-            <!-- Unit Details -->
-            <!-- Unit Details -->
-<Label text="Project ID"/>
-<Input value="{local>/project_projectId}"/>
-
-<Label text="Building ID"/>
-<Input value="{local>/building_buildingId}"/>
-
-<Label text="Unit ID"/>
-<Input value="{local>/unit_unitId}"/>
-
-<Label text="BUA"/>
-<Input value="{local>/bua}" type="Number"/>
-
-<Label text="Phase"/>
-<Input value="{local>/phase}"/>
-
-<Label text="Price Plan Years"/>
-<Input value="{local>/pricePlanYears}" type="Number"/>
-
-<!-- Payment Plan -->
-<Label text="Payment Plan ID"/>
-<Input value="{local>/paymentPlan_paymentPlanId}"/>
-
-<Label text="Plan Years"/>
-<Input value="{local>/planYears}" type="Number"/>
-
-<Label text="Unit Price"/>
-<Input value="{local>/unitPrice}" type="Number"/>
-
-<Label text="Plan Currency"/>
-<Input value="{local>/planCurrency}"/>
-
-
-            <!-- Cancellation -->
-            <Label text="Request Type"/>
-            <Input value="{local>/requestType}"/>
-
-            <Label text="Reason"/>
-            <Input value="{local>/reason}"/>
-
-            <Label text="Cancellation Date"/>
-            <DatePicker value="{local>/cancellationDate}" displayFormat="yyyy-MM-dd" valueFormat="yyyy-MM-dd"/>
-
-            <Label text="Cancellation Status"/>
-            <Input value="{local>/cancellationStatus}"/>
-
-            <Label text="Rejection Reason"/>
-            <Input value="{local>/rejectionReason}"/>
-
-            <Label text="Cancellation Fees"/>
-            <Input value="{local>/cancellationFees}" type="Number"/>
-
-            <!-- Payments Table -->
-            <Title text="Payments" level="H3"/>
-            <Toolbar>
-                <Button text="Add Row" icon="sap-icon://add" press="onAddPaymentRow"/>
-                <Button text="Delete Row" icon="sap-icon://delete" press="onDeletePaymentRow"/>
-            </Toolbar>
-
-            <Table id="paymentsTable" items="{path: 'local>/payments'}" inset="false">
-                <columns>
-                    <Column><Text text="Receipt Type"/></Column>
-                    <Column><Text text="Receipt Status"/></Column>
-                    <Column><Text text="Payment Method"/></Column>
-                    <Column><Text text="Amount"/></Column>
-                    <Column><Text text="House Bank"/></Column>
-                    <Column><Text text="Bank Account"/></Column>
-                    <Column><Text text="Due Date"/></Column>
-                    <Column><Text text="Transfer Number"/></Column>
-                    <Column><Text text="Check Number"/></Column>
-                    <Column><Text text="Customer Bank"/></Column>
-                    <Column><Text text="Customer Bank Account"/></Column>
-                    <Column><Text text="Branch"/></Column>
-                    <Column><Text text="Collected Amount"/></Column>
-                    <Column><Text text="AR Validated"/></Column>
-                    <Column><Text text="Rejection Reason"/></Column>
-                </columns>
-
-                <items>
-                    <ColumnListItem>
-                        <cells>
-                            <Input value="{local>receiptType}"/>
-                            <Input value="{local>receiptStatus}"/>
-                            <Input value="{local>paymentMethod}"/>
-                            <Input value="{local>amount}" type="Number"/>
-                            <Input value="{local>houseBank}"/>
-                            <Input value="{local>bankAccount}"/>
-                            <DatePicker value="{local>dueDate}" displayFormat="yyyy-MM-dd" valueFormat="yyyy-MM-dd"/>
-                            <Input value="{local>transferNumber}"/>
-                            <Input value="{local>checkNumber}"/>
-                            <Input value="{local>customerBank}"/>
-                            <Input value="{local>customerBankAccount}"/>
-                            <Input value="{local>branch}"/>
-                            <Input value="{local>collectedAmount}" type="Number"/>
-                            <CheckBox selected="{local>arValidated}"/>
-                            <Input value="{local>rejectionReason}"/>
-                        </cells>
-                    </ColumnListItem>
-                </items>
-            </Table>
-
-            <!-- Partners Table -->
-            <Title text="Partners" level="H3"/>
-            <Toolbar>
-                <Button text="Add Row" icon="sap-icon://add" press="onAddPartnerRow"/>
-                <Button text="Delete Row" icon="sap-icon://delete" press="onDeletePartnerRow"/>
-            </Toolbar>
-
-            <Table id="partnersTable" items="{path: 'local>/partners'}" inset="false">
-                <columns>
-                    <Column><Text text="Customer Code"/></Column>
-                    <Column><Text text="Customer Name"/></Column>
-                    <Column><Text text="Customer Address"/></Column>
-                    <Column><Text text="Valid From"/></Column>
-                </columns>
-
-                <items>
-                    <ColumnListItem>
-                        <cells>
-                            <Input value="{local>customerCode}"/>
-                            <Input value="{local>customerName}"/>
-                            <Input value="{local>customerAddress}"/>
-                            <DatePicker value="{local>validFrom}" displayFormat="yyyy-MM-dd" valueFormat="yyyy-MM-dd"/>
-                        </cells>
-                    </ColumnListItem>
-                </items>
-            </Table>
-
-            <!-- Conditions Table -->
-            <Title text="Conditions" level="H3"/>
-            <Toolbar>
-                <Button text="Add Row" icon="sap-icon://add" press="onAddConditionRow"/>
-                <Button text="Delete Row" icon="sap-icon://delete" press="onDeleteConditionRow"/>
-            </Toolbar>
-
-            <Table id="conditionsTable" items="{path: 'local>/conditions'}" inset="false">
-                <columns>
-                    <Column><Text text="Condition Type"/></Column>
-                    <Column><Text text="Amount"/></Column>
-                    <Column><Text text="Currency"/></Column>
-                    <Column><Text text="Frequency"/></Column>
-                    <Column><Text text="Valid From"/></Column>
-                    <Column><Text text="Valid To"/></Column>
-                </columns>
-
-                <items>
-                    <ColumnListItem>
-                        <cells>
-                            <Input value="{local>conditionType}"/>
-                            <Input value="{local>amount}" type="Number"/>
-                            <Input value="{local>currency}"/>
-                            <Input value="{local>frequency}"/>
-                            <DatePicker value="{local>validFrom}" displayFormat="yyyy-MM-dd" valueFormat="yyyy-MM-dd"/>
-                            <DatePicker value="{local>validTo}" displayFormat="yyyy-MM-dd" valueFormat="yyyy-MM-dd"/>
-                        </cells>
-                    </ColumnListItem>
-                </items>
-            </Table>
-
-        </VBox>
-    </content>
-
-    <beginButton>
-        <Button text="Save" type="Emphasized" press="onSaveReservation"/>
-    </beginButton>
-    <endButton>
-        <Button text="Cancel" press="onCancelReservation"/>
-    </endButton>
-</Dialog>
-
+>
 
 </mvc:View>

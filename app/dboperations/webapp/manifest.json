@@ -130,7 +130,7 @@
         },
         {
           "name": "CreateReservation",
-          "pattern": "CreateReservation?:query:",
+          "pattern": "CreateReservation/{reservationData}",
           "target": "CreateReservation"
         },
          {
