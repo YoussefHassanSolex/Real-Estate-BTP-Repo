@@ -14,10 +14,63 @@ sap.ui.define([
             this.oModel = this.getView().getModel();
             this._loadPlans();
             this._loadDropdownData(); // 🔹 Load dropdown master data
-                        this._idCounter = parseInt(localStorage.getItem("simulationIdCounter")) || 0;
+            this._idCounter = parseInt(localStorage.getItem("simulationIdCounter")) || 0;
+
+            this._loadCompanyCodesList();
 
         },
+        _loadCompanyCodesList: function () {
+            fetch("/odata/v4/real-estate/Projects")
+                .then(res => res.json())
+                .then(data => {
+                    const uniqueCompanyCodes = data.value.reduce((acc, curr) => {
+                        if (!acc.find(c => c.companyCodeId === curr.companyCodeId)) {
+                            acc.push({
+                                companyCodeId: curr.companyCodeId,
+                                companyCodeDescription: curr.companyCodeDescription
+                            });
+                        }
+                        return acc;
+                    }, []);
+                    this.getView().setModel(new JSONModel(uniqueCompanyCodes), "companyCodesList");
+                    console.log(uniqueCompanyCodes);
+                })
+                .catch(err => console.error("Failed to load Company Codes list:", err));
+        },
+        // ----------------------------
+// Company Code (New: Value Help Dialog)
+// ----------------------------
+onOpenCompanyCodeVHD: function (oEvent) {
+    var oDialog = new sap.m.SelectDialog({
+        title: "Select Company Code",
+        items: {
+            path: "companyCodesList>/",
+            template: new sap.m.StandardListItem({
+                title: "{companyCodesList>companyCodeDescription}",
+                description: "{companyCodesList>companyCodeId}",
+                type: "Active"
+            })
+        },
+        liveChange: function (oEvent) {
+            var sValue = oEvent.getParameter("value");
+            oEvent.getParameter("itemsBinding").filter([
+                new sap.ui.model.Filter("companyCodeDescription", sap.ui.model.FilterOperator.Contains, sValue)
+            ]);
+        },
+        confirm: function (oEvent) {
+            var oSelectedItem = oEvent.getParameter("selectedItem");
+            if (oSelectedItem) {
+                var data = oSelectedItem.getBindingContext("companyCodesList").getObject();
+                // Set the code into the local model's companyCodeId
+                var oLocalModel = this.getView().byId("planDialog").getModel("local");
+                oLocalModel.setProperty("/companyCodeId", data.companyCodeId);  // e.g., "1000"
+            }
+        }.bind(this)
+    });
 
+    oDialog.setModel(this.getView().getModel("companyCodesList"), "companyCodesList");
+    oDialog.open();
+},
         // 🔹 Load dropdown master data for value help dialogs
         _loadDropdownData: async function () {
             try {
@@ -282,7 +335,7 @@ sap.ui.define([
             this._oAddDialog.open();
         },
 
-   onSavePlan: async function () {
+onSavePlan: async function () {
     const oDialog = this._oAddDialog;
     const oModel = oDialog.getModel("local");
     const oData = oModel.getData();
@@ -309,14 +362,13 @@ sap.ui.define([
         return;
     }
 
-    // Validation: Date span must match plan years
-    // const planYears = parseInt(oData.planYears) || 0;
-    // const expectedValidTo = new Date(validFromDate);
-    // expectedValidTo.setFullYear(expectedValidTo.getFullYear() + planYears);
-    // if (validToDate < expectedValidTo) {
-    //     MessageBox.error(`Valid To must be at least ${planYears} years after Valid From. Expected: ${expectedValidTo.toISOString().split('T')[0]} or later.`);
-    //     return;
-    // }
+    // Validation: Plan Years must equal sum of years in schedule rows
+    const planYears = parseInt(oData.planYears) || 0;
+    const totalYears = (oData.schedules || []).reduce((sum, s) => sum + (parseInt(s.numberOfYears) || 0), 0);
+    if (totalYears !== planYears) {
+        MessageBox.error(`Plan Years must equal the sum of years in schedule rows (${planYears}). Current sum: ${totalYears}`);
+        return;  // Prevent save
+    }
 
     try {
         // 🔹 Fixed: Map schedules to send foreign keys (not objects)
@@ -357,19 +409,18 @@ sap.ui.define([
         console.log("Schedules payload:", schedules);
         console.log("Assigned projects payload:", assignedProjects);
 
-        // Validation: Total percentage must be 100
-        const totalPercentage = (oData.schedules || []).reduce((sum, s) => sum + (parseFloat(s.percentage) || 0), 0);
+        // Validation: Total percentage must be 100 (exclude Maintenance)
+        const totalPercentage = (oData.schedules || []).reduce((sum, s) => {
+            if (s.conditionType?.description !== "Maintenance") {
+                return sum + (parseFloat(s.percentage) || 0);
+            }
+            debugger
+            return sum;
+        }, 0);
         if (totalPercentage !== 100) {
-            MessageBox.error(`Total percentage must be 100. Current: ${totalPercentage}`);
+            MessageBox.error(`Total percentage must be 100 (excluding Maintenance). Current: ${totalPercentage}`);
             return;  // Prevent save
         }
-
-        // Validation: Total years in schedules must equal plan years
-        // const totalYears = (oData.schedules || []).reduce((sum, s) => sum + (parseInt(s.numberOfYears) || 0), 0);
-        // if (totalYears !== planYears) {
-        //     MessageBox.error(`Total years in schedules must equal plan years (${planYears}). Current: ${totalYears}`);
-        //     return;  // Prevent save
-        // }
 
         const res = await fetch(url, {
             method,
@@ -386,6 +437,8 @@ sap.ui.define([
         MessageBox.error("Error: " + err.message);
     }
 },
+
+
 
 
 
@@ -422,7 +475,7 @@ sap.ui.define([
             oModel.refresh();
         },
 
-           _generateId: function () {
+        _generateId: function () {
             this._idCounter += 1;
             localStorage.setItem("simulationIdCounter", this._idCounter);
             const paddedNumber = ("00000" + this._idCounter).slice(-5);  // Pad to 5 digits
@@ -607,10 +660,6 @@ sap.ui.define([
             oDialog.setModel(this.getView().getModel("dropdowns"), "dropdowns");
             oDialog.open();
         },
-
-
-
-
 
         // ----------------------------
         // Generic Value Help Dialog

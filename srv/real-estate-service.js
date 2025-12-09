@@ -366,11 +366,28 @@ module.exports = cds.service.impl(async function () {
       const { schedule, assignedProjects, ...planData } = req.data;
       planData.paymentPlanId = planData.paymentPlanId || uuidv4();
 
-      // ✅ NEW: Validate total percentage in schedule
+      // ✅ UPDATED: Validate total percentage in schedule (exclude Maintenance)
       if (Array.isArray(schedule)) {
-        const totalPercentage = schedule.reduce((sum, s) => sum + (parseFloat(s.percentage) || 0), 0);
+        // Fetch descriptions for condition types to identify Maintenance
+        const conditionCodes = schedule.map(s => s.conditionType_code).filter(code => code);
+        const conditionTypes = await db.run(
+          SELECT.from(ConditionTypes).where({ code: conditionCodes })
+        );
+        const codeToDescription = {};
+        conditionTypes.forEach(ct => {
+          codeToDescription[ct.code] = ct.description;
+        });
+
+        // Sum only non-Maintenance percentages
+        const totalPercentage = schedule.reduce((sum, s) => {
+          const description = codeToDescription[s.conditionType_code];
+          if (description !== "Maintenance") {
+            return sum + (parseFloat(s.percentage) || 0);
+          }
+          return sum;
+        }, 0);
         if (totalPercentage !== 100) {
-          req.error(400, `Total percentage of schedule items must be exactly 100. Current total: ${totalPercentage}`);
+          req.error(400, `Total percentage of non-Maintenance schedule items must be exactly 100. Current total: ${totalPercentage}`);
           return;  // Stop processing
         }
       } else if (!schedule || schedule.length === 0) {
@@ -425,8 +442,9 @@ module.exports = cds.service.impl(async function () {
     }
   });
 
+
   // UPDATE
-  this.on('UPDATE', PaymentPlans, async (req) => {
+this.on('UPDATE', PaymentPlans, async (req) => {
     console.log("UPDATE PaymentPlan called with:", req.data);
     const { paymentPlanId } = req.params[0];
     const db = cds.transaction(req);
@@ -434,11 +452,28 @@ module.exports = cds.service.impl(async function () {
     try {
       const { schedule, assignedProjects, ...planData } = req.data;
 
-      // ✅ NEW: Validate total percentage in schedule
+      // ✅ UPDATED: Validate total percentage in schedule (exclude Maintenance)
       if (Array.isArray(schedule)) {
-        const totalPercentage = schedule.reduce((sum, s) => sum + (parseFloat(s.percentage) || 0), 0);
+        // Fetch descriptions for condition types to identify Maintenance
+        const conditionCodes = schedule.map(s => s.conditionType_code).filter(code => code);
+        const conditionTypes = await db.run(
+          SELECT.from(ConditionTypes).where({ code: conditionCodes })
+        );
+        const codeToDescription = {};
+        conditionTypes.forEach(ct => {
+          codeToDescription[ct.code] = ct.description;
+        });
+
+        // Sum only non-Maintenance percentages
+        const totalPercentage = schedule.reduce((sum, s) => {
+          const description = codeToDescription[s.conditionType_code];
+          if (description !== "Maintenance") {
+            return sum + (parseFloat(s.percentage) || 0);
+          }
+          return sum;
+        }, 0);
         if (totalPercentage !== 100) {
-          req.error(400, `Total percentage of schedule items must be exactly 100. Current total: ${totalPercentage}`);
+          req.error(400, `Total percentage of non-Maintenance schedule items must be exactly 100. Current total: ${totalPercentage}`);
           return;  // Stop processing
         }
       } else if (!schedule || schedule.length === 0) {
@@ -497,67 +532,66 @@ module.exports = cds.service.impl(async function () {
       req.error(500, "Error updating PaymentPlan: " + error.message);
     }
   });
+  // // UPDATE
+  // this.on('UPDATE', PaymentPlans, async (req) => {
+  //   console.log("UPDATE PaymentPlan called with:", req.data);
+  //   const { paymentPlanId } = req.params[0];
+  //   const db = cds.transaction(req);
 
-  // UPDATE
-  this.on('UPDATE', PaymentPlans, async (req) => {
-    console.log("UPDATE PaymentPlan called with:", req.data);
-    const { paymentPlanId } = req.params[0];
-    const db = cds.transaction(req);
+  //   try {
+  //     const { schedule, assignedProjects, ...planData } = req.data;
 
-    try {
-      const { schedule, assignedProjects, ...planData } = req.data;
+  //     // Update main record
+  //     await db.run(
+  //       UPDATE(PaymentPlans).set(planData).where({ paymentPlanId })
+  //     );
 
-      // Update main record
-      await db.run(
-        UPDATE(PaymentPlans).set(planData).where({ paymentPlanId })
-      );
+  //     // Refresh schedule items
+  //     await db.run(DELETE.from(PaymentPlanSchedules).where({ paymentPlan_paymentPlanId: paymentPlanId }));
+  //     if (Array.isArray(schedule)) {
+  //       for (const s of schedule) {
+  //         await db.run(
+  //           INSERT.into(PaymentPlanSchedules).entries({
+  //             ID: s.ID || uuidv4(),
+  //             paymentPlan_paymentPlanId: paymentPlanId,
+  //             conditionType_code: s.conditionType_code,  // ✅ Fixed: Access flat key directly
+  //             basePrice_code: s.basePrice_code,          // ✅ Fixed
+  //             calculationMethod_code: s.calculationMethod_code,  // ✅ Fixed
+  //             frequency_code: s.frequency_code,          // ✅ Fixed
+  //             percentage: s.percentage,
+  //             dueInMonth: s.dueInMonth,
+  //             numberOfInstallments: s.numberOfInstallments,
+  //             numberOfYears: s.numberOfYears
+  //           })
+  //         );
+  //       }
+  //     }
 
-      // Refresh schedule items
-      await db.run(DELETE.from(PaymentPlanSchedules).where({ paymentPlan_paymentPlanId: paymentPlanId }));
-      if (Array.isArray(schedule)) {
-        for (const s of schedule) {
-          await db.run(
-            INSERT.into(PaymentPlanSchedules).entries({
-              ID: s.ID || uuidv4(),
-              paymentPlan_paymentPlanId: paymentPlanId,
-              conditionType_code: s.conditionType_code,  // ✅ Fixed: Access flat key directly
-              basePrice_code: s.basePrice_code,          // ✅ Fixed
-              calculationMethod_code: s.calculationMethod_code,  // ✅ Fixed
-              frequency_code: s.frequency_code,          // ✅ Fixed
-              percentage: s.percentage,
-              dueInMonth: s.dueInMonth,
-              numberOfInstallments: s.numberOfInstallments,
-              numberOfYears: s.numberOfYears
-            })
-          );
-        }
-      }
+  //     // Refresh assigned projects - Already correct
+  //     await db.run(DELETE.from(PaymentPlanProjects).where({ paymentPlan_paymentPlanId: paymentPlanId }));
+  //     if (Array.isArray(assignedProjects)) {
+  //       for (const p of assignedProjects) {
+  //         await db.run(
+  //           INSERT.into(PaymentPlanProjects).entries({
+  //             ID: p.ID || uuidv4(),
+  //             paymentPlan_paymentPlanId: paymentPlanId,
+  //             project_projectId: p.project_projectId  // ✅ Already fixed
+  //           })
+  //         );
+  //       }
+  //     }
 
-      // Refresh assigned projects - Already correct
-      await db.run(DELETE.from(PaymentPlanProjects).where({ paymentPlan_paymentPlanId: paymentPlanId }));
-      if (Array.isArray(assignedProjects)) {
-        for (const p of assignedProjects) {
-          await db.run(
-            INSERT.into(PaymentPlanProjects).entries({
-              ID: p.ID || uuidv4(),
-              paymentPlan_paymentPlanId: paymentPlanId,
-              project_projectId: p.project_projectId  // ✅ Already fixed
-            })
-          );
-        }
-      }
+  //     const updated = await db.run(SELECT.one.from(PaymentPlans).where({ paymentPlanId }));
+  //     await db.commit();
+  //     console.log("✅ PaymentPlan updated:", paymentPlanId);
+  //     return updated;
 
-      const updated = await db.run(SELECT.one.from(PaymentPlans).where({ paymentPlanId }));
-      await db.commit();
-      console.log("✅ PaymentPlan updated:", paymentPlanId);
-      return updated;
-
-    } catch (error) {
-      await db.rollback();
-      console.error("❌ Error updating PaymentPlan:", error);
-      req.error(500, "Error updating PaymentPlan: " + error.message);
-    }
-  });
+  //   } catch (error) {
+  //     await db.rollback();
+  //     console.error("❌ Error updating PaymentPlan:", error);
+  //     req.error(500, "Error updating PaymentPlan: " + error.message);
+  //   }
+  // });
 
   // DELETE
   this.on('DELETE', PaymentPlans, async (req) => {
