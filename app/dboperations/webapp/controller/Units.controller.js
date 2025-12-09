@@ -348,12 +348,32 @@ sap.ui.define([
                                 value: "{/buildingDescription}",
                                 tooltip: "Up to 60 characters"
                             }),
+                            new sap.m.Label({ text: "Usage Type", required: true }),
+                            new sap.m.Select("usageTypeDescInput", {
+                                selectedKey: "{/usageTypeDescription}",
 
-                            new sap.m.Label({ text: "Unit Type Description", required: true }),
-                            new sap.m.Input("unitTypeDescInput", { value: "{/unitTypeDescription}" }),
+                                change: this.onAddDialogUsageTypeChange.bind(this),
+                                items: [
+                                    new sap.ui.core.Item({ key: "", text: "" }),
+                                    new sap.ui.core.Item({ key: "Residential", text: "Residential" }),
+                                    new sap.ui.core.Item({ key: "Commercial", text: "Commercial" }),
+                                    new sap.ui.core.Item({ key: "Admin", text: "Admin" })
+                                ]
+                            }),
 
-                            new sap.m.Label({ text: "Usage Type Description", required: true }),
-                            new sap.m.Input("usageTypeDescInput", { value: "{/usageTypeDescription}" }),
+                            new sap.m.Label({ text: "Unit Type", required: true }),
+                            new sap.m.Select("unitTypeDescInput", {
+                                selectedKey: "{/unitTypeDescription}",
+
+                                enabled: false
+                            }),
+
+
+                            // new sap.m.Label({ text: "Unit Type Description", required: true }),
+                            // new sap.m.Input("unitTypeDescInput", { value: "{/unitTypeDescription}" }),
+
+                            // new sap.m.Label({ text: "Usage Type Description", required: true }),
+                            // new sap.m.Input("usageTypeDescInput", { value: "{/usageTypeDescription}" }),
 
                             new sap.m.Label({ text: "Unit Status Description", required: true }),
                             new sap.m.Input("unitStatusDescInput", { value: "{/unitStatusDescription}" }),
@@ -384,7 +404,7 @@ sap.ui.define([
                                 placeholder: "Select a date"
                             }),
 
-                            new sap.m.Label({ text: "Supplementary Text", required: true }),
+                            new sap.m.Label({ text: "Supplementary Text" }),
                             new sap.m.Input("supplementaryTextInput", { value: "{/supplementaryText}" }),
 
                             new sap.m.Title({ text: "Measurements", level: "H3" }),
@@ -493,9 +513,33 @@ sap.ui.define([
                             ];
 
                             var bValid = true;
+
+                            var aRequiredFields = [
+                                { id: "usageTypeDescInput", name: "Usage Type" },
+                                { id: "unitTypeDescInput", name: "Unit Type" }
+                            ];
+
                             aRequiredFields.forEach(function (field) {
                                 var oControl = sap.ui.getCore().byId(field.id);
-                                if (!oControl.getValue()) {
+                                if (!oControl) return;
+
+                                // ✅ Skip disabled fields
+                                if (oControl.getEnabled && !oControl.getEnabled()) {
+                                    return;
+                                }
+
+                                var vValue = "";
+
+                                // For Select and ComboBox
+                                if (oControl.isA("sap.m.Select") || oControl.isA("sap.m.ComboBox")) {
+                                    vValue = oControl.getSelectedKey();
+                                }
+                                // For Input, DatePicker, etc.
+                                else if (oControl.getValue) {
+                                    vValue = oControl.getValue();
+                                }
+
+                                if (!vValue) {
                                     oControl.setValueState("Error");
                                     oControl.setValueStateText(field.name + " is required");
                                     bValid = false;
@@ -505,9 +549,10 @@ sap.ui.define([
                             });
 
                             if (!bValid) {
-                                sap.m.MessageBox.warning("Please fill all required fields before saving.");
+                                sap.m.MessageBox.error("Please fill all required fields before saving.");
                                 return;
                             }
+
 
                             // NEW: Auto-generate unitId in format "U000x" (increment counter)
                             this._unitIdCounter = (this._unitIdCounter || 0) + 1;
@@ -592,6 +637,46 @@ sap.ui.define([
 
             this._oAddDialog.open();
         },
+        onAddDialogUsageTypeChange: function () {
+            var oUsageSelect = sap.ui.getCore().byId("usageTypeDescInput");
+            var oUnitTypeSelect = sap.ui.getCore().byId("unitTypeDescInput");
+
+            var sUsageType = oUsageSelect.getSelectedKey();
+            var sUnitType = oUnitTypeSelect.getSelectedKey();
+
+
+            // Update model
+            var oModel = this._oAddDialog.getModel();
+            oModel.setProperty("/usageTypeDescription", sUsageType);
+
+            // Clear previous items
+            oUnitTypeSelect.removeAllItems();
+
+            var mUnitTypes = {
+                "Residential": ["Apartment", "Villa", "Townhouse", "Studio"],
+                "Commercial": ["Retail", "Shops"],
+                "Admin": ["Office", "Clinic"]
+            };
+
+            var aTypes = mUnitTypes[sUsageType] || [];
+
+            // Enable/Disable based on result
+            oUnitTypeSelect.setEnabled(aTypes.length > 0);
+
+            // Add items
+            aTypes.forEach(function (type) {
+                oUnitTypeSelect.addItem(new sap.ui.core.Item({
+                    key: type,
+                    text: type
+                }));
+            });
+
+            // Reset previous selection
+            // oUnitTypeSelect.setSelectedKey("");
+            oModel.setProperty("/unitTypeDescription", sUnitType); // reset
+        }
+        ,
+
         onProjectChange: function (oEvent) {
             var oComboBox = oEvent.getSource();
             var sSelectedKey = oComboBox.getSelectedKey();
@@ -1224,19 +1309,34 @@ sap.ui.define([
             this._oEditDialog.setModel(oDialogModel);
             this._oEditDialog.open();
         },
-
         onCompanyCodeChange: function (oEvent) {
             var oComboBox = oEvent.getSource();
-            var sSelectedKey = oComboBox.getSelectedKey();
             var oSelectedItem = oComboBox.getSelectedItem();
-            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
+
+            var sDescription = oSelectedItem
+                ? (oSelectedItem.getText().split(" - ")[1] || "")
+                : "";
+
             var oContext = oComboBox.getBindingContext();
+
             if (oContext) {
-                oContext.getModel().setProperty(oContext.getPath() + "/companyCodeDescription", sDescription);
-            } else {
-                oComboBox.getModel().setProperty("/companyCodeDescription", sDescription);
+                // Update property via binding context (works for OData + JSON)
+                oContext.setProperty("companyCodeDescription", sDescription);
             }
-        },
+        }
+        ,
+        // onCompanyCodeChange: function (oEvent) {
+        //     var oComboBox = oEvent.getSource();
+        //     var sSelectedKey = oComboBox.getSelectedKey();
+        //     var oSelectedItem = oComboBox.getSelectedItem();
+        //     var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
+        //     var oContext = oComboBox.getBindingContext();
+        //     if (oContext) {
+        //         oContext.getModel().setProperty(oContext.getPath() + "/companyCodeDescription", sDescription);
+        //     } else {
+        //         oComboBox.getModel().setProperty("/companyCodeDescription", sDescription);
+        //     }
+        // },
 
         onAddMeasurementRow: function (oEvent) {
             const oModel = oEvent.getSource().getModel();
@@ -1280,68 +1380,59 @@ sap.ui.define([
                 oContext.getModel().setProperty(oContext.getPath() + "/description", sDescription);
             }
         },
+
+        //Updated Filters Fields ..
         onFilterUnits: function () {
             var oTable = this.byId("unitsTable");
             var oBinding = oTable.getBinding("items");
             var aFilters = [];
 
-            // Existing filters (keep all your current ones)
-            var sUnitTypeFilter = this.byId("unitTypeFilter").getSelectedKey();
-            if (sUnitTypeFilter) {
-                aFilters.push(new sap.ui.model.Filter("unitTypeDescription", sap.ui.model.FilterOperator.EQ, sUnitTypeFilter));
+            // Company Code
+            var sCompanyCode = this.byId("companyCodeFilter").getSelectedKey();
+            if (sCompanyCode) {
+                aFilters.push(new sap.ui.model.Filter("companyCodeId", sap.ui.model.FilterOperator.EQ, sCompanyCode));
             }
 
-            var sCompanyCodeFilter = this.byId("companyCodeFilter").getSelectedKey();
-            if (sCompanyCodeFilter) {
-                aFilters.push(new sap.ui.model.Filter("companyCodeId", sap.ui.model.FilterOperator.EQ, sCompanyCodeFilter));
+            // Project ID
+            var sProjectId = this.byId("projectIdFilter").getSelectedKey();
+            if (sProjectId) {
+                aFilters.push(new sap.ui.model.Filter("projectId", sap.ui.model.FilterOperator.EQ, sProjectId));
             }
 
-            var sProjectIdFilter = this.byId("projectIdFilter").getSelectedKey();
-            if (sProjectIdFilter) {
-                aFilters.push(new sap.ui.model.Filter("projectId", sap.ui.model.FilterOperator.EQ, sProjectIdFilter));
+            // Unit Type
+            var sUnitType = this.byId("unitTypeFilter").getSelectedKey();
+            if (sUnitType) {
+                aFilters.push(new sap.ui.model.Filter("unitTypeDescription", sap.ui.model.FilterOperator.EQ, sUnitType));
             }
 
             // Floor range
             var sFloorFrom = this.byId("_IDGenInput17").getValue();
             var sFloorTo = this.byId("_IDGenInput18").getValue();
-            if (sFloorFrom) aFilters.push(new sap.ui.model.Filter("floorDescription", sap.ui.model.FilterOperator.GE, sFloorFrom));
-            if (sFloorTo) aFilters.push(new sap.ui.model.Filter("floorDescription", sap.ui.model.FilterOperator.LE, sFloorTo));
 
-            // Measurement filter (existing)
-            var sMeasurementCode = this.byId("measurementFilter").getSelectedKey();
-            var minQty = this.byId("_IDGenInput15").getValue();
-            var maxQty = this.byId("_IDGenInput16").getValue();
-            var sUom = this.byId("_IDGenInput19").getValue();
-            if (sMeasurementCode || minQty || maxQty || sUom) {
-                aFilters.push(new sap.ui.model.Filter({
-                    path: "",
-                    test: function (unit) {
-                        var chosen = unit.measurements?.find(m => m.code?.toUpperCase() === sMeasurementCode?.toUpperCase());
-                        if (sMeasurementCode && !chosen) return false;
-                        if ((minQty || maxQty || sUom) && !chosen) return false;
-                        if (minQty && parseFloat(chosen.quantity) < parseFloat(minQty)) return false;
-                        if (maxQty && parseFloat(chosen.quantity) > parseFloat(maxQty)) return false;
-                        if (sUom && chosen.uom?.toUpperCase() !== sUom.toUpperCase()) return false;
-                        return true;
-                    }
-                }));
+            if (sFloorFrom) {
+                aFilters.push(new sap.ui.model.Filter("floorDescription", sap.ui.model.FilterOperator.GE, sFloorFrom));
+            }
+            if (sFloorTo) {
+                aFilters.push(new sap.ui.model.Filter("floorDescription", sap.ui.model.FilterOperator.LE, sFloorTo));
             }
 
-            // NEW: Price Plan Years + Currency Filter
-            var sPricePlanYears = this.byId("_IDGenInput20").getValue(); // e.g., "5"
-            var sCurrency = this.byId("_IDGenInput21").getValue().trim().toUpperCase();
+            // BUA
+            var sBUA = this.byId("_IDGenInput22")?.getValue(); // adjust ID if needed
+            if (sBUA) {
+                aFilters.push(new sap.ui.model.Filter("bua", sap.ui.model.FilterOperator.EQ, sBUA));
+            }
 
-            if (sPricePlanYears || sCurrency) {
+            // === KEEPING YOUR COMPLEX PRICE PLAN YEARS LOGIC ===
+            var sPricePlanYears = this.byId("_IDGenInput20").getValue();
+
+            if (sPricePlanYears) {
                 var aValidProjectIds = [];
-
                 var aPaymentPlans = this.getView().getModel("paymentPlansFilter").getData() || [];
 
                 aPaymentPlans.forEach(function (plan) {
-                    var matchesYears = !sPricePlanYears || plan.planYears === parseInt(sPricePlanYears);
-                    var matchesCurrency = !sCurrency || (plan.currency && plan.currency.toUpperCase() === sCurrency);
+                    var matchesYears = plan.planYears === parseInt(sPricePlanYears);
 
-                    if (matchesYears && matchesCurrency) {
-                        // Extract all projectIds this plan is assigned to
+                    if (matchesYears) {
                         if (Array.isArray(plan.assignedProjects)) {
                             plan.assignedProjects.forEach(function (assignment) {
                                 if (assignment.project && assignment.project.projectId) {
@@ -1360,30 +1451,55 @@ sap.ui.define([
                         return new sap.ui.model.Filter("projectId", sap.ui.model.FilterOperator.EQ, projId);
                     });
 
-                    // OR combination → projectId = X or projectId = Y or ...
+                    // OR logic between projects
                     aFilters.push(new sap.ui.model.Filter({
                         aFilters: aProjectFilters,
-                        bAnd: false   // ← this means OR
+                        bAnd: false
                     }));
                 } else {
-                    // No match → force empty result
                     aFilters.push(new sap.ui.model.Filter("projectId", sap.ui.model.FilterOperator.EQ, null));
                 }
-
-
             }
 
-            // Apply all filters
-            var oCombinedFilter = aFilters.length > 0 ? new sap.ui.model.Filter(aFilters, true) : null;
+            // Price range (From / To)
+            var sPriceFrom = this.byId("_IDGenInput23")?.getValue();
+            var sPriceTo = this.byId("_IDGenInput24")?.getValue();
+
+            if (sPriceFrom) {
+                aFilters.push(new sap.ui.model.Filter("price", sap.ui.model.FilterOperator.GE, parseFloat(sPriceFrom)));
+            }
+            if (sPriceTo) {
+                aFilters.push(new sap.ui.model.Filter("price", sap.ui.model.FilterOperator.LE, parseFloat(sPriceTo)));
+            }
+
+            // Apply filters
+            var oCombinedFilter = aFilters.length > 0
+                ? new sap.ui.model.Filter(aFilters, true)
+                : null;
+
             oBinding.filter(oCombinedFilter ? [oCombinedFilter] : []);
         },
-
         onCreateReservation: function (oEvent) {
             var oUnit = oEvent.getSource().getBindingContext().getObject();
-            var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-            oRouter.navTo("Reservations", { unitId: oUnit.unitId });
-        },
 
+            // Prepare the data to send
+            var oReservationData = {
+                bua: oUnit.bua,
+                companyCodeId: oUnit.companyCodeId,
+                projectId: oUnit.projectId,
+                unitId: oUnit.unitId,
+                unitPrice: oUnit.unitPrice,
+                paymentPlan: oUnit.paymentPlan
+            };
+
+            // Convert to string for routing
+            var sData = encodeURIComponent(JSON.stringify(oReservationData));
+
+            // Navigate to Reservation view
+            var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("CreateReservation", { reservationData: sData });
+        }
+        ,
         onClearFilter: function () {
             var oModel = this.getView().getModel("view");
 
@@ -1405,60 +1521,72 @@ sap.ui.define([
 
 
         //#region Payment Plan Simulation Part 
-
-
-
-        onOpenPaymentSimulation: function (oEvent) {
+        onOpenPaymentSimulation: async function (oEvent) {  // Added async
             var unitId = oEvent.getSource().getBindingContext().getObject().unitId;
+            var units = this.getView().getModel("view").getProperty("/Units");
+            if (!units || units.length === 0 || !units[0].bua) {  // Updated: Also check if units are enriched
+                await this._loadUnitsForSim();  // Await to ensure data is loaded and enriched
+            }
 
             if (!this._oSimulationDialog) {
-                // Create VBox with form content (adapted from PaymentPlanSimulations view)
+                // Simplified VBox: Price Plan input, hidden inputs for backend data, header section, and output table
                 var oVBox = new sap.m.VBox({
                     items: [
-                        new sap.m.Title({ text: "Simulation Details", level: "H3" }),
-                        new sap.m.Label({ text: "Simulation ID" }),
-                        new sap.m.Input({ id: "simIdInput", value: "{local>/simulationId}", editable: false, placeholder: "Auto-generated" }),
-                        new sap.m.Label({ text: "Unit" }),
-                        new sap.m.Input({
-                            id: "unitIdInputPPS",
-                            value: "{local>/unitDisplay}",
-                            showValueHelp: true,
-                            valueHelpRequest: this.onOpenUnitValueHelpPPS.bind(this),
-                            editable: false,  // Pre-filled, read-only
-                            placeholder: "Unit pre-selected"
-                        }),
-                        new sap.m.Label({ text: "Project ID" }),
-                        new sap.m.Input({ id: "projectIdInputPPS", value: "{local>/projectId}", editable: false }),
-                        new sap.m.Label({ text: "Project Description" }),
-                        new sap.m.Input({ id: "projectDescriptionInputPPS", value: "{local>/projectDescription}", editable: false }),
+                        new sap.m.Title({ text: "", level: "H3" }),
                         new sap.m.Label({ text: "Price Plan (Years)" }),
-                        new sap.m.Input({  // NOW: Editable with value help for manual selection
+                        new sap.m.Input({
                             id: "pricePlanInputPPS",
                             showValueHelp: true,
                             valueHelpRequest: this.onOpenPricePlanValueHelpPPS.bind(this),
                             placeholder: "Select a payment plan year..."
                         }),
-                        new sap.m.Label({ text: "Payment Plan ID" }),
-                        new sap.m.Input({ id: "paymentPlanIdInputPPS", value: "{local>/paymentPlanId}", editable: false }),
-                        new sap.m.Label({ text: "Lead ID" }),
-                        new sap.m.Input({ id: "leadIdInputPPS", value: "{local>/leadId}", placeholder: "Enter code" }),
-                        new sap.m.Label({ text: "Final Price" }),
-                        new sap.m.Input({ id: "finalPriceInputPPS", value: "{local>/finalPrice}", editable: false }),
-                        new sap.m.Label({ text: "User" }),
-                        new sap.m.Input({ id: "userIdInputPPS", value: "currentUser", editable: false }),
-                        new sap.m.HBox({
+                        // Hidden inputs for backend data (not visible to user)
+                        new sap.m.Input({ id: "projectIdInputPPS", visible: false }),
+                        new sap.m.Input({ id: "paymentPlanIdInputPPS", visible: false }),
+                        new sap.m.Input({ id: "leadIdInputPPS", visible: false }),
+                        new sap.m.Input({ id: "simIdInput", visible: false }),  // Added: For simulation ID
+                        // Header section (shown after selection) - Table layout for fields
+                        new sap.m.VBox({
+                            id: "simulationHeaderVBox",
+                            visible: "{local>/headerVisible}",
                             items: [
-                                new sap.m.Button({ id: "saveBtnPPS", text: "Save Simulation", press: this.onSaveSimulationPPS.bind(this) })
+                                // Centered Price Plan
+                                new sap.m.Text({
+                                    text: "Price Plan: {local>/pricePlan}",
+                                    textAlign: "Center",
+                                    width: "100%"
+                                }),
+                                // Client Name alone
+                                new sap.m.Text({ text: "Client Name: {local>/clientName}" }),
+                                // Table for remaining fields
+                                new sap.m.Table({
+                                    id: "simulationHeaderTable",
+                                    width: "100%",
+                                    showSeparators: "All",
+                                    columns: [
+                                        new sap.m.Column({ header: new sap.m.Label({ text: "" }) }),
+                                        new sap.m.Column({ header: new sap.m.Label({ text: "" }) })
+                                    ],
+                                    items: {
+                                        path: "local>/headerFields",
+                                        template: new sap.m.ColumnListItem({
+                                            cells: [
+                                                new sap.m.Text({ text: "{local>field}" }),
+                                                new sap.m.Text({ text: "{local>value}" })
+                                            ]
+                                        })
+                                    }
+                                })
                             ]
                         }),
-                        new sap.m.Title({ text: "Payment Schedule", level: "H3" }),
+                        new sap.m.Title({ text: "", level: "H3", visible: "{local>/headerVisible}" }),
                         new sap.m.Table({
                             id: "simulationTablePPS",
                             items: "{simulationOutput>/}",
                             width: "100%",
                             showSeparators: "All",
                             columns: [
-                                new sap.m.Column({ header: new sap.m.Label({ text: "Condition Type" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Installment" }) }),
                                 new sap.m.Column({ header: new sap.m.Label({ text: "Due Date" }) }),
                                 new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
                                 new sap.m.Column({ header: new sap.m.Label({ text: "Maintenance" }) })
@@ -1474,15 +1602,21 @@ sap.ui.define([
                                     ]
                                 })
                             }
+                            // Footer removed: Total is now a row in the table
                         })
                     ]
                 });
 
                 this._oSimulationDialog = new sap.m.Dialog({
                     title: "Payment Plan Simulation",
-                    contentWidth: "80%",
-                    resizable: true,
+                    contentWidth: "100%",
+                    resizable: false,
                     content: oVBox,
+                    beginButton: new sap.m.Button({
+                        text: "Print",
+                        type: "Default",
+                        press: this._printSimulation.bind(this)  // Added: Print button
+                    }),
                     endButton: new sap.m.Button({
                         text: "Close",
                         press: function () {
@@ -1492,30 +1626,54 @@ sap.ui.define([
                 });
 
                 // Set models for the dialog
-                this._oSimulationDialog.setModel(new JSONModel({}), "local");
+                this._oSimulationDialog.setModel(new JSONModel({
+                    headerVisible: false,  // Initially hide header and table
+                    pricePlan: "",
+                    clientName: "",
+                    headerFields: [],  // Array for table rows
+                    totalAmount: 0,
+                    totalMaintenance: 0
+                }), "local");
                 this._oSimulationDialog.setModel(new JSONModel([]), "simulationOutput");
 
-                // Load data for PPS
-                this._loadUnitsForSim();
+                // Load data for PPS (removed redundant call here, as data is loaded in onInit)
                 this._loadDropdownDataForSim();
 
                 this.getView().addDependent(this._oSimulationDialog);
             }
 
-            // Add safety check to ensure dialog exists before accessing model
+            // Pre-fill hidden data from the selected unit (behind the scenes)
             if (this._oSimulationDialog) {
-                // Pre-fill unitId and related data
                 var oLocal = this._oSimulationDialog.getModel("local");
                 oLocal.setProperty("/unitId", unitId);
+                oLocal.setProperty("/headerVisible", false);  // Reset visibility
 
-                // Find unit and set project/final price
+                // Find unit and set project/final price (auto-populated)
                 var units = this.getView().getModel("view").getProperty("/Units");
                 var unit = units.find(u => u.unitId === unitId);
                 if (unit) {
-                    oLocal.setProperty("/projectId", unit.projectId);
-                    oLocal.setProperty("/projectDescription", unit.projectDescription);
-                    sap.ui.getCore().byId("unitIdInputPPS").setValue(`${unit.unitDescription} (${unitId})`);
-                    this._calculateFinalPricePPS(unitId, oLocal);
+                    debugger
+                    oLocal.setProperty("/projectDescription", unit.projectDescription || "N/A");
+                    oLocal.setProperty("/builtUpArea", unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A");
+                    oLocal.setProperty("/gardenArea", unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A");  // Now uses "GA" code
+                    oLocal.setProperty("/deliveryDate", unit.unitDeliveryDate || "N/A");
+                    this._calculateFinalPricePPS(unitId, oLocal);  // Auto-calculate final price
+
+                    // Pre-fill hidden inputs
+                    sap.ui.getCore().byId("projectIdInputPPS").setValue(unit.projectId || "");
+                    sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");  // Will be set on selection
+                    sap.ui.getCore().byId("leadIdInputPPS").setValue("");  // Placeholder; set if available
+
+                    // Pre-populate header fields with initial data
+                    oLocal.setProperty("/headerFields", [
+                        { field: "Project", value: unit.projectDescription || "N/A" },
+                        { field: "Built Up Area", value: unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A" },
+                        { field: "Unit Number", value: unitId },
+                        { field: "Garden Area", value: unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A" },  // Now uses "GA" code
+                        { field: "Unit Price", value: "Calculating..." },  // Placeholder until calculated
+                        { field: "Delivery Date", value: unit.unitDeliveryDate || "N/A" },
+                        { field: "Maintenance", value: "Calculating..." }  // Placeholder until calculated
+                    ]);
                 }
 
                 this._oSimulationDialog.open();
@@ -1523,6 +1681,81 @@ sap.ui.define([
                 console.error("Simulation dialog could not be created.");
             }
         },
+
+        // Added: Print function for the simulation dialog
+               _printSimulation: function () {
+            // Get the dialog's model data
+            var oLocal = this._oSimulationDialog.getModel("local");
+            var oSimulationOutput = this._oSimulationDialog.getModel("simulationOutput");
+
+            // Build printable HTML content from the dialog's data
+            var printContent = `
+                <html>
+                <head>
+                    <title>Payment Plan Simulation</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                        th { background-color: #f2f2f2; }
+                        .center { text-align: center; }
+                    </style>
+                </head>
+                <body>
+                    <h1>Payment Plan Simulation</h1>
+                    <h2 class="center">Price Plan: ${oLocal.getProperty("/pricePlan")}</h2>
+                    <p>Client Name: ${oLocal.getProperty("/clientName")}</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Value</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${oLocal.getProperty("/headerFields").map(field => `
+                                <tr>
+                                    <td>${field.field}</td>
+                                    <td>${field.value}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <h3>Installment Schedule</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Installment</th>
+                                <th>Due Date</th>
+                                <th>Amount</th>
+                                <th>Maintenance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${oSimulationOutput.getData().map(item => `
+                                <tr>
+                                    <td>${item.conditionType}</td>
+                                    <td>${item.dueDate}</td>
+                                    <td>${item.amount}</td>
+                                    <td>${item.maintenance}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </body>
+                </html>
+            `;
+
+            // Open a new window with the content and print
+            var printWindow = window.open('', '_blank');
+            printWindow.document.write(printContent);
+            printWindow.document.close();
+            printWindow.print();
+        },
+
+
+
+
 
 
         // Updated: Value help for Price Plan (Years) - shows all available years for the project, user selects, then runs simulation
@@ -1628,13 +1861,41 @@ sap.ui.define([
         },
 
         // Adapted from PaymentPlanSimulations: Load units for PPS
+
         _loadUnitsForSim: function () {
-            fetch("/odata/v4/real-estate/Units?$expand=project")
-                .then(res => res.json())
-                .then(data => {
-                    this._oSimulationDialog.setModel(new JSONModel(data.value || []), "units");
-                })
-                .catch(err => console.error("Failed to load units for PPS:", err));
+            return new Promise((resolve, reject) => {
+                var oModel = new sap.ui.model.json.JSONModel();
+                fetch("/odata/v4/real-estate/Units?$expand=measurements,conditions")
+                    .then(response => response.json())
+                    .then(data => {
+                        // Post-process units to extract BUA, Garden Area, & Original Price
+                        const enrichedUnits = data.value.map(unit => {
+                            // Extract BUA (from measurements where code = 'BUA' – trim to handle tabs)
+                            let buaMeasurement = unit.measurements?.find(m => m.code?.toUpperCase().trim() === "BUA");
+                            let bua = buaMeasurement ? buaMeasurement.quantity : null;
+                            let uom = buaMeasurement ? buaMeasurement.uom : null;
+
+                            // Extract Garden Area (from measurements where code = 'GA' – trim to handle tabs)
+                            let gardenMeasurement = unit.measurements?.find(m => m.code?.toUpperCase().trim() === "GA");
+                            let gardenArea = gardenMeasurement ? gardenMeasurement.quantity : null;
+                            let gardenUom = gardenMeasurement ? gardenMeasurement.uom : null;
+
+                            // Extract Original Price (from first condition)
+                            let firstCondition = unit.conditions?.[0];
+                            let originalPrice = firstCondition ? firstCondition.amount : null;
+
+                            return { ...unit, bua, originalPrice, uom, gardenArea, gardenUom };
+                        });
+
+                        oModel.setData({ Units: enrichedUnits });
+                        this.getView().setModel(oModel, "view");
+                        resolve();
+                    })
+                    .catch(err => {
+                        console.error("Error fetching units for sim", err);
+                        reject(err);
+                    });
+            });
         },
 
         // Adapted from PaymentPlanSimulations: Load dropdown data for PPS
@@ -1766,7 +2027,6 @@ sap.ui.define([
         onSimulatePPS: async function () {
             const oLocal = this._oSimulationDialog.getModel("local");
             const unitId = oLocal ? oLocal.getProperty("/unitId") : null;
-            const finalPrice = oLocal ? Number(oLocal.getProperty("/finalPrice")) : NaN;
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
             const paymentPlanId = sap.ui.getCore().byId("paymentPlanIdInputPPS").getValue();
             const pricePlanYears = parseInt(sap.ui.getCore().byId("pricePlanInputPPS").getValue());
@@ -1777,70 +2037,133 @@ sap.ui.define([
                 return;
             }
 
-            const oPlansModel = this._oSimulationDialog.getModel("paymentPlans");
-            const aPlans = oPlansModel ? oPlansModel.getData() : [];
-            const matchingPlan = aPlans.find(p =>
-                p.planYears === pricePlanYears &&
-                Array.isArray(p.assignedProjects) &&
-                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
-            );
-
-            if (!matchingPlan) {
-                MessageBox.error("No payment plan exists for the selected years and project.");
-                return;
-            }
-
-            if (!paymentPlanId || !finalPrice || isNaN(finalPrice)) {
-                MessageBox.error("Please fill all required fields.");
-                return;
-            }
-
             try {
-                const scheduleRes = await fetch(`/odata/v4/real-estate/PaymentPlanSchedules?$filter=paymentPlan_paymentPlanId eq '${paymentPlanId}'&$expand=conditionType,basePrice,frequency`);
-                const scheduleData = await scheduleRes.json();
-                const aSchedules = scheduleData.value || [];
-
                 const conditionsRes = await fetch(`/odata/v4/real-estate/Conditions?$filter=unit_unitId eq '${unitId}'`);
                 const conditions = await conditionsRes.json();
                 const aConditions = conditions.value || [];
 
-                const simulationSchedule = [];
-                const today = new Date();
+                // Filter conditions to only include those matching the selected plan years
+                const filteredConditions = aConditions.filter(c => c.numberOfYears === pricePlanYears);
 
-                aSchedules.forEach(schedule => {
-                    debugger
-                    const basePriceCode = schedule.basePrice?.code;
-                    const condition = aConditions.find(c => c.code === basePriceCode);
-                    const baseAmount = condition ? Number(condition.amount) : 0;
-                    const amount = (baseAmount * schedule.percentage) / 100;
-                    const interval = this._getFrequencyIntervalPPS(schedule.frequency?.description);
+                // Check if any matching conditions exist; if not, error out
+                if (filteredConditions.length === 0) {
+                    MessageBox.error(`No conditions found for ${pricePlanYears} years. Please check unit conditions.`);
+                    return;
+                }
 
-                    if (schedule.conditionType?.description === "Maintenance") {
-                        for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
-                            const monthsToAdd = schedule.dueInMonth + i * interval;
-                            const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
-                            simulationSchedule.push({
-                                conditionType: schedule.conditionType.description,
-                                dueDate: dueDate.toISOString().split('T')[0],
-                                amount: 0,  // Maintenance has no amount
-                                maintenance: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100  // Round to 2 decimals
-                            });
+                // Calculate and set finalPrice using only filtered conditions (e.g., Cash for 0 years)
+                const finalPrice = filteredConditions.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+                oLocal.setProperty("/finalPrice", finalPrice);
+                oLocal.setProperty("/unitPrice", finalPrice.toLocaleString('de-DE') + " EGP");  // Format like example
+                oLocal.setProperty("/pricePlan", pricePlanYears + "YP");  // e.g., "5YP"
+                oLocal.setProperty("/clientName", leadId || "N/A");  // Placeholder; fetch from lead if needed
+
+                // Now check for matching payment plan
+                const oPlansModel = this._oSimulationDialog.getModel("paymentPlans");
+                const aPlans = oPlansModel ? oPlansModel.getData() : [];
+                const matchingPlan = aPlans.find(p =>
+                    p.planYears === pricePlanYears &&
+                    Array.isArray(p.assignedProjects) &&
+                    p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+                );
+
+                let simulationSchedule = [];
+
+                if (pricePlanYears === 0) {
+                    // Special case for Cash (0 years): Create a single one-time installment with full finalPrice
+                    const today = new Date();
+                    simulationSchedule.push({
+                        conditionType: "Cash Payment",
+                        dueDate: today.toISOString().split('T')[0],  // Due today
+                        amount: Math.round(finalPrice * 100) / 100,  // Full amount, rounded to 2 decimals
+                        maintenance: 0
+                    });
+                } else if (!matchingPlan) {
+                    // For non-zero years with no plan, warn and clear schedule
+                    MessageBox.warning(`No payment plan found for ${pricePlanYears} years. Final price set, but no schedule available.`);
+                    simulationSchedule = [];  // Clear schedule
+                } else {
+                    // Proceed with schedule simulation for valid plans (non-zero years)
+                    const scheduleRes = await fetch(`/odata/v4/real-estate/PaymentPlanSchedules?$filter=paymentPlan_paymentPlanId eq '${paymentPlanId}'&$expand=conditionType,basePrice,frequency`);
+                    const scheduleData = await scheduleRes.json();
+                    const aSchedules = scheduleData.value || [];
+
+                    const today = new Date();
+                    let installmentIndex = 0;  // Track for labeling (only for Down Payment)
+
+                    aSchedules.forEach(schedule => {
+                        const basePriceCode = schedule.basePrice?.code;
+                        // Use filteredConditions for base amount
+                        const condition = filteredConditions.find(c => c.code === basePriceCode);
+                        const baseAmount = condition ? Number(condition.amount) : 0;
+                        const amount = (baseAmount * schedule.percentage) / 100;
+                        const interval = this._getFrequencyIntervalPPS(schedule.frequency?.description);
+
+                        if (schedule.conditionType?.description === "Maintenance") {
+                            for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
+                                const monthsToAdd = schedule.dueInMonth + i * interval;
+                                const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
+                                simulationSchedule.push({
+                                    conditionType: "Maintenance",  // Keep as is for maintenance
+                                    dueDate: dueDate.toISOString().split('T')[0],
+                                    amount: 0,  // Maintenance has no amount
+                                    maintenance: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100  // Round to 2 decimals
+                                });
+                            }
+                        } else {
+                            for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
+                                const monthsToAdd = schedule.dueInMonth + i * interval;
+                                const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
+                                let conditionType = "Installement";  // Default
+                                if (installmentIndex === 0) {
+                                    conditionType = "Down Payment";
+                                }
+                                simulationSchedule.push({
+                                    conditionType: conditionType,
+                                    dueDate: dueDate.toISOString().split('T')[0],
+                                    amount: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100,  // Round to 2 decimals
+                                    maintenance: 0
+                                });
+                                installmentIndex++;
+                            }
                         }
-                    } else {
-                        for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
-                            const monthsToAdd = schedule.dueInMonth + i * interval;
-                            const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
-                            simulationSchedule.push({
-                                conditionType: schedule.conditionType?.description || "Installment",
-                                dueDate: dueDate.toISOString().split('T')[0],
-                                amount: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100,  // Round to 2 decimals
-                                maintenance: 0
-                            });
-                        }
-                    }
+                    });
+                }
+
+                // Sort the schedule by dueDate (ascending, empty dueDate for Total will be handled below)
+                simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+                // Calculate totals and add Total row (after sorting, so Total is last)
+                const totalAmount = simulationSchedule.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+                const totalMaintenance = simulationSchedule.reduce((sum, item) => sum + Number(item.maintenance || 0), 0);
+                oLocal.setProperty("/totalAmount", totalAmount.toLocaleString('de-DE') + " EGP");
+                oLocal.setProperty("/totalMaintenance", totalMaintenance.toLocaleString('de-DE') + " EGP");
+                oLocal.setProperty("/maintenanceTotal", totalMaintenance.toLocaleString('de-DE') + " EGP");
+
+                // Add Total row to schedule (always last)
+                simulationSchedule.push({
+                    conditionType: "Total",
+                    dueDate: "",
+                    amount: totalAmount,
+                    maintenance: totalMaintenance
                 });
 
+                // Set header data including table fields
+                oLocal.setProperty("/pricePlan", pricePlanYears + "YP");
+                oLocal.setProperty("/clientName", leadId || "N/A");
+                oLocal.setProperty("/headerFields", [
+                    { field: "Project", value: oLocal.getProperty("/projectDescription") || "N/A" },
+                    { field: "Built Up Area", value: oLocal.getProperty("/builtUpArea") || "N/A" },
+                    { field: "Unit Number", value: oLocal.getProperty("/unitId") || "N/A" },
+                    { field: "Garden Area", value: oLocal.getProperty("/gardenArea") || "N/A" },
+                    { field: "Unit Price", value: oLocal.getProperty("/unitPrice") || "N/A" },
+                    { field: "Delivery Date", value: oLocal.getProperty("/deliveryDate") || "N/A" },
+                    { field: "Maintenance", value: oLocal.getProperty("/maintenanceTotal") || "N/A" }
+                ]);
+
                 this._oSimulationDialog.getModel("simulationOutput").setData(simulationSchedule);
+                oLocal.setProperty("/headerVisible", true);  // Show header and table
+
                 const oTable = sap.ui.getCore().byId("simulationTablePPS");
                 if (oTable && oTable.getBinding("items")) {
                     oTable.getBinding("items").refresh();
@@ -1854,6 +2177,11 @@ sap.ui.define([
                 MessageBox.error("Simulation failed: " + (err.message || err));
             }
         },
+
+
+
+
+
 
 
         // Adapted from PaymentPlanSimulations: Save simulation

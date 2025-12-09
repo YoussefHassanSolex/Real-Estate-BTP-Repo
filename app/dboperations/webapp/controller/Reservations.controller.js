@@ -12,7 +12,6 @@ sap.ui.define([
             this.oModel = this.getView().getModel();
             this._loadReservations();
         },
-
         _loadReservations: function () {
             fetch("/odata/v4/real-estate/Reservations?$expand=payments,partners,conditions,project,building,unit")
                 .then(res => res.json())
@@ -21,226 +20,221 @@ sap.ui.define([
                 })
                 .catch(err => console.error("Failed to load reservations:", err));
         },
+        onShowReservationDetails: async function (oEvent) {
+            const oCtx = oEvent.getSource().getBindingContext("reservations");
+            if (!oCtx) return;
+            const sReservationId = oCtx.getProperty("reservationId");
 
-      onShowReservationDetails: async function (oEvent) {
-    const oCtx = oEvent.getSource().getBindingContext("reservations");
-    if (!oCtx) return;
-    const sReservationId = oCtx.getProperty("reservationId");
+            try {
+                const res = await fetch(
+                    `/odata/v4/real-estate/Reservations(reservationId='${sReservationId}')?$expand=payments,partners,conditions,project,building,unit`
+                );
+                if (!res.ok) throw new Error("Failed to load reservation details");
+                const oData = await res.json();
 
-    try {
-        const res = await fetch(
-            `/odata/v4/real-estate/Reservations(reservationId='${sReservationId}')?$expand=payments,partners,conditions,project,building,unit`
-        );
-        if (!res.ok) throw new Error("Failed to load reservation details");
-        const oData = await res.json();
+                // ✅ Normalize structure
+                const oReservation = oData.value ? oData.value[0] : oData;
+                const oNormalized = {
+                    ...oReservation,
 
-        // ✅ Normalize structure
-        const oReservation = oData.value ? oData.value[0] : oData;
-        const oNormalized = {
-            ...oReservation,
+                    // ✅ Flatten associated objects for easy display
+                    projectName: oReservation.project?.name || "",
+                    projectId: oReservation.project?.projectId || "",
+                    buildingName: oReservation.building?.name || "",
+                    buildingId: oReservation.building?.buildingId || "",
+                    unitNumber: oReservation.unit?.unitNumber || "",
+                    unitId: oReservation.unit?.unitId || "",
 
-            // ✅ Flatten associated objects for easy display
-            projectName: oReservation.project?.name || "",
-            projectId: oReservation.project?.projectId || "",
-            buildingName: oReservation.building?.name || "",
-            buildingId: oReservation.building?.buildingId || "",
-            unitNumber: oReservation.unit?.unitNumber || "",
-            unitId: oReservation.unit?.unitId || "",
+                    // ✅ Initialize arrays to avoid binding errors
+                    payments: oReservation.payments || [],
+                    partners: oReservation.partners || [],
+                    conditions: oReservation.conditions || []
+                };
 
-            // ✅ Initialize arrays to avoid binding errors
-            payments: oReservation.payments || [],
-            partners: oReservation.partners || [],
-            conditions: oReservation.conditions || []
-        };
+                const oDialogModel = new JSONModel(oNormalized);
 
-        const oDialogModel = new JSONModel(oNormalized);
-
-        // ✅ Create dialog once
-        if (!this._oDetailsDialog) {
-            this._oDetailsDialog = new sap.m.Dialog({
-                title: "Reservation Details",
-                contentWidth: "90%",
-                resizable: true,
-                draggable: true,
-                content: [
-                    new sap.m.IconTabBar({
-                        items: [
-                            // 🟢 General Info Tab
-                            new sap.m.IconTabFilter({
-                                text: "General Info",
-                                content: [
-                                    new sap.ui.layout.form.SimpleForm({
-                                        editable: false,
-                                        layout: "ResponsiveGridLayout",
+                // ✅ Create dialog once
+                if (!this._oDetailsDialog) {
+                    this._oDetailsDialog = new sap.m.Dialog({
+                        title: "Reservation Details",
+                        contentWidth: "90%",
+                        resizable: true,
+                        draggable: true,
+                        content: [
+                            new sap.m.IconTabBar({
+                                items: [
+                                    // 🟢 General Info Tab
+                                    new sap.m.IconTabFilter({
+                                        text: "General Info",
                                         content: [
-                                            new sap.m.Label({ text: "Reservation ID" }),
-                                            new sap.m.Text({ text: "{/reservationId}" }),
-                                            new sap.m.Label({ text: "Company Code" }),
-                                            new sap.m.Text({ text: "{/companyCodeId}" }),
-                                            new sap.m.Label({ text: "Old Reservation ID" }),
-                                            new sap.m.Text({ text: "{/oldReservationId}" }),
-                                            new sap.m.Label({ text: "EOI ID" }),
-                                            new sap.m.Text({ text: "{/eoiId}" }),
-                                            new sap.m.Label({ text: "Sales Type" }),
-                                            new sap.m.Text({ text: "{/salesType}" }),
-                                            new sap.m.Label({ text: "Description" }),
-                                            new sap.m.Text({ text: "{/description}" }),
-                                            new sap.m.Label({ text: "Valid From" }),
-                                            new sap.m.Text({ text: "{/validFrom}" }),
-                                            new sap.m.Label({ text: "Status" }),
-                                            new sap.m.Text({ text: "{/status}" }),
-                                            new sap.m.Label({ text: "Customer Type" }),
-                                            new sap.m.Text({ text: "{/customerType}" }),
-                                            new sap.m.Label({ text: "Currency" }),
-                                            new sap.m.Text({ text: "{/currency}" }),
-                                            new sap.m.Label({ text: "After Sales" }),
-                                            new sap.m.Text({ text: "{/afterSales}" })
+                                            new sap.ui.layout.form.SimpleForm({
+                                                editable: false,
+                                                layout: "ResponsiveGridLayout",
+                                                content: [
+                                                    new sap.m.Label({ text: "Reservation ID" }),
+                                                    new sap.m.Text({ text: "{/reservationId}" }),
+                                                    new sap.m.Label({ text: "Company Code" }),
+                                                    new sap.m.Text({ text: "{/companyCodeId}" }),
+                                                    new sap.m.Label({ text: "Old Reservation ID" }),
+                                                    new sap.m.Text({ text: "{/oldReservationId}" }),
+                                                    new sap.m.Label({ text: "EOI ID" }),
+                                                    new sap.m.Text({ text: "{/eoiId}" }),
+                                                    new sap.m.Label({ text: "Sales Type" }),
+                                                    new sap.m.Text({ text: "{/salesType}" }),
+                                                    new sap.m.Label({ text: "Description" }),
+                                                    new sap.m.Text({ text: "{/description}" }),
+                                                    new sap.m.Label({ text: "Valid From" }),
+                                                    new sap.m.Text({ text: "{/validFrom}" }),
+                                                    new sap.m.Label({ text: "Status" }),
+                                                    new sap.m.Text({ text: "{/status}" }),
+                                                    new sap.m.Label({ text: "Customer Type" }),
+                                                    new sap.m.Text({ text: "{/customerType}" }),
+                                                    new sap.m.Label({ text: "Currency" }),
+                                                    new sap.m.Text({ text: "{/currency}" }),
+                                                    new sap.m.Label({ text: "After Sales" }),
+                                                    new sap.m.Text({ text: "{/afterSales}" })
+                                                ]
+                                            })
                                         ]
-                                    })
-                                ]
-                            }),
+                                    }),
 
-                            // 🟢 Unit Info Tab
-                            new sap.m.IconTabFilter({
-                                text: "Unit Info",
-                                content: [
-                                    new sap.ui.layout.form.SimpleForm({
-                                        editable: false,
-                                        layout: "ResponsiveGridLayout",
+                                    // 🟢 Unit Info Tab
+                                    new sap.m.IconTabFilter({
+                                        text: "Unit Info",
                                         content: [
-                                            new sap.m.Label({ text: "Project ID" }),
-                                            new sap.m.Text({ text: "{/projectId}" }),
-                                            new sap.m.Label({ text: "Project Name" }),
-                                            new sap.m.Text({ text: "{/projectName}" }),
-                                            new sap.m.Label({ text: "Building ID" }),
-                                            new sap.m.Text({ text: "{/buildingId}" }),
-                                            new sap.m.Label({ text: "Building Name" }),
-                                            new sap.m.Text({ text: "{/buildingName}" }),
-                                            new sap.m.Label({ text: "Unit ID" }),
-                                            new sap.m.Text({ text: "{/unitId}" }),
-                                            new sap.m.Label({ text: "Unit Number" }),
-                                            new sap.m.Text({ text: "{/unitNumber}" }),
-                                            new sap.m.Label({ text: "BUA" }),
-                                            new sap.m.Text({ text: "{/bua}" }),
-                                            new sap.m.Label({ text: "Phase" }),
-                                            new sap.m.Text({ text: "{/phase}" }),
-                                            new sap.m.Label({ text: "Price Plan Years" }),
-                                            new sap.m.Text({ text: "{/pricePlanYears}" })
+                                            new sap.ui.layout.form.SimpleForm({
+                                                editable: false,
+                                                layout: "ResponsiveGridLayout",
+                                                content: [
+                                                    new sap.m.Label({ text: "Project ID" }),
+                                                    new sap.m.Text({ text: "{/projectId}" }),
+                                                    new sap.m.Label({ text: "Project Name" }),
+                                                    new sap.m.Text({ text: "{/projectName}" }),
+                                                    new sap.m.Label({ text: "Building ID" }),
+                                                    new sap.m.Text({ text: "{/buildingId}" }),
+                                                    new sap.m.Label({ text: "Building Name" }),
+                                                    new sap.m.Text({ text: "{/buildingName}" }),
+                                                    new sap.m.Label({ text: "Unit ID" }),
+                                                    new sap.m.Text({ text: "{/unitId}" }),
+                                                    new sap.m.Label({ text: "Unit Number" }),
+                                                    new sap.m.Text({ text: "{/unitNumber}" }),
+                                                    new sap.m.Label({ text: "BUA" }),
+                                                    new sap.m.Text({ text: "{/bua}" }),
+                                                    new sap.m.Label({ text: "Phase" }),
+                                                    new sap.m.Text({ text: "{/phase}" }),
+                                                    new sap.m.Label({ text: "Price Plan Years" }),
+                                                    new sap.m.Text({ text: "{/pricePlanYears}" })
+                                                ]
+                                            })
                                         ]
-                                    })
-                                ]
-                            }),
+                                    }),
 
-                            // 🟢 Payments Tab
-                            new sap.m.IconTabFilter({
-                                text: "Payments",
-                                content: [
-                                    new sap.m.Table({
-                                        columns: [
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Receipt Type" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Status" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Payment Method" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "House Bank" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Due Date" }) })
-                                        ],
-                                        items: {
-                                            path: "/payments",
-                                            template: new sap.m.ColumnListItem({
-                                                cells: [
-                                                    new sap.m.Text({ text: "{receiptType}" }),
-                                                    new sap.m.Text({ text: "{receiptStatus}" }),
-                                                    new sap.m.Text({ text: "{paymentMethod}" }),
-                                                    new sap.m.Text({ text: "{amount}" }),
-                                                    new sap.m.Text({ text: "{houseBank}" }),
-                                                    new sap.m.Text({ text: "{dueDate}" })
-                                                ]
+                                    // 🟢 Payments Tab
+                                    new sap.m.IconTabFilter({
+                                        text: "Payments",
+                                        content: [
+                                            new sap.m.Table({
+                                                columns: [
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Receipt Type" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Status" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Payment Method" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "House Bank" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Due Date" }) })
+                                                ],
+                                                items: {
+                                                    path: "/payments",
+                                                    template: new sap.m.ColumnListItem({
+                                                        cells: [
+                                                            new sap.m.Text({ text: "{receiptType}" }),
+                                                            new sap.m.Text({ text: "{receiptStatus}" }),
+                                                            new sap.m.Text({ text: "{paymentMethod}" }),
+                                                            new sap.m.Text({ text: "{amount}" }),
+                                                            new sap.m.Text({ text: "{houseBank}" }),
+                                                            new sap.m.Text({ text: "{dueDate}" })
+                                                        ]
+                                                    })
+                                                }
                                             })
-                                        }
-                                    })
-                                ]
-                            }),
+                                        ]
+                                    }),
 
-                            // 🟢 Partners Tab
-                            new sap.m.IconTabFilter({
-                                text: "Partners",
-                                content: [
-                                    new sap.m.Table({
-                                        columns: [
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Customer Code" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Name" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Address" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Valid From" }) })
-                                        ],
-                                        items: {
-                                            path: "/partners",
-                                            template: new sap.m.ColumnListItem({
-                                                cells: [
-                                                    new sap.m.Text({ text: "{customerCode}" }),
-                                                    new sap.m.Text({ text: "{customerName}" }),
-                                                    new sap.m.Text({ text: "{customerAddress}" }),
-                                                    new sap.m.Text({ text: "{validFrom}" })
-                                                ]
+                                    // 🟢 Partners Tab
+                                    new sap.m.IconTabFilter({
+                                        text: "Partners",
+                                        content: [
+                                            new sap.m.Table({
+                                                columns: [
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Customer Code" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Name" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Address" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Valid From" }) })
+                                                ],
+                                                items: {
+                                                    path: "/partners",
+                                                    template: new sap.m.ColumnListItem({
+                                                        cells: [
+                                                            new sap.m.Text({ text: "{customerCode}" }),
+                                                            new sap.m.Text({ text: "{customerName}" }),
+                                                            new sap.m.Text({ text: "{customerAddress}" }),
+                                                            new sap.m.Text({ text: "{validFrom}" })
+                                                        ]
+                                                    })
+                                                }
                                             })
-                                        }
-                                    })
-                                ]
-                            }),
+                                        ]
+                                    }),
 
-                            // 🟢 Conditions Tab
-                            new sap.m.IconTabFilter({
-                                text: "Conditions",
-                                content: [
-                                    new sap.m.Table({
-                                        columns: [
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Type" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Frequency" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Valid From" }) }),
-                                            new sap.m.Column({ header: new sap.m.Label({ text: "Valid To" }) })
-                                        ],
-                                        items: {
-                                            path: "/conditions",
-                                            template: new sap.m.ColumnListItem({
-                                                cells: [
-                                                    new sap.m.Text({ text: "{conditionType}" }),
-                                                    new sap.m.Text({ text: "{amount}" }),
-                                                    new sap.m.Text({ text: "{currency}" }),
-                                                    new sap.m.Text({ text: "{frequency}" }),
-                                                    new sap.m.Text({ text: "{validFrom}" }),
-                                                    new sap.m.Text({ text: "{validTo}" })
-                                                ]
+                                    // 🟢 Conditions Tab
+                                    new sap.m.IconTabFilter({
+                                        text: "Conditions",
+                                        content: [
+                                            new sap.m.Table({
+                                                columns: [
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Type" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Frequency" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Valid From" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Valid To" }) })
+                                                ],
+                                                items: {
+                                                    path: "/conditions",
+                                                    template: new sap.m.ColumnListItem({
+                                                        cells: [
+                                                            new sap.m.Text({ text: "{conditionType}" }),
+                                                            new sap.m.Text({ text: "{amount}" }),
+                                                            new sap.m.Text({ text: "{currency}" }),
+                                                            new sap.m.Text({ text: "{frequency}" }),
+                                                            new sap.m.Text({ text: "{validFrom}" }),
+                                                            new sap.m.Text({ text: "{validTo}" })
+                                                        ]
+                                                    })
+                                                }
                                             })
-                                        }
+                                        ]
                                     })
                                 ]
                             })
-                        ]
-                    })
-                ],
-                endButton: new sap.m.Button({
-                    text: "Close",
-                    press: function () { this._oDetailsDialog.close(); }.bind(this)
-                })
-            });
+                        ],
+                        endButton: new sap.m.Button({
+                            text: "Close",
+                            press: function () { this._oDetailsDialog.close(); }.bind(this)
+                        })
+                    });
 
-            this.getView().addDependent(this._oDetailsDialog);
-        }
+                    this.getView().addDependent(this._oDetailsDialog);
+                }
 
-        // ✅ Set normalized model
-        this._oDetailsDialog.setModel(oDialogModel);
-        this._oDetailsDialog.open();
+                // ✅ Set normalized model
+                this._oDetailsDialog.setModel(oDialogModel);
+                this._oDetailsDialog.open();
 
-    } catch (err) {
-        MessageBox.error("Error: " + err.message);
-    }
-},
-
-
-        // Add/Edit
+            } catch (err) {
+                MessageBox.error("Error: " + err.message);
+            }
+        },
         onAddReservation: function () { this._openReservationDialog({}); },
-
         onEditReservation: async function (oEvent) {
             const oCtx = oEvent.getSource().getBindingContext("reservations");
             const sReservationId = oCtx.getProperty("reservationId");
@@ -255,7 +249,6 @@ sap.ui.define([
                 MessageBox.error("Error: " + err.message);
             }
         },
-
         _openReservationDialog: function (oReservation) {
             if (!this._oAddDialog) {
                 this._oAddDialog = this.getView().byId("reservationDialog");
@@ -305,7 +298,6 @@ sap.ui.define([
             this._oAddDialog.setModel(oModel, "local");
             this._oAddDialog.open();
         },
-
         onSaveReservation: async function () {
             const oDialog = this.byId("reservationDialog");
             const oLocalModel = oDialog.getModel("local");
@@ -384,11 +376,7 @@ sap.ui.define([
                 sap.m.MessageBox.error("Failed to save reservation: " + e.message);
             }
         },
-
-
-
         onCancelReservation: function () { this._oAddDialog.close(); },
-
         onDeleteReservation: function (oEvent) {
             const oCtx = oEvent.getSource().getBindingContext("reservations");
             const oData = oCtx.getObject();
@@ -406,7 +394,6 @@ sap.ui.define([
                 }
             });
         },
-
         // Payment rows
         onAddPaymentRow: function () {
             const oModel = this._oAddDialog.getModel("local");
@@ -420,7 +407,6 @@ sap.ui.define([
             aPayments.pop();
             oModel.refresh();
         },
-
         // Partners rows
         onAddPartnerRow: function () {
             const oModel = this._oAddDialog.getModel("local");
@@ -434,7 +420,6 @@ sap.ui.define([
             aPartners.pop();
             oModel.refresh();
         },
-
         // Conditions rows
         onAddConditionRow: function () {
             const oModel = this._oAddDialog.getModel("local");

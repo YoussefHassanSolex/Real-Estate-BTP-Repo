@@ -128,6 +128,11 @@
           "pattern": "Reservations",
           "target": "Reservations"
         },
+        {
+          "name": "CreateReservation",
+          "pattern": "CreateReservation?:query:",
+          "target": "CreateReservation"
+        },
          {
           "name": "PaymentPlanSimulations",
           "pattern": "PaymentPlanSimulations",
@@ -189,6 +194,9 @@
         },
         "Reservations": {
           "viewName": "Reservations"
+        },
+        "CreateReservation":{
+          "viewName": "CreateReservation"
         },
           "PaymentPlanSimulations": {
           "viewName": "PaymentPlanSimulations"

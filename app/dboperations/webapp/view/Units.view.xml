@@ -31,17 +31,18 @@
                     class="sapUiSmallMarginTop sapUiSmallMarginBottom"
                     vSpacing="1"
                     hSpacing="1"
-                    defaultSpan="L4 M6 S12"
+                    defaultSpan="L2 M6 S12"
                 >
                     <!-- Company -->
                     <Label
                         id="_IDGenLabel20"
-                        text="Company Code:"
+                        text="Company Code:" 
                         labelFor="companyCodeFilter"
+                        class="TinyPadding"
                     />
                     <Select
                         id="companyCodeFilter"
-                        width="150px"
+                        width="100%"
                         forceSelection="false"
                         selectedKey="{view>/selectedCompanyCodeId}"
                         items="{
@@ -65,7 +66,7 @@
                     />
                     <Select
                         id="projectIdFilter"
-                        width="150px"
+                        width="100%"
                         selectedKey="{view>/selectedProjectId}"
                                     forceSelection="false"
 
@@ -89,7 +90,7 @@
                     />
                     <Select
                         id="unitTypeFilter"
-                        width="150px"
+                        width="100%"
                         selectedKey="{view>/selectedUnitType}"
                                     forceSelection="false"
 
@@ -113,7 +114,7 @@
                     />
                     <Input
                         id="_IDGenInput17"
-                        width="150px"
+                        width="100%"
                         type="Number"
                         placeholder="e.g. 1"
                     />
@@ -126,7 +127,7 @@
                     />
                     <Input
                         id="_IDGenInput18"
-                        width="150px"
+                        width="100%"
                         type="Number"
                         placeholder="e.g. 10"
                     />
@@ -139,7 +140,7 @@
                     />
                     <Input
                         id="buaFilter"
-                        width="150px"
+                        width="100%"
                         type="Number"
                         placeholder="e.g. 100"
                     />
@@ -152,34 +153,11 @@
                     />
                     <Input
                         id="_IDGenInput20"
-                        width="150px"
+                        width="100%"
                         type="Number"
                         placeholder="e.g. 5yrs"
                     />
 
-                    <!-- Measurement ID -->
-                    <Label
-                        id="_IDGenLabel25"
-                        text="Measurement ID:"
-                        labelFor="measurementFilter"
-                    />
-                    <Select
-                        id="measurementFilter"
-                        width="150px"
-                        selectedKey="{view>/selectedMeasurement}"
-                                    forceSelection="false"
-
-                        items="{
-                            path: 'measurementsList>/',
-                            templateShareable: false
-                        }"
-                    >
-                        <core:Item
-                            id="_IDGenItem3"
-                            key="{measurementsList>code}"
-                            text="{measurementsList>code}"
-                        />
-                    </Select>
 
                     <!-- From (Measurement) -->
                     <Label
@@ -189,7 +167,7 @@
                     />
                     <Input
                         id="_IDGenInput15"
-                        width="150px"
+                        width="100%"
                         type="Number"
                         placeholder="Min value"
                     />
@@ -202,34 +180,12 @@
                     />
                     <Input
                         id="_IDGenInput16"
-                        width="150px"
+                        width="100%"
                         type="Number"
                         placeholder="Max value"
                     />
 
-                    <!-- UOM -->
-                    <Label
-                        id="_IDGenLabel28"
-                        text="UOM:"
-                        labelFor="_IDGenInput19"
-                    />
-                    <Input
-                        id="_IDGenInput19"
-                        width="150px"
-                        placeholder="e.g. m², ft²"
-                    />
-
-                    <!-- Currency -->
-                    <Label
-                        id="_IDGenLabel30"
-                        text="Currency:"
-                        labelFor="_IDGenInput21"
-                    />
-                    <Input
-                        id="_IDGenInput21"
-                        width="150px"
-                        placeholder="e.g. USD, EUR"
-                    />
+                  
                 </l:Grid>
 
                 <!-- Filter Actions -->
@@ -505,18 +461,19 @@
                                         icon="sap-icon://edit"
                                         press="onEditUnit"
                                     />
-                                    <!-- <Button
+                                    <Button
                                         id="_IDGenButton23"
                                         icon="sap-icon://delete"
                                         type="Reject"
                                         press="onDelete"
-                                    /> -->
+                                    />
                                 </HBox>
                                 <Button
                                     id="_IDGenButton24"
                                     text="Create Reservation"
                                     icon="sap-icon://add-document"
                                     press="onCreateReservation"
+                                     visible="{= ${unitStatusDescription} === 'Available' }"
                                 />
                             </cells>
                         </ColumnListItem>
