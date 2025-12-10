@@ -1322,7 +1322,7 @@ sap.ui.define([
                 oContext.setProperty("companyCodeDescription", sDescription);
             }
         },
-             
+
         onAddMeasurementRow: function (oEvent) {
             const oModel = oEvent.getSource().getModel();
             oModel.getProperty("/measurements").push({ code: "", description: "", quantity: 0, uom: "" });
@@ -1355,7 +1355,7 @@ sap.ui.define([
                 oContext.getModel().setProperty(oContext.getPath() + "/description", sDescription);
             }
         },
- 
+
         onConditionCodeChange: function (oEvent) {
             var oComboBox = oEvent.getSource();
             var sSelectedKey = oComboBox.getSelectedKey();
@@ -1484,7 +1484,7 @@ sap.ui.define([
                 bua: oUnit.measurements?.find(m => m.code.trim() === "BUA")?.quantity || 0,
                 companyCodeId: oUnit.companyCodeId,
                 project_projectId: oUnit.projectId,
-                buildingId:oUnit.buildingId,
+                buildingId: oUnit.buildingId,
                 unit_unitId: oUnit.unitId,
                 unitPrice: oUnit.originalPrice || 0,
                 paymentPlan_paymentPlanId: oUnit.conditions?.[0]?.ID || ""
@@ -1515,7 +1515,7 @@ sap.ui.define([
         },
 
         //#region Payment Plan Simulation Part 
-             onOpenPaymentSimulation: async function (oEvent) {  // Added async
+        onOpenPaymentSimulation: async function (oEvent) {  // Added async
             var unitId = oEvent.getSource().getBindingContext().getObject().unitId;
             var units = this.getView().getModel("view").getProperty("/Units");
             if (!units || units.length === 0 || !units[0].bua) {  // Updated: Also check if units are enriched
@@ -1606,6 +1606,7 @@ sap.ui.define([
                     contentWidth: "100%",
                     resizable: false,
                     content: oVBox,
+                    beforeClose: this._resetSimulationDialog.bind(this),  // Added: Reset on close
                     buttons: [
                         new sap.m.Button({
                             text: "Save Simulation",
@@ -1669,7 +1670,7 @@ sap.ui.define([
                         { field: "Project", value: unit.projectDescription || "N/A" },
                         { field: "Built Up Area", value: unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A" },
                         { field: "Unit Number", value: unitId },
-                        { field: "Garden Area",value: unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A" },  // Now uses "GA" code
+                        { field: "Garden Area", value: unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A" },  // Now uses "GA" code
                         { field: "Unit Price", value: "Calculating..." },  // Placeholder until calculated
                         { field: "Delivery Date", value: unit.unitDeliveryDate || "N/A" },
                         { field: "Maintenance", value: "Calculating..." }  // Placeholder until calculated
@@ -1679,6 +1680,35 @@ sap.ui.define([
                 this._oSimulationDialog.open();
             } else {
                 console.error("Simulation dialog could not be created.");
+            }
+        },
+
+        // New: Reset function to clear all data when dialog closes
+        _resetSimulationDialog: function () {
+            if (this._oSimulationDialog) {
+                // Reset local model to initial state
+                var oLocal = this._oSimulationDialog.getModel("local");
+                oLocal.setData({
+                    headerVisible: false,
+                    pricePlan: "",
+                    clientName: "",
+                    headerFields: [],
+                    totalAmount: 0,
+                    totalMaintenance: 0
+                });
+
+                // Clear simulation output table
+                var oSimulationOutput = this._oSimulationDialog.getModel("simulationOutput");
+                oSimulationOutput.setData([]);
+
+                // Clear hidden inputs
+                sap.ui.getCore().byId("pricePlanInputPPS").setValue("");
+                sap.ui.getCore().byId("projectIdInputPPS").setValue("");
+                sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");
+                sap.ui.getCore().byId("leadIdInputPPS").setValue("");
+                sap.ui.getCore().byId("simIdInput").setValue("");
+
+                console.log("Simulation dialog reset to initial state.");
             }
         },
 
@@ -2174,8 +2204,8 @@ sap.ui.define([
         },
 
 
-               // Adapted from PaymentPlanSimulations: Save simulation
-               onSaveSimulationPPS: async function () {
+        // Adapted from PaymentPlanSimulations: Save simulation
+        onSaveSimulationPPS: async function () {
             const simulationId = sap.ui.getCore().byId("simIdInput").getValue();
             const oLocal = this._oSimulationDialog.getModel("local");
             const unitId = oLocal ? oLocal.getProperty("/unitId") : null;
