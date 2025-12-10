@@ -29,7 +29,7 @@
                         id="_IDGenLabel22"
                         text="Company Code ID"
                     />
-                    <Input id="_IDGenInput6" value="{local>/companyCodeDisplay}" editable="false" />
+                    <Input id="_IDGenInput6" value="{local>/companyCodeId}" editable="false" />
 
 
                     <Label
@@ -181,7 +181,7 @@
                     />
                     <Input
                         id="_IDGenInput27"
-                        value="{local>/projectDisplay}"
+                        value="{local>/project_projectId}"
                         editable="false"
                     />
 
@@ -191,7 +191,7 @@
                     />
                     <Input
                         id="_IDGenInput28"
-                        value="{local>/buildingId}"
+                        value="{local>/building_buildingId}"
                         editable="false"
                     />
 
@@ -201,7 +201,7 @@
                     />
                     <Input
                         id="_IDGenInput29"
-                        value="{local>/unitDisplay}"
+                        value="{local>/unit_unitId}"
                         editable="false"
                     />
 
@@ -211,7 +211,7 @@
                     />
                     <Input
                         id="_IDGenInput30"
-                        value="{local>/buaDisplay} m2"
+                        value="{local>/bua} m2"
                         editable="false"
                     />
 
@@ -269,7 +269,7 @@
                     />
                     <Input
                         id="_IDGenInput33"
-                        value="{local>/paymentPlanDisplay}"
+                        value="{local>/paymentPlan_paymentPlanId}"
                         editable="false"
                     />
 
@@ -289,7 +289,7 @@
                     />
                     <Input
                         id="_IDGenInput35"
-                        value="{local>/unitPriceDisplay}"
+                        value="{local>/unitPrice}"
                         editable="false"
                     />
 

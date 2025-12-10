@@ -16,6 +16,8 @@ sap.ui.define([
             fetch("/odata/v4/real-estate/Reservations?$expand=payments,partners,conditions,project,building,unit")
                 .then(res => res.json())
                 .then(data => {
+                    console.log("Reservation Data",data);
+                    
                     this.getView().setModel(new JSONModel(data.value || []), "reservations");
                 })
                 .catch(err => console.error("Failed to load reservations:", err));

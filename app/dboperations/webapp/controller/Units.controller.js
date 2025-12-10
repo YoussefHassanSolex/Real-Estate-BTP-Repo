@@ -674,8 +674,7 @@ sap.ui.define([
             // Reset previous selection
             // oUnitTypeSelect.setSelectedKey("");
             oModel.setProperty("/unitTypeDescription", sUnitType); // reset
-        }
-        ,
+        },
 
         onProjectChange: function (oEvent) {
             var oComboBox = oEvent.getSource();
@@ -708,7 +707,6 @@ sap.ui.define([
             var oModel = oComboBox.getModel();
             oModel.setProperty("/buildingDescription", sDescription);
         },
-
 
         // 🧹 Helper function to reset dialog data and value states
         _resetAddDialogFields: function () {
@@ -1323,21 +1321,8 @@ sap.ui.define([
                 // Update property via binding context (works for OData + JSON)
                 oContext.setProperty("companyCodeDescription", sDescription);
             }
-        }
-        ,
-        // onCompanyCodeChange: function (oEvent) {
-        //     var oComboBox = oEvent.getSource();
-        //     var sSelectedKey = oComboBox.getSelectedKey();
-        //     var oSelectedItem = oComboBox.getSelectedItem();
-        //     var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
-        //     var oContext = oComboBox.getBindingContext();
-        //     if (oContext) {
-        //         oContext.getModel().setProperty(oContext.getPath() + "/companyCodeDescription", sDescription);
-        //     } else {
-        //         oComboBox.getModel().setProperty("/companyCodeDescription", sDescription);
-        //     }
-        // },
-
+        },
+             
         onAddMeasurementRow: function (oEvent) {
             const oModel = oEvent.getSource().getModel();
             oModel.getProperty("/measurements").push({ code: "", description: "", quantity: 0, uom: "" });
@@ -1370,6 +1355,7 @@ sap.ui.define([
                 oContext.getModel().setProperty(oContext.getPath() + "/description", sDescription);
             }
         },
+ 
         onConditionCodeChange: function (oEvent) {
             var oComboBox = oEvent.getSource();
             var sSelectedKey = oComboBox.getSelectedKey();
@@ -1378,9 +1364,19 @@ sap.ui.define([
             var oContext = oComboBox.getBindingContext();
             if (oContext) {
                 oContext.getModel().setProperty(oContext.getPath() + "/description", sDescription);
+
+                // NEW: Set numberOfYears based on selected condition code
+                var numberOfYears = 0;  // Default
+                if (sSelectedKey === "CASH") {
+                    numberOfYears = 0;
+                } else if (sSelectedKey === "5YP") {
+                    numberOfYears = 5;
+                } else if (sSelectedKey === "7YP") {
+                    numberOfYears = 7;
+                }
+                oContext.getModel().setProperty(oContext.getPath() + "/numberOfYears", numberOfYears);
             }
         },
-
         //Updated Filters Fields ..
         onFilterUnits: function () {
             var oTable = this.byId("unitsTable");
@@ -1518,13 +1514,8 @@ sap.ui.define([
             oTable.getBinding("items").filter([]);
         },
 
-
-
-
-
-
         //#region Payment Plan Simulation Part 
-        onOpenPaymentSimulation: async function (oEvent) {  // Added async
+             onOpenPaymentSimulation: async function (oEvent) {  // Added async
             var unitId = oEvent.getSource().getBindingContext().getObject().unitId;
             var units = this.getView().getModel("view").getProperty("/Units");
             if (!units || units.length === 0 || !units[0].bua) {  // Updated: Also check if units are enriched
@@ -1615,17 +1606,24 @@ sap.ui.define([
                     contentWidth: "100%",
                     resizable: false,
                     content: oVBox,
-                    beginButton: new sap.m.Button({
-                        text: "Print",
-                        type: "Default",
-                        press: this._printSimulation.bind(this)  // Added: Print button
-                    }),
-                    endButton: new sap.m.Button({
-                        text: "Close",
-                        press: function () {
-                            this._oSimulationDialog.close();
-                        }.bind(this)
-                    })
+                    buttons: [
+                        new sap.m.Button({
+                            text: "Save Simulation",
+                            type: "Accept",
+                            press: this.onSaveSimulationPPS.bind(this)
+                        }),
+                        new sap.m.Button({
+                            text: "Print",
+                            type: "Default",
+                            press: this._printSimulation.bind(this)
+                        }),
+                        new sap.m.Button({
+                            text: "Close",
+                            press: function () {
+                                this._oSimulationDialog.close();
+                            }.bind(this)
+                        })
+                    ]
                 });
 
                 // Set models for the dialog
@@ -1655,7 +1653,6 @@ sap.ui.define([
                 var units = this.getView().getModel("view").getProperty("/Units");
                 var unit = units.find(u => u.unitId === unitId);
                 if (unit) {
-                    debugger
                     oLocal.setProperty("/projectDescription", unit.projectDescription || "N/A");
                     oLocal.setProperty("/builtUpArea", unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A");
                     oLocal.setProperty("/gardenArea", unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A");  // Now uses "GA" code
@@ -1672,7 +1669,7 @@ sap.ui.define([
                         { field: "Project", value: unit.projectDescription || "N/A" },
                         { field: "Built Up Area", value: unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A" },
                         { field: "Unit Number", value: unitId },
-                        { field: "Garden Area", value: unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A" },  // Now uses "GA" code
+                        { field: "Garden Area",value: unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A" },  // Now uses "GA" code
                         { field: "Unit Price", value: "Calculating..." },  // Placeholder until calculated
                         { field: "Delivery Date", value: unit.unitDeliveryDate || "N/A" },
                         { field: "Maintenance", value: "Calculating..." }  // Placeholder until calculated
@@ -1684,6 +1681,7 @@ sap.ui.define([
                 console.error("Simulation dialog could not be created.");
             }
         },
+
 
         // Added: Print function for the simulation dialog
         _printSimulation: function () {
@@ -1755,11 +1753,6 @@ sap.ui.define([
             printWindow.document.close();
             printWindow.print();
         },
-
-
-
-
-
 
         // Updated: Value help for Price Plan (Years) - shows all available years for the project, user selects, then runs simulation
         onOpenPricePlanValueHelpPPS: function () {
@@ -1837,7 +1830,6 @@ sap.ui.define([
 
             this._oPricePlanValueHelpPPS.open();
         },
-
 
         // Adapted from PaymentPlanSimulations: Price plan change (handles manual input of years)
         onPricePlanChangePPS: function (oEvent) {
@@ -2182,13 +2174,8 @@ sap.ui.define([
         },
 
 
-
-
-
-
-
-        // Adapted from PaymentPlanSimulations: Save simulation
-        onSaveSimulationPPS: async function () {
+               // Adapted from PaymentPlanSimulations: Save simulation
+               onSaveSimulationPPS: async function () {
             const simulationId = sap.ui.getCore().byId("simIdInput").getValue();
             const oLocal = this._oSimulationDialog.getModel("local");
             const unitId = oLocal ? oLocal.getProperty("/unitId") : null;
@@ -2198,9 +2185,13 @@ sap.ui.define([
             const leadId = sap.ui.getCore().byId("leadIdInputPPS").getValue();
             const finalPrice = Number(oLocal ? oLocal.getProperty("/finalPrice") : NaN);
             const userId = "currentUser";
-            const schedule = this._oSimulationDialog.getModel("simulationOutput").getData();
+            const fullSchedule = this._oSimulationDialog.getModel("simulationOutput").getData();
+
+            // Exclude the "Total" row from the save payload (it's a summary, not a real schedule item)
+            const schedule = (fullSchedule || []).filter(s => s.conditionType !== "Total");
 
             try {
+                // Step 1: Save the simulation
                 const payload = {
                     simulationId,
                     unitId,
@@ -2209,7 +2200,7 @@ sap.ui.define([
                     leadId,
                     finalPrice,
                     userId,
-                    schedule: (schedule || []).map(s => ({
+                    schedule: schedule.map(s => ({
                         conditionType: s.conditionType,
                         dueDate: s.dueDate,
                         amount: s.amount,
@@ -2224,7 +2215,22 @@ sap.ui.define([
                 });
 
                 if (!res.ok) throw new Error("Failed to save simulation");
-                MessageToast.show("Simulation saved successfully!");
+
+                // Step 2: Update the unit with the saved simulation ID (overwrites any previous saved simulation)
+                const unitUpdateRes = await fetch(`/odata/v4/real-estate/Units(unitId='${unitId}')`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        savedSimulationId: simulationId  // Set the saved simulation ID on the unit
+                    })
+                });
+
+                if (!unitUpdateRes.ok) {
+                    console.warn("Simulation saved, but failed to update unit with saved simulation ID:", unitUpdateRes.status);
+                }
+
+                MessageToast.show("Simulation saved successfully and linked to unit!");
+                this._oSimulationDialog.close();  // Close dialog after save
             } catch (err) {
                 MessageBox.error("Error: " + (err.message || err));
             }
@@ -2255,33 +2261,7 @@ sap.ui.define([
             return "PPS" + paddedNumber;
         },
 
-
         //#endregion
-
-
-        onConditionCodeChange: function (oEvent) {
-            var oComboBox = oEvent.getSource();
-            var sSelectedKey = oComboBox.getSelectedKey();
-            var oSelectedItem = oComboBox.getSelectedItem();
-            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
-            var oContext = oComboBox.getBindingContext();
-            if (oContext) {
-                oContext.getModel().setProperty(oContext.getPath() + "/description", sDescription);
-
-                // NEW: Set numberOfYears based on selected condition code
-                var numberOfYears = 0;  // Default
-                if (sSelectedKey === "CASH") {
-                    numberOfYears = 0;
-                } else if (sSelectedKey === "5YP") {
-                    numberOfYears = 5;
-                } else if (sSelectedKey === "7YP") {
-                    numberOfYears = 7;
-                }
-                oContext.getModel().setProperty(oContext.getPath() + "/numberOfYears", numberOfYears);
-            }
-        },
-
-
 
     });
 });

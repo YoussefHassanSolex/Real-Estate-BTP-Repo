@@ -90,6 +90,8 @@ entity Units : managed {
 
     supplementaryText        : String(255);
 
+    savedSimulationId        : UUID; 
+
     measurements             : Composition of many Measurements
                                    on measurements.unit = $self;
     conditions               : Composition of many Conditions

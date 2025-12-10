@@ -23,13 +23,24 @@ sap.ui.define([
                 console.log("Decoded reservation:", oReservation);
                 // Set the model
                 var oModel = new sap.ui.model.json.JSONModel({
-                    buaDisplay: oReservation.bua,
-                    companyCodeDisplay: oReservation.companyCodeId,
-                    projectDisplay: oReservation.project_projectId,
-                    unitDisplay: oReservation.unit_unitId,
-                    buildingId: oReservation.buildingId,
-                    unitPriceDisplay: oReservation.unitPrice,
-                    paymentPlanDisplay: oReservation.paymentPlan_paymentPlanId,
+
+                    /*
+                    bua: oReservation.bua,
+companyCodeId: oReservation.companyCodeId,
+project_projectId: oReservation.project_projectId,
+unit_unitId: oReservation.unit_unitId,
+building_buildingId: oReservation.building_buildingId,
+unitPrice: oReservation.unitPrice,
+paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
+ 
+                    */
+                    bua: oReservation.bua,
+                    companyCodeId: oReservation.companyCodeId,
+                    project_projectId: oReservation.project_projectId,
+                    unit_unitId: oReservation.unit_unitId,
+                    building_buildingId: oReservation.buildingId,
+                    unitPrice: oReservation.unitPrice,
+                    paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
                     // User-editable fields
                     oldReservationId: "",
                     eoiId: "",
