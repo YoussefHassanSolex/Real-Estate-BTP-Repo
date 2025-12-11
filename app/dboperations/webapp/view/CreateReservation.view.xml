@@ -259,8 +259,8 @@
                     <Input
                         id="_IDGenInput32"
                         value="{local>/pricePlanYears}"
-                        type="Number"
-                    />
+editable="false"          
+          />
 
                     <!-- Payment Plan -->
                     <Label
@@ -273,16 +273,7 @@
                         editable="false"
                     />
 
-                    <Label
-                        id="_IDGenLabel44"
-                        text="Plan Years"
-                    />
-                    <Input
-                        id="_IDGenInput34"
-                        value="{local>/planYears}"
-                        type="Number"
-                    />
-
+                   
                     <Label
                         id="_IDGenLabel45"
                         text="Unit Price"

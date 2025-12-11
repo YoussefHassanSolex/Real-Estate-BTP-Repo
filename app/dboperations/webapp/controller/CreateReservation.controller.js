@@ -24,16 +24,7 @@ sap.ui.define([
                 // Set the model
                 var oModel = new sap.ui.model.json.JSONModel({
 
-                    /*
-                    bua: oReservation.bua,
-companyCodeId: oReservation.companyCodeId,
-project_projectId: oReservation.project_projectId,
-unit_unitId: oReservation.unit_unitId,
-building_buildingId: oReservation.building_buildingId,
-unitPrice: oReservation.unitPrice,
-paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
- 
-                    */
+
                     bua: oReservation.bua,
                     companyCodeId: oReservation.companyCodeId,
                     project_projectId: oReservation.project_projectId,
@@ -53,7 +44,7 @@ paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
                     afterSales: "",
 
                     phase: "",
-                    pricePlanYears: 0,
+                    pricePlanYears: oReservation.pricePlanYears,
                     planYears: 0,
                     planCurrency: "",
 
@@ -66,7 +57,8 @@ paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
 
                     payments: [],
                     partners: [],
-                    conditions: []
+                    conditions:[]
+                    //conditions: oReservation.conditions||[]
                 });
                 this.getView().setModel(oModel, "local");
             }

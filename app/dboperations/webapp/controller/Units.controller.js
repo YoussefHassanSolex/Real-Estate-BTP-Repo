@@ -1475,11 +1475,11 @@ sap.ui.define([
 
             oBinding.filter(oCombinedFilter ? [oCombinedFilter] : []);
         },
-        onCreateReservation: function (oEvent) {
+        onCreateReservation: async function (oEvent) {
             var oUnit = oEvent.getSource().getBindingContext().getObject();
             console.log("Unit selected:", oUnit);
 
-            // Prepare the data to send
+            // Base reservation draft
             var oReservationData = {
                 bua: oUnit.measurements?.find(m => m.code.trim() === "BUA")?.quantity || 0,
                 companyCodeId: oUnit.companyCodeId,
@@ -1487,18 +1487,72 @@ sap.ui.define([
                 buildingId: oUnit.buildingId,
                 unit_unitId: oUnit.unitId,
                 unitPrice: oUnit.originalPrice || 0,
-                paymentPlan_paymentPlanId: oUnit.conditions?.[0]?.ID || ""
+                savedSimulationId: oUnit.savedSimulationId || ""
             };
 
-            console.log("Reservation initial data:", oReservationData);
+            // Fetch PaymentPlanSimulations using FILTER
+            if (oUnit.savedSimulationId) {
+                try {
+                    const sFilter = encodeURIComponent(
+                        `simulationId eq '${oUnit.savedSimulationId}' and unitId eq '${oUnit.unitId}'`
+                    );
 
-            // Convert to string for routing
+                    const res = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations?$filter=${sFilter}`);
+
+                    if (res.ok) {
+                        const data = await res.json();
+
+                        if (data.value && data.value.length > 0) {
+                            const sim = data.value[0]; // first (and only) matching simulation
+
+                            console.log("Fetched Simulation:", sim);
+
+                            oReservationData.paymentPlan_paymentPlanId = sim.paymentPlan_paymentPlanId;
+                            oReservationData.pricePlanYears = sim.pricePlanYears;
+                        }
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch simulation via filter:", err);
+                }
+            }
+            // Fetch PaymentPlanSimulationSchedules using FILTER
+            if (oUnit.savedSimulationId) {
+                try {
+                    const sFilter = encodeURIComponent(
+                        `simulation_simulationId eq '${oUnit.savedSimulationId}'`
+                    );
+
+                    const res2 = await fetch(`/odata/v4/real-estate/PaymentPlanSimulationSchedules?$filter=${sFilter}`);
+                    console.log("Filtered PaymentPlanSimulationSchedules",res2);
+                    
+                    if (res2.ok) {
+                        const dataSchedules = await res2.json();
+
+                        console.log("Fetched Schedules:", dataSchedules.value);
+
+                        // Map to UI table structure
+                        oReservationData.conditions = dataSchedules.value.map(s => ({
+                            conditionType: s.conditionType || "",
+                            amount: s.amount || "0",
+                            currency: "EGP", // static or derive if needed
+                            frequency: "",   // optional
+                            validFrom: s.dueDate || "",
+                            validTo: ""      // optional
+                        }));
+                    }
+                } catch (err) {
+                    console.error("Failed to fetch schedules:", err);
+                }
+            }
+            // ------------------------------------------------------------------
+
+
             var sData = encodeURIComponent(JSON.stringify(oReservationData));
-
-            // Navigate to CreateReservation screen
-            var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-            oRouter.navTo("CreateReservation", { reservationData: sData });
-        },
+            sap.ui.core.UIComponent.getRouterFor(this).navTo("CreateReservation", {
+                reservationData: sData
+            });
+        }
+        ,
         onClearFilter: function () {
             var oModel = this.getView().getModel("view");
 
@@ -2210,7 +2264,7 @@ sap.ui.define([
             const oLocal = this._oSimulationDialog.getModel("local");
             const unitId = oLocal ? oLocal.getProperty("/unitId") : null;
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
-            const paymentPlanId = sap.ui.getCore().byId("paymentPlanIdInputPPS").getValue();
+            const paymentPlanId = sap.ui.getCore().byId("paymentPlanIdInputPPS").getValue();  // This is set in value help
             const pricePlanYears = parseInt(sap.ui.getCore().byId("pricePlanInputPPS").getValue());
             const leadId = sap.ui.getCore().byId("leadIdInputPPS").getValue();
             const finalPrice = Number(oLocal ? oLocal.getProperty("/finalPrice") : NaN);
@@ -2226,6 +2280,7 @@ sap.ui.define([
                     simulationId,
                     unitId,
                     projectId,
+                    paymentPlan_paymentPlanId: paymentPlanId,  // Added: Link to payment plan
                     pricePlanYears,
                     leadId,
                     finalPrice,
@@ -2265,6 +2320,7 @@ sap.ui.define([
                 MessageBox.error("Error: " + (err.message || err));
             }
         },
+
 
         // Helper: Map frequency description to months per installment
         _getFrequencyIntervalPPS: function (frequencyDesc) {
