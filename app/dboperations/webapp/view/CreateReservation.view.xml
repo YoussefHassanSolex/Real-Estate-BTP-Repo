@@ -25,12 +25,10 @@
                     defaultSpan="L2 M6 S12"
                 >
                     <Label
-                        
                         id="_IDGenLabel22"
                         text="Company Code ID"
                     />
                     <Input id="_IDGenInput6" value="{local>/companyCodeId}" editable="false" />
-
 
                     <Label
                         id="_IDGenLabel25"
@@ -619,26 +617,13 @@ editable="false"
                     </items>
                 </Table>
 
-                <!-- Conditions Table -->
+                              <!-- Conditions Table (Updated to match simulation output) -->
                 <Title
                     id="_IDGenTitle6"
                     text="Conditions"
                     level="H3"
                 />
-                <Toolbar id="_IDGenToolbar5">
-                    <Button
-                        id="_IDGenButton30"
-                        text="Add Row"
-                        icon="sap-icon://add"
-                        press="onAddConditionRow"
-                    />
-                    <Button
-                        id="_IDGenButton31"
-                        text="Delete Row"
-                        icon="sap-icon://delete"
-                        press="onDeleteConditionRow"
-                    />
-                </Toolbar>
+                <!-- Removed Add/Delete Toolbar since conditions are auto-populated -->
 
                 <Table
                     id="conditionTable"
@@ -649,93 +634,46 @@ editable="false"
                         <Column id="_IDGenColumn100">
                             <Text
                                 id="_IDGenText162"
-                                text="Condition Type"
+                                text="Installment"
                             />
                         </Column>
                         <Column id="_IDGenColumn101">
                             <Text
                                 id="_IDGenText163"
-                                text="Amount"
+                                text="Due Date"
                             />
                         </Column>
                         <Column id="_IDGenColumn102">
                             <Text
                                 id="_IDGenText164"
-                                text="Currency"
+                                text="Amount"
                             />
                         </Column>
                         <Column id="_IDGenColumn103">
                             <Text
                                 id="_IDGenText165"
-                                text="Frequency"
-                            />
-                        </Column>
-                        <Column id="_IDGenColumn104">
-                            <Text
-                                id="_IDGenText166"
-                                text="Valid From"
-                            />
-                        </Column>
-                        <Column id="_IDGenColumn105">
-                            <Text
-                                id="_IDGenText167"
-                                text="Valid To"
+                                text="Maintenance"
                             />
                         </Column>
                     </columns>
                     <items>
                         <ColumnListItem id="_IDGenColumnListItem10">
                             <cells>
-                                <Select
-                                    id="_IDGenSelect3"
-                                    selectedKey="{local>conditionType}"
-                                >
-                                    <core:Item
-                                        id="_IDGenItem18"
-                                        key=""
-                                        text=""
-                                    />
-
-                                    <core:Item
-                                        id="_IDGenItem19"
-                                        key="Down payment"
-                                        text="Down payment"
-                                    />
-                                    <core:Item
-                                        id="_IDGenItem20"
-                                        key="Installment"
-                                        text="Installment"
-                                    />
-                                    <core:Item
-                                        id="_IDGenItem21"
-                                        key="Maintenance"
-                                        text="Maintenance"
-                                    />
-                                </Select>
-                                <Input
-                                    id="_IDGenInput59"
-                                    value="{local>amount}"
-                                    type="Number"
+                                <Text
+                                    id="_IDGenTextConditionType"
+                                    text="{local>conditionType}"
                                 />
-                                <Input
-                                    id="_IDGenInput60"
-                                    value="{local>currency}"
+                                <Text
+                                    id="_IDGenTextDueDate"
+                                    text="{local>dueDate}"
                                 />
-                                <Input
-                                    id="_IDGenInput61"
-                                    value="{local>frequency}"
+                                <Text
+                                    id="_IDGenTextAmount"
+                                    text="{local>amount}"
                                 />
-                                <DatePicker
-                                    id="_IDGenDatePicker6"
-                                    value="{local>validFrom}"
-                                    displayFormat="yyyy-MM-dd"
-                                    valueFormat="yyyy-MM-dd"
-                                />
-                                <DatePicker
-                                    id="_IDGenDatePicker7"
-                                    value="{local>validTo}"
-                                    displayFormat="yyyy-MM-dd"
-                                    valueFormat="yyyy-MM-dd"
+                                <Text
+                                    id="_IDGenTextMaintenance"
+                                    text="{local>maintenance}"
                                 />
                             </cells>
                         </ColumnListItem>

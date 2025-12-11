@@ -90,7 +90,7 @@ entity Units : managed {
 
     supplementaryText        : String(255);
 
-    savedSimulationId        : UUID; 
+    savedSimulationId        : String; 
 
     measurements             : Composition of many Measurements
                                    on measurements.unit = $self;
@@ -327,7 +327,7 @@ entity ReservationPayments : managed {
 
 
 entity PaymentPlanSimulations : managed {
-    key simulationId       : UUID;
+    key simulationId       : String;
         unitId             : String(8);
         projectId          : String(8);
         projectDescription : String(60);

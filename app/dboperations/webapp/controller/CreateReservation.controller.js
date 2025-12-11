@@ -2,29 +2,26 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-
-
-], (Controller, MessageBox, MessageToast) => {
+    "sap/ui/model/json/JSONModel"
+], (Controller, MessageBox, MessageToast, JSONModel) => {
     "use strict";
 
     return Controller.extend("dboperations.controller.CreateReservation", {
         onInit: function () {
-
             var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             oRouter.getRoute("CreateReservation").attachPatternMatched(this._onRouteMatched, this);
         },
 
-        _onRouteMatched: function (oEvent) {
+        _onRouteMatched: async function (oEvent) {
             var sData = oEvent.getParameter("arguments").reservationData;
             this._resetReservationForm();
 
             if (sData) {
                 var oReservation = JSON.parse(decodeURIComponent(sData));
                 console.log("Decoded reservation:", oReservation);
-                // Set the model
+
+                // Set the initial model
                 var oModel = new sap.ui.model.json.JSONModel({
-
-
                     bua: oReservation.bua,
                     companyCodeId: oReservation.companyCodeId,
                     project_projectId: oReservation.project_projectId,
@@ -42,28 +39,93 @@ sap.ui.define([
                     customerType: "",
                     currency: "",
                     afterSales: "",
-
                     phase: "",
                     pricePlanYears: oReservation.pricePlanYears,
                     planYears: 0,
                     planCurrency: "",
-
                     requestType: "",
                     reason: "",
                     cancellationDate: "",
                     cancellationStatus: "",
                     rejectionReason: "",
                     cancellationFees: 0,
-
                     payments: [],
                     partners: [],
-                    conditions:[]
-                    //conditions: oReservation.conditions||[]
+                    conditions: []  // Will be populated from simulation
                 });
                 this.getView().setModel(oModel, "local");
-            }
-            console.log(sData);
 
+                // Fetch unit's saved simulation and simulate conditions
+                await this._loadAndSimulateConditions(oReservation.unit_unitId, oReservation.pricePlanYears);
+            }
+        },
+        
+
+               // Updated: Load unit's saved simulation and simulate conditions
+        _loadAndSimulateConditions: async function (unitId, pricePlanYears) {
+            try {
+                // Fetch unit to get savedSimulationId
+                const unitRes = await fetch(`/odata/v4/real-estate/Units(unitId='${unitId}')?$select=savedSimulationId`);
+                if (!unitRes.ok) throw new Error("Failed to fetch unit");
+                const unitData = await unitRes.json();
+                const savedSimulationId = unitData.savedSimulationId;
+
+                console.log("Fetched savedSimulationId:", savedSimulationId);  // Debug log
+
+                if (!savedSimulationId) {
+                    MessageBox.information("No saved simulation found for this unit. Conditions will be empty.");
+                    return;
+                }
+
+                // Fixed: Use guid format for UUID key in OData v4
+const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulationId='${savedSimulationId}')?$expand=schedule,paymentPlan($expand=schedule($expand=conditionType,basePrice,frequency))`);                if (!simRes.ok) {
+                    console.error("Fetch response status:", simRes.status, simRes.statusText);  // Debug log
+                    throw new Error("Failed to fetch simulation");
+                }
+                const simulation = await simRes.json();
+
+                console.log("Fetched simulation:", simulation);  // Debug log
+
+                // Simulate conditions based on simulation data
+                const conditions = await this._simulateConditionsFromSaved(simulation, pricePlanYears);
+                const oModel = this.getView().getModel("local");
+                oModel.setProperty("/conditions", conditions);
+                oModel.refresh();
+
+            } catch (err) {
+                console.error("Error loading simulation:", err);
+                MessageBox.error("Failed to load simulation for conditions: " + err.message);
+            }
+        },
+
+               // Updated: Simulate conditions from saved simulation (use saved schedule directly, including Total)
+        _simulateConditionsFromSaved: async function (simulation, pricePlanYears) {
+            // Use the saved simulation's schedule directly (it has the calculated amounts, including Total)
+            const savedSchedule = simulation.schedule || [];
+
+            // Map to conditions format (include all rows, including "Total")
+            const conditions = savedSchedule.map(s => ({
+                conditionType: s.conditionType,  // Installment
+                dueDate: s.dueDate,  // Due Date
+                amount: s.amount,  // Amount
+                maintenance: s.maintenance  // Maintenance
+            }));
+
+            return conditions;
+        },
+
+
+
+        // Helper: Get frequency interval (from PPS)
+        _getFrequencyIntervalPPS: function (frequencyDesc) {
+            if (!frequencyDesc) return 12;
+            switch (frequencyDesc.toLowerCase()) {
+                case "monthly": return 1;
+                case "quarterly": return 3;
+                case "semi-annual": return 6;
+                case "annual": return 12;
+                default: return 12;
+            }
         },
 
         onSaveReservation: async function () {
@@ -124,6 +186,7 @@ sap.ui.define([
                 MessageBox.error(err.message);
             }
         },
+
         _resetReservationForm: function () {
             const oEmptyModel = new sap.ui.model.json.JSONModel({
                 reservationId: "",
@@ -189,18 +252,12 @@ sap.ui.define([
             oModel.refresh();
         },
 
-        // Conditions table
+        // Conditions table (no add/delete since auto-populated)
         onAddConditionRow: function () {
-            const oModel = this.getView().getModel("local");
-            const aConditions = oModel.getProperty("/conditions");
-            aConditions.push({});
-            oModel.refresh();
+            // Removed: Conditions are auto-populated from simulation
         },
         onDeleteConditionRow: function () {
-            const oModel = this.getView().getModel("local");
-            const aConditions = oModel.getProperty("/conditions");
-            aConditions.pop();
-            oModel.refresh();
+            // Removed: Conditions are auto-populated from simulation
         },
 
         onCancelReservation: function () {
