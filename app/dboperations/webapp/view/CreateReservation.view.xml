@@ -109,7 +109,9 @@
                         id="_IDGenLabel30"
                         text="Status"
                     />
-                    <Select
+                    <Input id="_IDGenInput21"  
+                        value="{local>/status}"  editable="false"/>
+                    <!-- <Select
                         id="_IDGenSelect1"
                         selectedKey="{local>/status}"
                         width="100%"
@@ -140,7 +142,7 @@
                             key="Closed"
                             text="Closed"
                         />
-                    </Select>
+                    </Select> -->
 
                     <Label
                         id="_IDGenLabel34"
@@ -161,6 +163,7 @@
                     <Input
                         id="_IDGenInput25"
                         value="{local>/currency}"
+                        editable="false"
                     />
 
                     <Label
@@ -218,7 +221,9 @@
                         id="_IDGenLabel33"
                         text="Phase"
                     />
-                    <Select
+                     <Input id="_IDGenInput23"   
+                        value="{local>/phase}"  editable="false"/>
+                    <!-- <Select
                         id="_IDGenSelect2"
                         selectedKey="{local>/phase}"
                         width="100%"
@@ -248,7 +253,7 @@
                             key="4"
                             text="4"
                         />
-                    </Select>
+                    </Select> -->
 
                     <Label
                         id="_IDGenLabel42"

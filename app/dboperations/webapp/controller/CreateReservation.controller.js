@@ -35,11 +35,11 @@ sap.ui.define([
                     salesType: "",
                     description: "",
                     validFrom: "",
-                    status: "",
+                    status: oReservation.unitStatusDescription,
                     customerType: "",
-                    currency: "",
+                    currency: oReservation.currency,
                     afterSales: "",
-                    phase: "",
+                    phase: oReservation.phase,
                     pricePlanYears: oReservation.pricePlanYears,
                     planYears: 0,
                     planCurrency: "",
@@ -128,9 +128,36 @@ const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulat
             }
         },
 
-        onSaveReservation: async function () {
+             onSaveReservation: async function () {
             const oModel = this.getView().getModel("local");
             const oData = oModel.getData();
+
+            // Transform conditions from simulation format to entity format
+            const transformedConditions = [];
+            oData.conditions.forEach(c => {
+                // Add amount condition (if amount > 0)
+                if (c.amount > 0) {
+                    transformedConditions.push({
+                        conditionType: c.conditionType,
+                        amount: c.amount,
+                        currency: "EGP",  // Default; can be from model if available
+                        frequency: "One-time",  // Default for installments
+                        validFrom: c.dueDate,
+                        validTo: null
+                    });
+                }
+                // Add maintenance condition (if maintenance > 0)
+                if (c.maintenance > 0) {
+                    transformedConditions.push({
+                        conditionType: "Maintenance",
+                        amount: c.maintenance,
+                        currency: "EGP",
+                        frequency: "Annual",  // Default for maintenance
+                        validFrom: c.dueDate,
+                        validTo: null
+                    });
+                }
+            });
 
             const payload = {
                 companyCodeId: oData.companyCodeId,
@@ -164,7 +191,7 @@ const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulat
 
                 payments: oData.payments,
                 partners: oData.partners,
-                conditions: oData.conditions
+                conditions: transformedConditions  // Use transformed conditions
             };
 
             try {
@@ -186,6 +213,7 @@ const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulat
                 MessageBox.error(err.message);
             }
         },
+
 
         _resetReservationForm: function () {
             const oEmptyModel = new sap.ui.model.json.JSONModel({

@@ -473,7 +473,7 @@
                                     text="Create Reservation"
                                     icon="sap-icon://add-document"
                                     press="onCreateReservation"
-                                     visible="{= ${unitStatusDescription} === 'Available' }"
+                                     visible="{= ${unitStatusDescription} === 'Open' }"
                                 />
                             </cells>
                         </ColumnListItem>

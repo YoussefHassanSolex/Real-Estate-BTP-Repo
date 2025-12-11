@@ -246,9 +246,9 @@ sap.ui.define([
             const filtered = allBuildings.filter(b => b.projectId === sProjectId);
             oModel.setProperty("/filteredBuildings", filtered);
         },
-
         onNavigateToAddUnit: function () {
             // If dialog is not yet created, create it once
+
             if (!this._oAddDialog) {
                 var oNewUnitModel = new sap.ui.model.json.JSONModel({
                     // unitId: "",
@@ -279,12 +279,6 @@ sap.ui.define([
                     title: "Add New Unit",
                     content: new sap.m.VBox({
                         items: [
-                            // new sap.m.Label({ text: "Unit ID", required: true }),
-                            // new sap.m.Input("unitIdInput", {
-                            //     value: "{/unitId}",
-                            //     tooltip: "Must be 8 characters or fewer"
-                            // }),
-
                             new sap.m.Label({ text: "Unit Description", required: true }),
                             new sap.m.Input("unitDescInput", {
                                 value: "{/unitDescription}",
@@ -307,7 +301,7 @@ sap.ui.define([
 
                             new sap.m.Label({ text: "Company Code Description", required: true }),
                             new sap.m.Input("companyCodeDescInput", {
-                                value: "{/companyCodeDescription}",
+                                value: "{companyCodesList>companyCodeDescription}",
                                 tooltip: "Up to 60 characters"
                             }),
                             new sap.m.Label({ text: "Project ID", required: true }),
@@ -367,25 +361,41 @@ sap.ui.define([
 
                                 enabled: false
                             }),
+                            new sap.m.Label({ text: "Unit Status", required: true }),
+                            new sap.m.Select("unitStatusDescInput", {
 
+                                selectedKey: "{/unitStatusDescription}",
 
-                            // new sap.m.Label({ text: "Unit Type Description", required: true }),
-                            // new sap.m.Input("unitTypeDescInput", { value: "{/unitTypeDescription}" }),
+                                items: [
+                                    new sap.ui.core.Item({ key: "", text: "" }),
 
-                            // new sap.m.Label({ text: "Usage Type Description", required: true }),
-                            // new sap.m.Input("usageTypeDescInput", { value: "{/usageTypeDescription}" }),
-
-                            new sap.m.Label({ text: "Unit Status Description", required: true }),
-                            new sap.m.Input("unitStatusDescInput", { value: "{/unitStatusDescription}" }),
-
+                                    new sap.ui.core.Item({ key: "Open", text: "Open" }),
+                                    new sap.ui.core.Item({ key: "Closed", text: "Closed" }),
+                                    new sap.ui.core.Item({ key: "Cancelled", text: "Cancelled" }),
+                                    new sap.ui.core.Item({ key: "Terminated", text: "Terminated" })
+                                ]
+                            }),
                             new sap.m.Label({ text: "Floor Description", required: true }),
                             new sap.m.Input("floorDescInput", { value: "{/floorDescription}" }),
 
                             new sap.m.Label({ text: "Zone", required: true }),
                             new sap.m.Input("zoneInput", { value: "{/zone}" }),
-
                             new sap.m.Label({ text: "Sales Phase", required: true }),
-                            new sap.m.Input("salesPhaseInput", { value: "{/salesPhase}" }),
+                            new sap.m.Select("salesPhaseInput", {
+
+                                selectedKey: "{/salesPhase}",
+
+                                items: [
+                                    new sap.ui.core.Item({ key: "", text: "" }),
+
+                                    new sap.ui.core.Item({ key: "1", text: "1" }),
+                                    new sap.ui.core.Item({ key: "2", text: "2" }),
+                                    new sap.ui.core.Item({ key: "3", text: "3" }),
+                                    new sap.ui.core.Item({ key: "4", text: "4" })
+                                ]
+                            }),
+                            // new sap.m.Label({ text: "Sales Phase", required: true }),
+                            // new sap.m.Input("salesPhaseInput", { value: "{/salesPhase}" }),
 
                             new sap.m.Label({ text: "Finishing Spex Description", required: true }),
                             new sap.m.Input("finishingSpexDescInput", { value: "{/finishingSpexDescription}" }),
@@ -1012,7 +1022,79 @@ sap.ui.define([
                 });
             }
         },
+        onEditDialogUsageTypeChange: function () {
+            var oUsageSelect = sap.ui.getCore().byId("editUsageTypeDescInput");
+            var oUnitTypeSelect = sap.ui.getCore().byId("editUnitTypeDescInput");
 
+            var sUsageType = oUsageSelect.getSelectedKey();
+
+            var oModel = this._oEditDialog.getModel();
+            var sCurrentUnitType = oModel.getProperty("/unitTypeDescription");
+
+            oModel.setProperty("/usageTypeDescription", sUsageType);
+
+            oUnitTypeSelect.removeAllItems();
+
+            var mUnitTypes = {
+                "Residential": ["Apartment", "Villa", "Townhouse", "Studio"],
+                "Commercial": ["Retail", "Shops"],
+                "Admin": ["Office", "Clinic"]
+            };
+
+            var aTypes = mUnitTypes[sUsageType] || [];
+
+            oUnitTypeSelect.setEnabled(aTypes.length > 0);
+
+            aTypes.forEach(type => {
+                oUnitTypeSelect.addItem(new sap.ui.core.Item({
+                    key: type,
+                    text: type
+                }));
+            });
+            if (aTypes.includes(sCurrentUnitType)) {
+                oUnitTypeSelect.setSelectedKey(sCurrentUnitType);
+            } else {
+                oUnitTypeSelect.setSelectedKey(aTypes[0] || "");
+                oModel.setProperty("/unitTypeDescription", aTypes[0] || "");
+            }
+        }
+
+        ,
+        _populateUnitTypeOnEdit: function (oModel) {
+
+            var sUsageType = oModel.getProperty("/usageTypeDescription");
+            var sCurrentUnitType = oModel.getProperty("/unitTypeDescription");
+
+            var oUnitTypeSelect = sap.ui.getCore().byId("editUnitTypeDescInput");
+            if (!oUnitTypeSelect) return;
+
+            oUnitTypeSelect.removeAllItems();
+
+            var mUnitTypes = {
+                "Residential": ["Apartment", "Villa", "Townhouse", "Studio"],
+                "Commercial": ["Retail", "Shops"],
+                "Admin": ["Office", "Clinic"]
+            };
+
+            var aTypes = mUnitTypes[sUsageType] || [];
+
+            // Populate items
+            aTypes.forEach(type => {
+                oUnitTypeSelect.addItem(new sap.ui.core.Item({
+                    key: type,
+                    text: type
+                }));
+            });
+
+            // Restore selected Unit Type from table
+            if (sCurrentUnitType && aTypes.includes(sCurrentUnitType)) {
+                oUnitTypeSelect.setSelectedKey(sCurrentUnitType);
+            } else {
+                oUnitTypeSelect.setSelectedKey(aTypes[0] || "");
+                oModel.setProperty("/unitTypeDescription", aTypes[0] || "");
+            }
+        }
+        ,
         onEditUnit: function (oEvent) {
             var oBindingContext = oEvent.getSource().getBindingContext();
             if (!oBindingContext) return;
@@ -1081,15 +1163,44 @@ sap.ui.define([
 
                             new sap.m.Label({ text: "Building Description", required: true }),
                             new sap.m.Input("editBuildingDescInput", { value: "{/buildingDescription}" }),
+                            new sap.m.Label({ text: "Usage Type", required: true }),
+                            new sap.m.Select("editUsageTypeDescInput", {
+                                selectedKey: "{/usageTypeDescription}",
 
-                            new sap.m.Label({ text: "Unit Type Description", required: true }),
-                            new sap.m.Input("editUnitTypeDescInput", { value: "{/unitTypeDescription}" }),
+                                change: this.onEditDialogUsageTypeChange.bind(this),
+                                items: [
+                                    new sap.ui.core.Item({ key: "Residential", text: "Residential" }),
+                                    new sap.ui.core.Item({ key: "Commercial", text: "Commercial" }),
+                                    new sap.ui.core.Item({ key: "Admin", text: "Admin" })
+                                ]
+                            }),
 
-                            new sap.m.Label({ text: "Usage Type Description", required: true }),
-                            new sap.m.Input("editUsageTypeDescInput", { value: "{/usageTypeDescription}" }),
+                            new sap.m.Label({ text: "Unit Type", required: true }),
+                            new sap.m.Select("editUnitTypeDescInput", {
+                                selectedKey: "{/unitTypeDescription}",
 
-                            new sap.m.Label({ text: "Unit Status Description", required: true }),
-                            new sap.m.Input("editUnitStatusDescInput", { value: "{/unitStatusDescription}" }),
+                            }),
+                            new sap.m.Label({ text: "Unit Status", required: true }),
+                            new sap.m.Select("editUnitStatusDescInput", {
+
+                                selectedKey: "{/unitStatusDescription}",
+
+                                items: [
+
+                                    new sap.ui.core.Item({ key: "Open", text: "Open" }),
+                                    new sap.ui.core.Item({ key: "Closed", text: "Closed" }),
+                                    new sap.ui.core.Item({ key: "Cancelled", text: "Cancelled" }),
+                                    new sap.ui.core.Item({ key: "Terminated", text: "Terminated" })
+                                ]
+                            }),
+                            // new sap.m.Label({ text: "Unit Type Description", required: true }),
+                            // new sap.m.Input("editUnitTypeDescInput", { value: "{/unitTypeDescription}" }),
+
+                            // new sap.m.Label({ text: "Usage Type Description", required: true }),
+                            // new sap.m.Input("editUsageTypeDescInput", { value: "{/usageTypeDescription}" }),
+
+                            // new sap.m.Label({ text: "Unit Status Description", required: true }),
+                            // new sap.m.Input("editUnitStatusDescInput", { value: "{/unitStatusDescription}" }),
 
                             new sap.m.Label({ text: "Floor Description", required: true }),
                             new sap.m.Input("editFloorDescInput", { value: "{/floorDescription}" }),
@@ -1097,9 +1208,21 @@ sap.ui.define([
                             new sap.m.Label({ text: "Zone", required: true }),
                             new sap.m.Input("editZoneInput", { value: "{/zone}" }),
 
+                            // new sap.m.Label({ text: "Sales Phase", required: true }),
+                            // new sap.m.Input("editSalesPhaseInput", { value: "{/salesPhase}" }),
                             new sap.m.Label({ text: "Sales Phase", required: true }),
-                            new sap.m.Input("editSalesPhaseInput", { value: "{/salesPhase}" }),
+                            new sap.m.Select("editSalesPhaseInput", {
 
+                                selectedKey: "{/salesPhase}",
+
+                                items: [
+
+                                    new sap.ui.core.Item({ key: "1", text: "1" }),
+                                    new sap.ui.core.Item({ key: "2", text: "2" }),
+                                    new sap.ui.core.Item({ key: "3", text: "3" }),
+                                    new sap.ui.core.Item({ key: "4", text: "4" })
+                                ]
+                            }),
                             new sap.m.Label({ text: "Finishing Spex Description", required: true }),
                             new sap.m.Input("editFinishingSpexDescInput", { value: "{/finishingSpexDescription}" }),
 
@@ -1305,6 +1428,8 @@ sap.ui.define([
             }
 
             this._oEditDialog.setModel(oDialogModel);
+            this._populateUnitTypeOnEdit(oDialogModel);
+
             this._oEditDialog.open();
         },
         onCompanyCodeChange: function (oEvent) {
@@ -1487,6 +1612,9 @@ sap.ui.define([
                 buildingId: oUnit.buildingId,
                 unit_unitId: oUnit.unitId,
                 unitPrice: oUnit.originalPrice || 0,
+                unitStatusDescription: oUnit.unitStatusDescription,
+                phase: oUnit.salesPhase,
+                currency: oUnit.conditions?.find(m => m.currency)?.currency,
                 savedSimulationId: oUnit.savedSimulationId || ""
             };
 
@@ -1523,8 +1651,8 @@ sap.ui.define([
                     );
 
                     const res2 = await fetch(`/odata/v4/real-estate/PaymentPlanSimulationSchedules?$filter=${sFilter}`);
-                    console.log("Filtered PaymentPlanSimulationSchedules",res2);
-                    
+                    console.log("Filtered PaymentPlanSimulationSchedules", res2);
+
                     if (res2.ok) {
                         const dataSchedules = await res2.json();
 
