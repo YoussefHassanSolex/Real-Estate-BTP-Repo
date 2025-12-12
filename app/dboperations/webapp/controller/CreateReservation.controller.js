@@ -59,9 +59,8 @@ sap.ui.define([
                 await this._loadAndSimulateConditions(oReservation.unit_unitId, oReservation.pricePlanYears);
             }
         },
-        
 
-               // Updated: Load unit's saved simulation and simulate conditions
+        // Updated: Load unit's saved simulation and simulate conditions
         _loadAndSimulateConditions: async function (unitId, pricePlanYears) {
             try {
                 // Fetch unit to get savedSimulationId
@@ -78,7 +77,8 @@ sap.ui.define([
                 }
 
                 // Fixed: Use guid format for UUID key in OData v4
-const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulationId='${savedSimulationId}')?$expand=schedule,paymentPlan($expand=schedule($expand=conditionType,basePrice,frequency))`);                if (!simRes.ok) {
+                const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulationId='${savedSimulationId}')?$expand=schedule,paymentPlan($expand=schedule($expand=conditionType,basePrice,frequency))`);
+                if (!simRes.ok) {
                     console.error("Fetch response status:", simRes.status, simRes.statusText);  // Debug log
                     throw new Error("Failed to fetch simulation");
                 }
@@ -98,22 +98,25 @@ const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulat
             }
         },
 
-               // Updated: Simulate conditions from saved simulation (use saved schedule directly, including Total)
-        _simulateConditionsFromSaved: async function (simulation, pricePlanYears) {
-            // Use the saved simulation's schedule directly (it has the calculated amounts, including Total)
-            const savedSchedule = simulation.schedule || [];
+        // Fixed: Simulate conditions from saved simulation to match ReservationConditions entity
+     // Fixed: Simulate conditions from saved simulation to match ReservationConditions entity, but keep conditionType for display
+_simulateConditionsFromSaved: async function (simulation, pricePlanYears) {
+    // Use the saved simulation's schedule directly (it has the calculated amounts)
+    const savedSchedule = simulation.schedule || [];
 
-            // Map to conditions format (include all rows, including "Total")
-            const conditions = savedSchedule.map(s => ({
-                conditionType: s.conditionType,  // Installment
-                dueDate: s.dueDate,  // Due Date
-                amount: s.amount,  // Amount
-                maintenance: s.maintenance  // Maintenance
-            }));
+    // Map to ReservationConditions format (exclude "Total" row, as it's a summary)
+    // Added: Keep conditionType for display in the view (first column), but entity uses installment as Integer
+    const conditions = savedSchedule.filter(s => s.conditionType !== "Total").map((s, index) => ({
+        ID: this._generateUUID(),  // Auto-generate for composition
+        conditionType: s.conditionType,  // For display in view (e.g., "Down Payment")
+        installment: index + 1,  // Sequential installment number (for entity)
+        dueDate: s.dueDate,  // Due Date
+        amount: s.amount,  // Amount
+        maintenance: s.maintenance  // Maintenance
+    }));
 
-            return conditions;
-        },
-
+    return conditions;
+},
 
 
         // Helper: Get frequency interval (from PPS)
@@ -128,70 +131,87 @@ const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulat
             }
         },
 
-             onSaveReservation: async function () {
+        // Added: Generate UUID for IDs
+        _generateUUID: function () {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        },
+
+        onSaveReservation: async function () {
             const oModel = this.getView().getModel("local");
             const oData = oModel.getData();
 
-            // Transform conditions from simulation format to entity format
-            const transformedConditions = [];
-            oData.conditions.forEach(c => {
-                // Add amount condition (if amount > 0)
-                if (c.amount > 0) {
-                    transformedConditions.push({
-                        conditionType: c.conditionType,
-                        amount: c.amount,
-                        currency: "EGP",  // Default; can be from model if available
-                        frequency: "One-time",  // Default for installments
-                        validFrom: c.dueDate,
-                        validTo: null
-                    });
-                }
-                // Add maintenance condition (if maintenance > 0)
-                if (c.maintenance > 0) {
-                    transformedConditions.push({
-                        conditionType: "Maintenance",
-                        amount: c.maintenance,
-                        currency: "EGP",
-                        frequency: "Annual",  // Default for maintenance
-                        validFrom: c.dueDate,
-                        validTo: null
-                    });
-                }
-            });
+            // Fixed: Transform conditions directly to match ReservationConditions entity (no invalid fields)
+            const transformedConditions = oData.conditions.map((c, index) => ({
+                ID: c.ID || this._generateUUID(),  // Auto-generate if missing
+                installment: c.installment || (index + 1),  // Use provided or sequential
+                dueDate: c.dueDate ? new Date(c.dueDate).toISOString().split("T")[0] : null,
+                amount: c.amount || 0,
+                maintenance: c.maintenance || 0
+            }));
+
+            // Fixed: Transform partners to match ReservationPartners entity
+            const transformedPartners = oData.partners.map(p => ({
+                ID: p.ID || this._generateUUID(),
+                customerCode: p.customerCode || "",
+                customerName: p.customerName || "",
+                customerAddress: p.customerAddress || "",
+                validFrom: p.validFrom ? new Date(p.validFrom).toISOString().split("T")[0] : null
+            }));
+
+            // Fixed: Transform payments to match ReservationPayments entity
+            const transformedPayments = oData.payments.map(p => ({
+                ID: p.ID || this._generateUUID(),
+                receiptType: p.receiptType || "",
+                receiptStatus: p.receiptStatus || "",
+                paymentMethod: p.paymentMethod || "",
+                amount: p.amount || 0,
+                houseBank: p.houseBank || "",
+                bankAccount: p.bankAccount || "",
+                dueDate: p.dueDate ? new Date(p.dueDate).toISOString().split("T")[0] : null,
+                transferNumber: p.transferNumber || "",
+                checkNumber: p.checkNumber || "",
+                customerBank: p.customerBank || "",
+                customerBankAccount: p.customerBankAccount || "",
+                branch: p.branch || "",
+                collectedAmount: p.collectedAmount || 0,
+                arValidated: p.arValidated || false,
+                rejectionReason: p.rejectionReason || ""
+            }));
 
             const payload = {
-                companyCodeId: oData.companyCodeId,
-                project_projectId: oData.project_projectId,
-                unit_unitId: oData.unit_unitId,
-                bua: oData.bua,
-                unitPrice: oData.unitPrice,
-                paymentPlan_paymentPlanId: oData.paymentPlan_paymentPlanId,
-
-                oldReservationId: oData.oldReservationId,
-                eoiId: oData.eoiId,
-                salesType: oData.salesType,
-                description: oData.description,
-                validFrom: oData.validFrom,
-                status: (oData.status || "").charAt(0) || "O",
-                customerType: oData.customerType,
-                currency: oData.currency,
-                afterSales: oData.afterSales,
-
-                phase: oData.phase,
-                pricePlanYears: oData.pricePlanYears,
-                planYears: oData.planYears,
-                planCurrency: oData.planCurrency,
-
-                requestType: oData.requestType,
-                reason: oData.reason,
-                cancellationDate: oData.cancellationDate || null,
-                cancellationStatus: oData.cancellationStatus,
-                rejectionReason: oData.rejectionReason,
-                cancellationFees: oData.cancellationFees,
-
-                payments: oData.payments,
-                partners: oData.partners,
-                conditions: transformedConditions  // Use transformed conditions
+                reservationId: this._generateUUID(),  // Auto-generate UUID for key
+                companyCodeId: oData.companyCodeId || "",
+                oldReservationId: oData.oldReservationId || "",
+                eoiId: oData.eoiId || "",
+                salesType: oData.salesType || "",
+                description: oData.description || "",
+                validFrom: oData.validFrom ? new Date(oData.validFrom).toISOString().split("T")[0] : null,
+                status: (oData.status || "").charAt(0) || "O",  // Default to 'O' (Open)
+                customerType: oData.customerType || "",
+                currency: oData.currency || "",
+                afterSales: oData.afterSales || "",
+                project_projectId: oData.project_projectId || "",  // Association
+                building_buildingId: oData.building_buildingId || "",
+                unit_unitId: oData.unit_unitId || "",
+                bua: oData.bua || 0,
+                phase: oData.phase || "",
+                pricePlanYears: oData.pricePlanYears || 0,
+                paymentPlan_paymentPlanId: oData.paymentPlan_paymentPlanId || "",
+                planYears: oData.planYears || 0,
+                unitPrice: oData.unitPrice || 0,
+                planCurrency: oData.planCurrency || "",
+                requestType: oData.requestType || "",
+                reason: oData.reason || "",
+                cancellationDate: oData.cancellationDate ? new Date(oData.cancellationDate).toISOString().split("T")[0] : null,
+                cancellationStatus: oData.cancellationStatus || "",
+                rejectionReason: oData.rejectionReason || "",
+                cancellationFees: oData.cancellationFees || 0,
+                partners: transformedPartners,  // Composition
+                conditions: transformedConditions,  // Composition
+                payments: transformedPayments  // Composition
             };
 
             try {
@@ -201,19 +221,21 @@ const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulat
                     body: JSON.stringify(payload)
                 });
 
-                if (!res.ok) throw new Error("Failed to create reservation");
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    throw new Error(`Failed to create reservation: ${res.status} - ${errorText}`);
+                }
 
                 MessageToast.show("Reservation created successfully!");
                 this._resetReservationForm();
                 const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
                 oRouter.navTo("Units");
 
-                oModel.setData({}); // Clear form
             } catch (err) {
+                console.error("Save error:", err);
                 MessageBox.error(err.message);
             }
         },
-
 
         _resetReservationForm: function () {
             const oEmptyModel = new sap.ui.model.json.JSONModel({
@@ -256,13 +278,34 @@ const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulat
         onAddPaymentRow: function () {
             const oModel = this.getView().getModel("local");
             const aPayments = oModel.getProperty("/payments");
-            aPayments.push({});
+            aPayments.push({
+                ID: this._generateUUID(),
+                receiptType: "",
+                receiptStatus: "",
+                paymentMethod: "",
+                amount: 0,
+                houseBank: "",
+                bankAccount: "",
+                dueDate: "",
+                transferNumber: "",
+                checkNumber: "",
+                customerBank: "",
+                customerBankAccount: "",
+                branch: "",
+                collectedAmount: 0,
+                arValidated: false,
+                rejectionReason: ""
+            });
             oModel.refresh();
         },
-        onDeletePaymentRow: function () {
+
+        onDeletePaymentRow: function (oEvent) {
+            const oContext = oEvent.getSource().getBindingContext("local");
+            const sPath = oContext.getPath();
             const oModel = this.getView().getModel("local");
             const aPayments = oModel.getProperty("/payments");
-            aPayments.pop();
+            const iIndex = parseInt(sPath.split("/").pop());
+            aPayments.splice(iIndex, 1);
             oModel.refresh();
         },
 
@@ -270,26 +313,54 @@ const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulat
         onAddPartnerRow: function () {
             const oModel = this.getView().getModel("local");
             const aPartners = oModel.getProperty("/partners");
-            aPartners.push({});
-            oModel.refresh();
-        },
-        onDeletePartnerRow: function () {
-            const oModel = this.getView().getModel("local");
-            const aPartners = oModel.getProperty("/partners");
-            aPartners.pop();
+            aPartners.push({
+                ID: this._generateUUID(),
+                customerCode: "",
+                customerName: "",
+                customerAddress: "",
+                validFrom: ""
+            });
             oModel.refresh();
         },
 
-        // Conditions table (no add/delete since auto-populated)
-        onAddConditionRow: function () {
-            // Removed: Conditions are auto-populated from simulation
+        onDeletePartnerRow: function (oEvent) {
+            const oContext = oEvent.getSource().getBindingContext("local");
+            const sPath = oContext.getPath();
+            const oModel = this.getView().getModel("local");
+            const aPartners = oModel.getProperty("/partners");
+            const iIndex = parseInt(sPath.split("/").pop());
+            aPartners.splice(iIndex, 1);
+            oModel.refresh();
         },
-        onDeleteConditionRow: function () {
-            // Removed: Conditions are auto-populated from simulation
+
+        // Conditions table (now editable, can add/delete)
+        onAddConditionRow: function () {
+            const oModel = this.getView().getModel("local");
+            const aConditions = oModel.getProperty("/conditions");
+            aConditions.push({
+                ID: this._generateUUID(),
+                installment: aConditions.length + 1,
+                dueDate: "",
+                amount: 0,
+                maintenance: 0
+            });
+            oModel.refresh();
+        },
+
+        onDeleteConditionRow: function (oEvent) {
+            const oContext = oEvent.getSource().getBindingContext("local");
+            const sPath = oContext.getPath();
+            const oModel = this.getView().getModel("local");
+            const aConditions = oModel.getProperty("/conditions");
+            const iIndex = parseInt(sPath.split("/").pop());
+            aConditions.splice(iIndex, 1);
+            oModel.refresh();
         },
 
         onCancelReservation: function () {
             this.getView().getModel("local").setData({}); // Clear form
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            oRouter.navTo("Units"); // Navigate back
         }
     });
 });

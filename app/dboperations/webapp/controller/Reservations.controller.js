@@ -193,23 +193,21 @@ sap.ui.define([
                                         content: [
                                             new sap.m.Table({
                                                 columns: [
-                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Type" }) }),
-                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
-                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
-                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Frequency" }) }),
-                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Valid From" }) }),
-                                                    new sap.m.Column({ header: new sap.m.Label({ text: "Valid To" }) })
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "installment" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "dueDate" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "amount" }) }),
+                                                    new sap.m.Column({ header: new sap.m.Label({ text: "maintenance" }) }),
+              
                                                 ],
                                                 items: {
                                                     path: "/conditions",
                                                     template: new sap.m.ColumnListItem({
                                                         cells: [
-                                                            new sap.m.Text({ text: "{conditionType}" }),
+                                                            new sap.m.Text({ text: "{installment}" }),
+                                                            new sap.m.Text({ text: "{dueDate}" }),
                                                             new sap.m.Text({ text: "{amount}" }),
-                                                            new sap.m.Text({ text: "{currency}" }),
-                                                            new sap.m.Text({ text: "{frequency}" }),
-                                                            new sap.m.Text({ text: "{validFrom}" }),
-                                                            new sap.m.Text({ text: "{validTo}" })
+                                                            new sap.m.Text({ text: "{maintenance}" }),
+                                                     
                                                         ]
                                                     })
                                                 }

@@ -33,11 +33,11 @@
                     <columns>
                         <!-- General Data -->
                         <Column id="_IDGenColumn"><Text id="_IDGenText" text="Building ID" /></Column>
-                        <Column id="_IDGenColumn1"><Text id="_IDGenText1" text="Building Description" /></Column>
-                        <Column id="_IDGenColumn2"><Text id="_IDGenText2" text="Building Old Code" /></Column>
-                        <Column id="_IDGenColumn3"><Text id="_IDGenText3" text="Project ID" /></Column>
-                        <Column id="_IDGenColumn4"><Text id="_IDGenText4" text="Project Description" /></Column>
-                        <Column id="_IDGenColumn5"><Text id="_IDGenText5" text="Company Code ID" /></Column>
+                        <Column id="_IDGenColumn1g"><Text id="_IDGenText1" text="Building Description" /></Column>
+                        <Column id="_IDGenColumn2g"><Text id="_IDGenText2" text="Building Old Code" /></Column>
+                        <Column id="_IDGenColumn3g"><Text id="_IDGenText3" text="Project ID" /></Column>
+                        <Column id="_IDGenColumn4"><Text id="_IDGenText4g" text="Project Description" /></Column>
+                        <Column id="_IDGenColumn5"><Text id="_IDGenText5g" text="Company Code ID" /></Column>
                         <Column id="_IDGenColumn6"><Text id="_IDGenText6" text="Company Code Description" /></Column>
                         <Column id="_IDGenColumn7"><Text id="_IDGenText7" text="Valid From" /></Column>
                         <Column id="_IDGenColumn8"><Text id="_IDGenText8" text="Valid To" /></Column>
@@ -73,10 +73,10 @@
                                 <Text id="_IDGenText26" text="{functionalArea}" />
 
                                 <HBox id="_IDGenHBox">
-                                    <Button id="_IDGenButton1" icon="sap-icon://information" tooltip="Details" press="onDetails" />
-                                    <Button id="_IDGenButton2" icon="sap-icon://edit" tooltip="Edit" press="onEdit" />
-                                    <Button id="_IDGenButton3" icon="sap-icon://sys-add" tooltip="Add Unit" press="onNavigateToAddUnit" />
-                                    <Button id="_IDGenButton4" icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDelete" />
+                                    <Button id="_IDGenButton1g" icon="sap-icon://information" tooltip="Details" press="onDetails" />
+                                    <Button id="_IDGenButton2g" icon="sap-icon://edit" tooltip="Edit" press="onEdit" />
+                                    <Button id="_IDGenButton3g" icon="sap-icon://sys-add" tooltip="Add Unit" press="onNavigateToAddUnit" />
+                                    <Button id="_IDGenButton4g" icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDelete" />
                                 </HBox>
                             </cells>
                         </ColumnListItem>

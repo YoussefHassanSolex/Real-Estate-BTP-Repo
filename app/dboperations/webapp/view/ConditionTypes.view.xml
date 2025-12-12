@@ -12,9 +12,9 @@
         <content>
             <Table id="conditionTypesTable" items="{conditionTypes>/}" width="100%">
                 <columns>
-                    <Column id="_IDGenColumn1"><Text id="_IDGenText1" text="Code"/></Column>
-                    <Column id="_IDGenColumn2"><Text id="_IDGenText2" text="Description"/></Column>
-                    <Column id="_IDGenColumn3"><Text id="_IDGenText3" text="Actions"/></Column>
+                    <Column id="_IDGenColumn1"><Text id="_IDGenText1g" text="Code"/></Column>
+                    <Column id="_IDGenColumn2"><Text id="_IDGenText2g" text="Description"/></Column>
+                    <Column id="_IDGenColumn3"><Text id="_IDGenText3g" text="Actions"/></Column>
                 </columns>
 
                 <items>

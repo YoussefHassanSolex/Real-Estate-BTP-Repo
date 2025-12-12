@@ -294,15 +294,16 @@ entity ReservationPartners : managed {
 
 /* --- Conditions Table --- */
 entity ReservationConditions : managed {
-    key ID            : UUID;
-        reservation   : Association to Reservations;
-        conditionType : String;
-        amount        : Decimal(15, 2);
-        currency      : String(3);
-        frequency     : String;
-        validFrom     : Date;
-        validTo       : Date;
+    key ID          : UUID;
+
+    reservation     : Association to Reservations;
+
+    installment     : Integer;
+    dueDate         : Date;
+    amount          : Decimal(15,2);
+    maintenance     : Decimal(15,2);
 }
+
 
 /* --- Payment Details Table --- */
 entity ReservationPayments : managed {

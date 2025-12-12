@@ -1697,174 +1697,7 @@ sap.ui.define([
         },
 
         //#region Payment Plan Simulation Part 
-        onOpenPaymentSimulation: async function (oEvent) {  // Added async
-            var unitId = oEvent.getSource().getBindingContext().getObject().unitId;
-            var units = this.getView().getModel("view").getProperty("/Units");
-            if (!units || units.length === 0 || !units[0].bua) {  // Updated: Also check if units are enriched
-                await this._loadUnitsForSim();  // Await to ensure data is loaded and enriched
-            }
-
-            if (!this._oSimulationDialog) {
-                // Simplified VBox: Price Plan input, hidden inputs for backend data, header section, and output table
-                var oVBox = new sap.m.VBox({
-                    items: [
-                        new sap.m.Title({ text: "", level: "H3" }),
-                        new sap.m.Label({ text: "Price Plan (Years)" }),
-                        new sap.m.Input({
-                            id: "pricePlanInputPPS",
-                            showValueHelp: true,
-                            valueHelpRequest: this.onOpenPricePlanValueHelpPPS.bind(this),
-                            placeholder: "Select a payment plan year..."
-                        }),
-                        // Hidden inputs for backend data (not visible to user)
-                        new sap.m.Input({ id: "projectIdInputPPS", visible: false }),
-                        new sap.m.Input({ id: "paymentPlanIdInputPPS", visible: false }),
-                        new sap.m.Input({ id: "leadIdInputPPS", visible: false }),
-                        new sap.m.Input({ id: "simIdInput", visible: false }),  // Added: For simulation ID
-                        // Header section (shown after selection) - Table layout for fields
-                        new sap.m.VBox({
-                            id: "simulationHeaderVBox",
-                            visible: "{local>/headerVisible}",
-                            items: [
-                                // Centered Price Plan
-                                new sap.m.Text({
-                                    text: "Price Plan: {local>/pricePlan}",
-                                    textAlign: "Center",
-                                    width: "100%"
-                                }),
-                                // Client Name alone
-                                new sap.m.Text({ text: "Client Name: {local>/clientName}" }),
-                                // Table for remaining fields
-                                new sap.m.Table({
-                                    id: "simulationHeaderTable",
-                                    width: "100%",
-                                    showSeparators: "All",
-                                    columns: [
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "" }) }),
-                                        new sap.m.Column({ header: new sap.m.Label({ text: "" }) })
-                                    ],
-                                    items: {
-                                        path: "local>/headerFields",
-                                        template: new sap.m.ColumnListItem({
-                                            cells: [
-                                                new sap.m.Text({ text: "{local>field}" }),
-                                                new sap.m.Text({ text: "{local>value}" })
-                                            ]
-                                        })
-                                    }
-                                })
-                            ]
-                        }),
-                        new sap.m.Title({ text: "", level: "H3", visible: "{local>/headerVisible}" }),
-                        new sap.m.Table({
-                            id: "simulationTablePPS",
-                            items: "{simulationOutput>/}",
-                            width: "100%",
-                            showSeparators: "All",
-                            columns: [
-                                new sap.m.Column({ header: new sap.m.Label({ text: "Installment" }) }),
-                                new sap.m.Column({ header: new sap.m.Label({ text: "Due Date" }) }),
-                                new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
-                                new sap.m.Column({ header: new sap.m.Label({ text: "Maintenance" }) })
-                            ],
-                            items: {
-                                path: "simulationOutput>/",
-                                template: new sap.m.ColumnListItem({
-                                    cells: [
-                                        new sap.m.Text({ text: "{simulationOutput>conditionType}" }),
-                                        new sap.m.Text({ text: "{simulationOutput>dueDate}" }),
-                                        new sap.m.Text({ text: "{simulationOutput>amount}" }),
-                                        new sap.m.Text({ text: "{simulationOutput>maintenance}" })
-                                    ]
-                                })
-                            }
-                            // Footer removed: Total is now a row in the table
-                        })
-                    ]
-                });
-
-                this._oSimulationDialog = new sap.m.Dialog({
-                    title: "Payment Plan Simulation",
-                    contentWidth: "100%",
-                    resizable: false,
-                    content: oVBox,
-                    beforeClose: this._resetSimulationDialog.bind(this),  // Added: Reset on close
-                    buttons: [
-                        new sap.m.Button({
-                            text: "Save Simulation",
-                            type: "Accept",
-                            press: this.onSaveSimulationPPS.bind(this)
-                        }),
-                        new sap.m.Button({
-                            text: "Print",
-                            type: "Default",
-                            press: this._printSimulation.bind(this)
-                        }),
-                        new sap.m.Button({
-                            text: "Close",
-                            press: function () {
-                                this._oSimulationDialog.close();
-                            }.bind(this)
-                        })
-                    ]
-                });
-
-                // Set models for the dialog
-                this._oSimulationDialog.setModel(new JSONModel({
-                    headerVisible: false,  // Initially hide header and table
-                    pricePlan: "",
-                    clientName: "",
-                    headerFields: [],  // Array for table rows
-                    totalAmount: 0,
-                    totalMaintenance: 0
-                }), "local");
-                this._oSimulationDialog.setModel(new JSONModel([]), "simulationOutput");
-
-                // Load data for PPS (removed redundant call here, as data is loaded in onInit)
-                this._loadDropdownDataForSim();
-
-                this.getView().addDependent(this._oSimulationDialog);
-            }
-
-            // Pre-fill hidden data from the selected unit (behind the scenes)
-            if (this._oSimulationDialog) {
-                var oLocal = this._oSimulationDialog.getModel("local");
-                oLocal.setProperty("/unitId", unitId);
-                oLocal.setProperty("/headerVisible", false);  // Reset visibility
-
-                // Find unit and set project/final price (auto-populated)
-                var units = this.getView().getModel("view").getProperty("/Units");
-                var unit = units.find(u => u.unitId === unitId);
-                if (unit) {
-                    oLocal.setProperty("/projectDescription", unit.projectDescription || "N/A");
-                    oLocal.setProperty("/builtUpArea", unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A");
-                    oLocal.setProperty("/gardenArea", unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A");  // Now uses "GA" code
-                    oLocal.setProperty("/deliveryDate", unit.unitDeliveryDate || "N/A");
-                    this._calculateFinalPricePPS(unitId, oLocal);  // Auto-calculate final price
-
-                    // Pre-fill hidden inputs
-                    sap.ui.getCore().byId("projectIdInputPPS").setValue(unit.projectId || "");
-                    sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");  // Will be set on selection
-                    sap.ui.getCore().byId("leadIdInputPPS").setValue("");  // Placeholder; set if available
-
-                    // Pre-populate header fields with initial data
-                    oLocal.setProperty("/headerFields", [
-                        { field: "Project", value: unit.projectDescription || "N/A" },
-                        { field: "Built Up Area", value: unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A" },
-                        { field: "Unit Number", value: unitId },
-                        { field: "Garden Area", value: unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A" },  // Now uses "GA" code
-                        { field: "Unit Price", value: "Calculating..." },  // Placeholder until calculated
-                        { field: "Delivery Date", value: unit.unitDeliveryDate || "N/A" },
-                        { field: "Maintenance", value: "Calculating..." }  // Placeholder until calculated
-                    ]);
-                }
-
-                this._oSimulationDialog.open();
-            } else {
-                console.error("Simulation dialog could not be created.");
-            }
-        },
-
+       
         // New: Reset function to clear all data when dialog closes
         _resetSimulationDialog: function () {
             if (this._oSimulationDialog) {
@@ -2229,9 +2062,175 @@ sap.ui.define([
                 sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");
             }
         },
+ onOpenPaymentSimulation: async function (oEvent) {  // Added async
+            var unitId = oEvent.getSource().getBindingContext().getObject().unitId;
+            var units = this.getView().getModel("view").getProperty("/Units");
+            if (!units || units.length === 0 || !units[0].bua) {  // Updated: Also check if units are enriched
+                await this._loadUnitsForSim();  // Await to ensure data is loaded and enriched
+            }
 
-        // Adapted from PaymentPlanSimulations: Simulate
-        onSimulatePPS: async function () {
+            if (!this._oSimulationDialog) {
+                // Simplified VBox: Price Plan input, hidden inputs for backend data, header section, and output table
+                var oVBox = new sap.m.VBox({
+                    items: [
+                        new sap.m.Title({ text: "", level: "H3" }),
+                        new sap.m.Label({ text: "Price Plan (Years)" }),
+                        new sap.m.Input({
+                            id: "pricePlanInputPPS",
+                            showValueHelp: true,
+                            valueHelpRequest: this.onOpenPricePlanValueHelpPPS.bind(this),
+                            placeholder: "Select a payment plan year..."
+                        }),
+                        // Hidden inputs for backend data (not visible to user)
+                        new sap.m.Input({ id: "projectIdInputPPS", visible: false }),
+                        new sap.m.Input({ id: "paymentPlanIdInputPPS", visible: false }),
+                        new sap.m.Input({ id: "leadIdInputPPS", visible: false }),
+                        new sap.m.Input({ id: "simIdInput", visible: false }),  // Added: For simulation ID
+                        // Header section (shown after selection) - Table layout for fields
+                        new sap.m.VBox({
+                            id: "simulationHeaderVBox",
+                            visible: "{local>/headerVisible}",
+                            items: [
+                                // Centered Price Plan
+                                new sap.m.Text({
+                                    text: "Price Plan: {local>/pricePlan}",
+                                    textAlign: "Center",
+                                    width: "100%"
+                                }),
+                                // Client Name alone
+                                new sap.m.Text({ text: "Client Name: {local>/clientName}" }),
+                                // Table for remaining fields
+                                new sap.m.Table({
+                                    id: "simulationHeaderTable",
+                                    width: "100%",
+                                    showSeparators: "All",
+                                    columns: [
+                                        new sap.m.Column({ header: new sap.m.Label({ text: "" }) }),
+                                        new sap.m.Column({ header: new sap.m.Label({ text: "" }) })
+                                    ],
+                                    items: {
+                                        path: "local>/headerFields",
+                                        template: new sap.m.ColumnListItem({
+                                            cells: [
+                                                new sap.m.Text({ text: "{local>field}" }),
+                                                new sap.m.Text({ text: "{local>value}" })
+                                            ]
+                                        })
+                                    }
+                                })
+                            ]
+                        }),
+                        new sap.m.Title({ text: "", level: "H3", visible: "{local>/headerVisible}" }),
+                        new sap.m.Table({
+                            id: "simulationTablePPS",
+                            items: "{simulationOutput>/}",
+                            width: "100%",
+                            showSeparators: "All",
+                            columns: [
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Installment" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Due Date" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Maintenance" }) })
+                            ],
+                            items: {
+                                path: "simulationOutput>/",
+                                template: new sap.m.ColumnListItem({
+                                    cells: [
+                                        new sap.m.Text({ text: "{simulationOutput>conditionType}" }),
+                                        new sap.m.Text({ text: "{simulationOutput>dueDate}" }),
+                                        new sap.m.Text({ text: "{simulationOutput>amount}" }),
+                                        new sap.m.Text({ text: "{simulationOutput>maintenance}" })
+                                    ]
+                                })
+                            }
+                            // Footer removed: Total is now a row in the table
+                        })
+                    ]
+                });
+
+                this._oSimulationDialog = new sap.m.Dialog({
+                    title: "Payment Plan Simulation",
+                    contentWidth: "100%",
+                    resizable: false,
+                    content: oVBox,
+                    beforeClose: this._resetSimulationDialog.bind(this),  // Added: Reset on close
+                    buttons: [
+                        new sap.m.Button({
+                            text: "Save Simulation",
+                            type: "Accept",
+                            press: this.onSaveSimulationPPS.bind(this)
+                        }),
+                        new sap.m.Button({
+                            text: "Print",
+                            type: "Default",
+                            press: this._printSimulation.bind(this)
+                        }),
+                        new sap.m.Button({
+                            text: "Close",
+                            press: function () {
+                                this._oSimulationDialog.close();
+                            }.bind(this)
+                        })
+                    ]
+                });
+
+                // Set models for the dialog
+                this._oSimulationDialog.setModel(new JSONModel({
+                    headerVisible: false,  // Initially hide header and table
+                    pricePlan: "",
+                    clientName: "",
+                    headerFields: [],  // Array for table rows
+                    totalAmount: 0,
+                    totalMaintenance: 0
+                }), "local");
+                this._oSimulationDialog.setModel(new JSONModel([]), "simulationOutput");
+
+                // Load data for PPS (removed redundant call here, as data is loaded in onInit)
+                this._loadDropdownDataForSim();
+
+                this.getView().addDependent(this._oSimulationDialog);
+            }
+
+            // Pre-fill hidden data from the selected unit (behind the scenes)
+            if (this._oSimulationDialog) {
+                var oLocal = this._oSimulationDialog.getModel("local");
+                oLocal.setProperty("/unitId", unitId);
+                oLocal.setProperty("/headerVisible", false);  // Reset visibility
+
+                // Find unit and set project/final price (auto-populated)
+                var units = this.getView().getModel("view").getProperty("/Units");
+                var unit = units.find(u => u.unitId === unitId);
+                if (unit) {
+                    oLocal.setProperty("/projectDescription", unit.projectDescription || "N/A");
+                    oLocal.setProperty("/builtUpArea", unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A");
+                    oLocal.setProperty("/gardenArea", unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A");  // Now uses "GA" code
+                    oLocal.setProperty("/deliveryDate", unit.unitDeliveryDate || "N/A");
+                    this._calculateFinalPricePPS(unitId, oLocal);  // Auto-calculate final price
+
+                    // Pre-fill hidden inputs
+                    sap.ui.getCore().byId("projectIdInputPPS").setValue(unit.projectId || "");
+                    sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");  // Will be set on selection
+                    sap.ui.getCore().byId("leadIdInputPPS").setValue("");  // Placeholder; set if available
+
+                    // Pre-populate header fields with initial data
+                    oLocal.setProperty("/headerFields", [
+                        { field: "Project", value: unit.projectDescription || "N/A" },
+                        { field: "Built Up Area", value: unit.bua ? unit.bua + " " + (unit.uom || "") : "N/A" },
+                        { field: "Unit Number", value: unitId },
+                        { field: "Garden Area", value: unit.gardenArea ? unit.gardenArea + " " + (unit.gardenUom || "") : "N/A" },  // Now uses "GA" code
+                        { field: "Unit Price", value: "Calculating..." },  // Placeholder until calculated
+                        { field: "Delivery Date", value: unit.unitDeliveryDate || "N/A" },
+                        { field: "Maintenance", value: "Calculating..." }  // Placeholder until calculated
+                    ]);
+                }
+
+                this._oSimulationDialog.open();
+            } else {
+                console.error("Simulation dialog could not be created.");
+            }
+        },
+
+              onSimulatePPS: async function () {
             const oLocal = this._oSimulationDialog.getModel("local");
             const unitId = oLocal ? oLocal.getProperty("/unitId") : null;
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
@@ -2296,7 +2295,6 @@ sap.ui.define([
                     const aSchedules = scheduleData.value || [];
 
                     const today = new Date();
-                    let installmentIndex = 0;  // Track for labeling (only for Down Payment)
 
                     aSchedules.forEach(schedule => {
                         const basePriceCode = schedule.basePrice?.code;
@@ -2318,20 +2316,20 @@ sap.ui.define([
                                 });
                             }
                         } else {
+                            // Fixed: Use schedule's conditionType for labeling
+                            let conditionType = schedule.conditionType?.description || "Installement";
+                            if (conditionType === "Down payment") conditionType = "Down Payment";
+                            if (conditionType === "Installment") conditionType = "Installement";
+
                             for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
-                                let conditionType = "Installement";  // Default
-                                if (installmentIndex === 0) {
-                                    conditionType = "Down Payment";
-                                }
                                 simulationSchedule.push({
                                     conditionType: conditionType,
                                     dueDate: dueDate.toISOString().split('T')[0],
                                     amount: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100,  // Round to 2 decimals
                                     maintenance: 0
                                 });
-                                installmentIndex++;
                             }
                         }
                     });
@@ -2384,6 +2382,7 @@ sap.ui.define([
                 MessageBox.error("Simulation failed: " + (err.message || err));
             }
         },
+
 
 
         // Adapted from PaymentPlanSimulations: Save simulation
