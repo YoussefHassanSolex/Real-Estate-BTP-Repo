@@ -1,3 +1,4 @@
+
 sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
@@ -2466,7 +2467,11 @@ sap.ui.define([
                     body: JSON.stringify(payload)
                 });
 
-                if (!res.ok) throw new Error("Failed to save simulation");
+                if (!res.ok) {
+                   const errorData = await res.json();
+        const errorMessage = errorData.error?.message || "Unknown error";
+        throw new Error(errorMessage);
+                }
 
                 // Removed: Step 2 (no longer needed, as savedSimulationId is removed and multiple simulations are allowed)
 
