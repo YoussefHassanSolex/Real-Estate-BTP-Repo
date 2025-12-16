@@ -90,12 +90,35 @@ entity Units : managed {
 
     supplementaryText        : String(255);
 
-    savedSimulationId        : String; 
+    // Removed: savedSimulationId : String;  // No longer needed, as simulations are now a composition
 
     measurements             : Composition of many Measurements
                                    on measurements.unit = $self;
     conditions               : Composition of many Conditions
                                    on conditions.unit = $self;
+    simulations              : Composition of many PaymentPlanSimulations
+                                   on simulations.unit = $self;  // Added to allow many simulations per unit
+}
+entity PaymentPlanSimulations : managed {
+    key simulationId       : String;
+        // Removed: unitId : String(8);  // Redundant with composition association
+        projectId          : String(8);
+        projectDescription : String(60);
+        buildingId         : String(8);
+        pricePlanYears     : Integer;
+        leadId             : String(36);
+        finalPrice         : Decimal(15, 2);
+        userId             : String(100);
+        createdOn          : Timestamp;
+        createdBy          : String(100);
+
+        unit               : Association to Units;
+        project            : Association to Projects;
+        building           : Association to Buildings;
+        paymentPlan        : Association to PaymentPlans;
+
+        schedule           : Composition of many PaymentPlanSimulationSchedules
+                                 on schedule.simulation = $self;
 }
 entity Measurements : managed {
     key ID          : UUID;
@@ -327,27 +350,7 @@ entity ReservationPayments : managed {
 }
 
 
-entity PaymentPlanSimulations : managed {
-    key simulationId       : String;
-        unitId             : String(8);
-        projectId          : String(8);
-        projectDescription : String(60);
-        buildingId         : String(8);
-        pricePlanYears     : Integer;
-        leadId             : String(36);
-        finalPrice         : Decimal(15, 2);
-        userId             : String(100);
-        createdOn          : Timestamp;
-        createdBy          : String(100);
 
-        unit               : Association to Units;
-        project            : Association to Projects;
-        building           : Association to Buildings;
-        paymentPlan        : Association to PaymentPlans;
-
-        schedule           : Composition of many PaymentPlanSimulationSchedules
-                                 on schedule.simulation = $self;
-}
 
 entity PaymentPlanSimulationSchedules : managed {
     key ID            : UUID;

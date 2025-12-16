@@ -26,6 +26,7 @@ module.exports = cds.service.impl(async function () {
       Frequencies,
       PaymentPlanSimulations,
       PaymentPlanSimulationSchedules,
+      RealEstateContracts
     } = this.entities;
 
 
@@ -958,20 +959,76 @@ this.on('UPDATE', PaymentPlans, async (req) => {
 
   /*---------------------Simulations-----------------------*/
   // 🔹 Add handlers for PaymentPlanSimulations
-  this.on('READ', PaymentPlanSimulations, async req => cds.transaction(req).run(req.query));
-  this.on('CREATE', PaymentPlanSimulations, async req => {
-    const data = req.data;
-    // Handle deep insert for schedule
-    if (data.schedule) {
-      data.schedule = data.schedule.map(s => ({
-        conditionType: s.conditionType,
-        dueDate: s.dueDate,
-        amount: s.amount,
-        maintenance: s.maintenance
-      }));
-    }
-    return await cds.transaction(req).run(
-      INSERT.into(PaymentPlanSimulations).entries(data)
-    );
-  });
+this.on('READ', PaymentPlanSimulations, async req => cds.transaction(req).run(req.query));
+
+this.on('CREATE', PaymentPlanSimulations, async req => {
+  const data = req.data;
+
+  // For deep inserts (e.g., via /Units('U0001')/simulations), get unitId from req.params
+  // req.params[0] contains the parent entity keys (e.g., { unitId: 'U0001' })
+  const unitId = req.params[0]?.unitId;
+
+  // If unitId is not available from params (e.g., direct insert), fall back to data.unitId
+  const effectiveUnitId = unitId || data.unitId;
+
+  if (!effectiveUnitId) {
+    req.reject(400, 'Unit ID is required for creating a simulation.');
+    return;
+  }
+
+  // Transform unitId into the unit association only if unitId was provided in data (for direct inserts)
+  if (data.unitId && !unitId) {  // Only if not a deep insert
+    data.unit = { unitId: data.unitId };
+    delete data.unitId;  // Remove the direct field to avoid insertion errors
+  }
+
+  // Check for existing simulation with the same unit and pricePlanYears
+  // Use the foreign key field name 'unit_unitId' as seen in the response data
+  const existingSimulation = await cds.transaction(req).run(
+    SELECT.from(PaymentPlanSimulations)
+      .where({
+        unit_unitId: effectiveUnitId,
+        pricePlanYears: data.pricePlanYears
+      })
+  );
+
+  if (existingSimulation.length > 0) {
+    req.reject(400, `A simulation with pricePlanYears ${data.pricePlanYears} already exists for this unit.`);
+    return;  // Exit early to prevent insertion
+  }
+
+  // Handle deep insert for schedule (ensure only required fields are included)
+  if (data.schedule) {
+    data.schedule = data.schedule.map(s => ({
+      conditionType: s.conditionType,
+      dueDate: s.dueDate,
+      amount: s.amount,
+      maintenance: s.maintenance
+    }));
+  }
+
+  return await cds.transaction(req).run(
+    INSERT.into(PaymentPlanSimulations).entries(data)
+  );
+});
+
+
+
+///////////////////////////RE-CONTRACTS/////////////////////////
+
+ // ------------------- READ / GET -------------------
+    this.on('READ', RealEstateContracts, async (req) => {
+        try {
+            // Connect to the S/4 API via BTP destination
+            const s4Service = await cds.connect.to('BTP_REAL_ESTATE_RE_CONTRACT');
+            
+            // Forward the request/query to S/4
+            return s4Service.tx(req).run(req.query);
+
+        } catch (error) {
+            console.error("Error fetching Real Estate Contracts:", error);
+            req.reject(500, "Failed to fetch Real Estate Contracts");
+        }
+    });
+
 });

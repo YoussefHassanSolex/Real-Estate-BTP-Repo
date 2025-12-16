@@ -74,8 +74,8 @@
 
                 <Title id="_IDGenTitle" text="Schedules" level="H3"/>
                 <Toolbar id="_IDGenToolbar">
-                    <Button id="_IDGenButton7" text="Add Row" icon="sap-icon://add" press="onAddScheduleRow"/>
-                    <Button id="_IDGenButton8" text="Delete Row" icon="sap-icon://delete" press="onDeleteScheduleRow"/>
+                    <Button id="_IDGenButton7" text="Add Row" type="Accept" icon="sap-icon://add" press="onAddScheduleRow"/>
+                    <Button id="_IDGenButton8" text="Delete Row" type="Reject" icon="sap-icon://delete" press="onDeleteScheduleRow"/>
                 </Toolbar>
 
                 <Table id="scheduleTable" items="{path: 'local>/schedules'}">
@@ -112,8 +112,8 @@
 
                 <Title id="_IDGenTitle1" text="Assigned Projects" level="H3"/>
                 <Toolbar id="_IDGenToolbar1">
-                    <Button id="_IDGenButton9" text="Add Row" icon="sap-icon://add" press="onAddProjectRow"/>
-                    <Button id="_IDGenButton10" text="Delete Row" icon="sap-icon://delete" press="onDeleteProjectRow"/>
+                    <Button id="_IDGenButton9" text="Add Row" type="Accept" icon="sap-icon://add" press="onAddProjectRow"/>
+                    <Button id="_IDGenButton10" text="Delete Row" type="Reject" icon="sap-icon://delete" press="onDeleteProjectRow"/>
                 </Toolbar>
                 <Table id="projectspTable" items="{path: 'local>/projects'}">
                     <columns>

@@ -28,7 +28,11 @@
                         id="_IDGenLabel22"
                         text="Company Code ID"
                     />
-                    <Input id="_IDGenInput6" value="{local>/companyCodeId}" editable="false" />
+                    <Input
+                        id="_IDGenInput6"
+                        value="{local>/companyCodeId}"
+                        editable="false"
+                    />
 
                     <Label
                         id="_IDGenLabel25"
@@ -109,8 +113,11 @@
                         id="_IDGenLabel30"
                         text="Status"
                     />
-                    <Input id="_IDGenInput21"  
-                        value="{local>/status}"  editable="false"/>
+                    <Input
+                        id="_IDGenInput21"
+                        value="{local>/status}"
+                        editable="false"
+                    />
                     <!-- <Select
                         id="_IDGenSelect1"
                         selectedKey="{local>/status}"
@@ -148,13 +155,28 @@
                         id="_IDGenLabel34"
                         text="Customer Type"
                     />
-                    <Select id="_IDGenSelect4" selectedKey="{local>/customerType}" width="100%">
-                        <core:Item id="_IDGenItem23" key="" text=""/>
+                    <Select
+                        id="_IDGenSelect4"
+                        selectedKey="{local>/customerType}"
+                        width="100%"
+                    >
+                        <core:Item
+                            id="_IDGenItem23"
+                            key=""
+                            text=""
+                        />
 
-    <core:Item id="_IDGenItem24" key="Local" text="Local"/>
-    <core:Item id="_IDGenItem25" key="Over seas" text="Over seas"/>
-</Select>
-
+                        <core:Item
+                            id="_IDGenItem24"
+                            key="Local"
+                            text="Local"
+                        />
+                        <core:Item
+                            id="_IDGenItem25"
+                            key="Over seas"
+                            text="Over seas"
+                        />
+                    </Select>
 
                     <Label
                         id="_IDGenLabel35"
@@ -221,8 +243,11 @@
                         id="_IDGenLabel33"
                         text="Phase"
                     />
-                     <Input id="_IDGenInput23"   
-                        value="{local>/phase}"  editable="false"/>
+                    <Input
+                        id="_IDGenInput23"
+                        value="{local>/phase}"
+                        editable="false"
+                    />
                     <!-- <Select
                         id="_IDGenSelect2"
                         selectedKey="{local>/phase}"
@@ -259,11 +284,25 @@
                         id="_IDGenLabel42"
                         text="Price Plan Years"
                     />
-                    <Input
-                        id="_IDGenInput32"
-                        value="{local>/pricePlanYears}"
-editable="false"          
-          />
+                    <Select
+                        id="_IDGenSelect2"
+                        width="100%"
+                        selectedKey="{local>/selectedPricePlanYears}"
+                        change=".onPricePlanYearsChange"
+                        items="{
+        path: 'local>/simulations'
+    }"
+                    >
+                      <core:Item id="_IDGenItem8"
+                            key=" "
+                            text="  "
+                        />
+                        <core:Item
+                            id="_IDGenItem7"
+                            key="{local>pricePlanYears}"
+                            text="{local>pricePlanYears} Years"
+                        />
+                    </Select>
 
                     <!-- Payment Plan -->
                     <Label
@@ -276,7 +315,6 @@ editable="false"
                         editable="false"
                     />
 
-                   
                     <Label
                         id="_IDGenLabel45"
                         text="Unit Price"
@@ -622,7 +660,7 @@ editable="false"
                     </items>
                 </Table>
 
-                              <!-- Conditions Table (Updated to match simulation output) -->
+                <!-- Conditions Table (Updated to match simulation output) -->
                 <Title
                     id="_IDGenTitle6"
                     text="Conditions"

@@ -1,4 +1,5 @@
 using real.estate as my from '../db/schema';
+using { API_RECONTRACT_0001 as external } from './external/API_RECONTRACT_0001';
 
 service RealEstateService {
     entity Buildings                 as projection on my.Buildings;
@@ -22,5 +23,5 @@ service RealEstateService {
     entity ReservationPayments       as projection on my.ReservationPayments;
     entity PaymentPlanSimulations     as projection on my.PaymentPlanSimulations;
     entity PaymentPlanSimulationSchedules as projection on my.PaymentPlanSimulationSchedules;
-
+    entity RealEstateContracts as projection on external.A_REContract;
 }

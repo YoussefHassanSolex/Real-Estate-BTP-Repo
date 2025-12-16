@@ -9,114 +9,123 @@ sap.ui.define([
     return Controller.extend("dboperations.controller.CreateReservation", {
         onInit: function () {
             var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-            oRouter.getRoute("CreateReservation").attachPatternMatched(this._onRouteMatched, this);
+            oRouter.getRoute("CreateReservation")
+                .attachPatternMatched(this._onRouteMatched, this);
         },
 
         _onRouteMatched: async function (oEvent) {
-            var sData = oEvent.getParameter("arguments").reservationData;
             this._resetReservationForm();
 
-            if (sData) {
-                var oReservation = JSON.parse(decodeURIComponent(sData));
-                console.log("Decoded reservation:", oReservation);
+            var sData = oEvent.getParameter("arguments").reservationData;
+            if (!sData) {
+                return;
+            }
 
-                // Set the initial model
-                var oModel = new sap.ui.model.json.JSONModel({
-                    bua: oReservation.bua,
-                    companyCodeId: oReservation.companyCodeId,
-                    project_projectId: oReservation.project_projectId,
-                    unit_unitId: oReservation.unit_unitId,
-                    building_buildingId: oReservation.buildingId,
-                    unitPrice: oReservation.unitPrice,
-                    paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
-                    // User-editable fields
-                    oldReservationId: "",
-                    eoiId: "",
-                    salesType: "",
-                    description: "",
-                    validFrom: "",
-                    status: oReservation.unitStatusDescription,
-                    customerType: "",
-                    currency: oReservation.currency,
-                    afterSales: "",
-                    phase: oReservation.phase,
-                    pricePlanYears: oReservation.pricePlanYears,
-                    planYears: 0,
-                    planCurrency: "",
-                    requestType: "",
-                    reason: "",
-                    cancellationDate: "",
-                    cancellationStatus: "",
-                    rejectionReason: "",
-                    cancellationFees: 0,
-                    payments: [],
-                    partners: [],
-                    conditions: []  // Will be populated from simulation
-                });
-                this.getView().setModel(oModel, "local");
+            var oReservation = JSON.parse(decodeURIComponent(sData));
+            console.log("Decoded reservation:", oReservation);
 
-                // Fetch unit's saved simulation and simulate conditions
-                await this._loadAndSimulateConditions(oReservation.unit_unitId, oReservation.pricePlanYears);
+            var oModel = new sap.ui.model.json.JSONModel({
+                bua: oReservation.bua,
+                companyCodeId: oReservation.companyCodeId,
+                project_projectId: oReservation.project_projectId,
+                unit_unitId: oReservation.unit_unitId,
+                building_buildingId: oReservation.buildingId,
+                unitPrice: oReservation.unitPrice,
+                currency: oReservation.currency,
+                status: oReservation.unitStatusDescription,
+
+                // ✅ persisted simulations from unit
+                simulations: oReservation.simulations || [],
+
+                // selection state
+                selectedPricePlanYears: "",
+                selectedSimulationId: "",
+                paymentPlan_paymentPlanId: "",
+
+                // result
+                conditions: [],
+                partners:[],
+                payments:[]
+            });
+
+            this.getView().setModel(oModel, "local");
+
+            // optional: auto-select first plan
+            if (oReservation.simulations?.length) {
+                const iDefaultYears = oReservation.simulations[0].pricePlanYears;
+                oModel.setProperty("/selectedPricePlanYears", iDefaultYears);
+                await this._resolveSimulationByYears(iDefaultYears);
             }
         },
 
-        // Updated: Load unit's saved simulation and simulate conditions
-        _loadAndSimulateConditions: async function (unitId, pricePlanYears) {
-            try {
-                // Fetch unit to get savedSimulationId
-                const unitRes = await fetch(`/odata/v4/real-estate/Units(unitId='${unitId}')?$select=savedSimulationId`);
-                if (!unitRes.ok) throw new Error("Failed to fetch unit");
-                const unitData = await unitRes.json();
-                const savedSimulationId = unitData.savedSimulationId;
 
-                console.log("Fetched savedSimulationId:", savedSimulationId);  // Debug log
-
-                if (!savedSimulationId) {
-                    MessageBox.information("No saved simulation found for this unit. Conditions will be empty.");
-                    return;
-                }
-
-                // Fixed: Use guid format for UUID key in OData v4
-                const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulationId='${savedSimulationId}')?$expand=schedule,paymentPlan($expand=schedule($expand=conditionType,basePrice,frequency))`);
-                if (!simRes.ok) {
-                    console.error("Fetch response status:", simRes.status, simRes.statusText);  // Debug log
-                    throw new Error("Failed to fetch simulation");
-                }
-                const simulation = await simRes.json();
-
-                console.log("Fetched simulation:", simulation);  // Debug log
-
-                // Simulate conditions based on simulation data
-                const conditions = await this._simulateConditionsFromSaved(simulation, pricePlanYears);
-                const oModel = this.getView().getModel("local");
-                oModel.setProperty("/conditions", conditions);
-                oModel.refresh();
-
-            } catch (err) {
-                console.error("Error loading simulation:", err);
-                MessageBox.error("Failed to load simulation for conditions: " + err.message);
-            }
+        onPricePlanYearsChange: async function (oEvent) {
+            const iYears = Number(oEvent.getSource().getSelectedKey());
+            await this._resolveSimulationByYears(iYears);
         },
 
-        // Fixed: Simulate conditions from saved simulation to match ReservationConditions entity
-     // Fixed: Simulate conditions from saved simulation to match ReservationConditions entity, but keep conditionType for display
-_simulateConditionsFromSaved: async function (simulation, pricePlanYears) {
-    // Use the saved simulation's schedule directly (it has the calculated amounts)
-    const savedSchedule = simulation.schedule || [];
+        _resolveSimulationByYears: async function (iYears) {
+            const oModel = this.getView().getModel("local");
+            const aSims = oModel.getProperty("/simulations") || [];
 
-    // Map to ReservationConditions format (exclude "Total" row, as it's a summary)
-    // Added: Keep conditionType for display in the view (first column), but entity uses installment as Integer
-    const conditions = savedSchedule.filter(s => s.conditionType !== "Total").map((s, index) => ({
-        ID: this._generateUUID(),  // Auto-generate for composition
-        conditionType: s.conditionType,  // For display in view (e.g., "Down Payment")
-        installment: index + 1,  // Sequential installment number (for entity)
-        dueDate: s.dueDate,  // Due Date
-        amount: s.amount,  // Amount
-        maintenance: s.maintenance  // Maintenance
-    }));
+            const oSelectedSim = aSims.find(
+                sim => Number(sim.pricePlanYears) === iYears
+            );
 
-    return conditions;
-},
+            if (!oSelectedSim) {
+                oModel.setProperty("/conditions", []);
+                return;
+            }
+
+            oModel.setProperty("/selectedPricePlanYears", iYears);
+            oModel.setProperty("/selectedSimulationId", oSelectedSim.simulationId);
+            oModel.setProperty(
+                "/paymentPlan_paymentPlanId",
+                oSelectedSim.paymentPlan_paymentPlanId
+            );
+            console.log(
+                "Years:", iYears,
+                "Simulation:", oSelectedSim.simulationId,
+                "PaymentPlan:", oSelectedSim.paymentPlan_paymentPlanId
+            );
+            await this._loadConditionsFromSimulation(oSelectedSim.simulationId);
+        },
+
+
+
+        _loadConditionsFromSimulation: async function (sSimulationId) {
+            if (!sSimulationId) {
+                return;
+            }
+
+            const res = await fetch(
+                `/odata/v4/real-estate/PaymentPlanSimulations(simulationId='${sSimulationId}')?$expand=schedule`
+            );
+
+            if (!res.ok) {
+                MessageBox.error("Failed to load simulation conditions");
+                return;
+            }
+
+            const simulation = await res.json();
+
+            const aConditions = (simulation.schedule || [])
+                .filter(s => s.conditionType !== "Total")
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+                .map((s, index) => ({
+                    ID: this._generateUUID(),
+                    installment: index + 1,
+                    conditionType: s.conditionType,
+                    dueDate: s.dueDate,
+                    amount: s.amount,
+                    maintenance: s.maintenance
+                }));
+
+            this.getView().getModel("local")
+                .setProperty("/conditions", aConditions);
+        }
+        ,
+
 
 
         // Helper: Get frequency interval (from PPS)

@@ -67,7 +67,7 @@ sap.ui.define([
 
         _loadUnits: function () {
             var oModel = new sap.ui.model.json.JSONModel();
-            fetch("/odata/v4/real-estate/Units?$expand=measurements,conditions")
+            fetch("/odata/v4/real-estate/Units?$expand=measurements,conditions,simulations")
                 .then(response => response.json())
                 .then(data => {
                     // 🔹 Post-process units to extract BUA & Original Price
@@ -248,7 +248,6 @@ sap.ui.define([
         },
         onNavigateToAddUnit: function () {
             // If dialog is not yet created, create it once
-
             if (!this._oAddDialog) {
                 var oNewUnitModel = new sap.ui.model.json.JSONModel({
                     // unitId: "",
@@ -294,6 +293,7 @@ sap.ui.define([
                                     template: new Item({
                                         key: "{companyCodesList>companyCodeId}",
                                         text: "{companyCodesList>companyCodeId} - {companyCodesList>companyCodeDescription}"
+
                                     })
                                 },
                                 tooltip: "Must be 4 characters"
@@ -301,7 +301,7 @@ sap.ui.define([
 
                             new sap.m.Label({ text: "Company Code Description", required: true }),
                             new sap.m.Input("companyCodeDescInput", {
-                                value: "{companyCodesList>companyCodeDescription}",
+                                value: "{/companyCodeDescription}",  // FIXED: Changed from "{companyCodesList>companyCodeDescription}" to bind to dialog model
                                 tooltip: "Up to 60 characters"
                             }),
                             new sap.m.Label({ text: "Project ID", required: true }),
@@ -345,7 +345,6 @@ sap.ui.define([
                             new sap.m.Label({ text: "Usage Type", required: true }),
                             new sap.m.Select("usageTypeDescInput", {
                                 selectedKey: "{/usageTypeDescription}",
-
                                 change: this.onAddDialogUsageTypeChange.bind(this),
                                 items: [
                                     new sap.ui.core.Item({ key: "", text: "" }),
@@ -358,17 +357,13 @@ sap.ui.define([
                             new sap.m.Label({ text: "Unit Type", required: true }),
                             new sap.m.Select("unitTypeDescInput", {
                                 selectedKey: "{/unitTypeDescription}",
-
                                 enabled: false
                             }),
                             new sap.m.Label({ text: "Unit Status", required: true }),
                             new sap.m.Select("unitStatusDescInput", {
-
                                 selectedKey: "{/unitStatusDescription}",
-
                                 items: [
                                     new sap.ui.core.Item({ key: "", text: "" }),
-
                                     new sap.ui.core.Item({ key: "Open", text: "Open" }),
                                     new sap.ui.core.Item({ key: "Closed", text: "Closed" }),
                                     new sap.ui.core.Item({ key: "Cancelled", text: "Cancelled" }),
@@ -382,12 +377,9 @@ sap.ui.define([
                             new sap.m.Input("zoneInput", { value: "{/zone}" }),
                             new sap.m.Label({ text: "Sales Phase", required: true }),
                             new sap.m.Select("salesPhaseInput", {
-
                                 selectedKey: "{/salesPhase}",
-
                                 items: [
                                     new sap.ui.core.Item({ key: "", text: "" }),
-
                                     new sap.ui.core.Item({ key: "1", text: "1" }),
                                     new sap.ui.core.Item({ key: "2", text: "2" }),
                                     new sap.ui.core.Item({ key: "3", text: "3" }),
@@ -417,9 +409,26 @@ sap.ui.define([
                             new sap.m.Label({ text: "Supplementary Text" }),
                             new sap.m.Input("supplementaryTextInput", { value: "{/supplementaryText}" }),
 
+                            // Adjusted Measurements section with better button layout
                             new sap.m.Title({ text: "Measurements", level: "H3" }),
-                            new sap.m.Button({ text: "Add Measurement", press: this.onAddMeasurementRow.bind(this) }),
-                            new sap.m.Button({ text: "Delete Measurement", press: this.onDeleteMeasurementRow.bind(this) }),
+                            new sap.m.HBox({
+                                items: [
+                                    new sap.m.Button({
+                                        text: "add row",
+                                        icon: "sap-icon://add",
+                                        type: "Accept",
+                                        press: this.onAddMeasurementRow.bind(this)
+                                    }),
+                                    new sap.m.Button({
+                                        text: "delete row",
+                                        icon: "sap-icon://delete",
+                                        type: "Reject",
+                                        press: this.onDeleteMeasurementRow.bind(this)
+                                    })
+                                ],
+                                justifyContent: "Start",
+                                alignItems: "Center"
+                            }),
                             new sap.m.Table({
                                 id: "addMeasurementsTable",
                                 items: "{/measurements}",
@@ -452,9 +461,26 @@ sap.ui.define([
                                 }
                             }),
 
+                            // Adjusted Conditions section with better button layout
                             new sap.m.Title({ text: "Conditions", level: "H3" }),
-                            new sap.m.Button({ text: "Add Condition", press: this.onAddConditionRow.bind(this) }),
-                            new sap.m.Button({ text: "Delete Condition", press: this.onDeleteConditionRow.bind(this) }),
+                            new sap.m.HBox({
+                                items: [
+                                    new sap.m.Button({
+                                        text: "add row",
+                                        icon: "sap-icon://add",
+                                        type: "Accept",
+                                        press: this.onAddConditionRow.bind(this)
+                                    }),
+                                    new sap.m.Button({
+                                        text: "delete row",
+                                        icon: "sap-icon://delete",
+                                        type: "Reject",
+                                        press: this.onDeleteConditionRow.bind(this)
+                                    })
+                                ],
+                                justifyContent: "Start",
+                                alignItems: "Center"
+                            }),
                             new sap.m.Table({
                                 id: "addConditionsTable",
                                 items: "{/conditions}",
@@ -464,7 +490,6 @@ sap.ui.define([
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
                                     new sap.m.Column({ header: new sap.m.Label({ text: "Number of Years" }) })  // NEW: Add column
-
                                 ],
                                 items: {
                                     path: "/conditions",
@@ -485,7 +510,6 @@ sap.ui.define([
                                             new Input({ value: "{amount}", type: "Number" }),
                                             new Input({ value: "{currency}" }),
                                             new Input({ value: "{numberOfYears}", type: "Number" })  // NEW: Editable input for numberOfYears
-
                                         ]
                                     })
                                 }
@@ -562,7 +586,6 @@ sap.ui.define([
                                 sap.m.MessageBox.error("Please fill all required fields before saving.");
                                 return;
                             }
-
 
                             // NEW: Auto-generate unitId in format "U000x" (increment counter)
                             this._unitIdCounter = (this._unitIdCounter || 0) + 1;
@@ -647,6 +670,8 @@ sap.ui.define([
 
             this._oAddDialog.open();
         },
+
+
         onAddDialogUsageTypeChange: function () {
             var oUsageSelect = sap.ui.getCore().byId("usageTypeDescInput");
             var oUnitTypeSelect = sap.ui.getCore().byId("unitTypeDescInput");
@@ -1243,9 +1268,26 @@ sap.ui.define([
                             new sap.m.Label({ text: "Supplementary Text", required: true }),
                             new sap.m.Input("editSupplementaryTextInput", { value: "{/supplementaryText}" }),
 
+                            // Adjusted Measurements section with better button layout (icons and HBox)
                             new sap.m.Title({ text: "Measurements", level: "H3" }),
-                            new sap.m.Button({ text: "Add Measurement", press: this.onAddMeasurementRow.bind(this) }),
-                            new sap.m.Button({ text: "Delete Measurement", press: this.onDeleteMeasurementRow.bind(this) }),
+                            new sap.m.HBox({
+                                items: [
+                                    new sap.m.Button({
+                                        text: "add row",
+                                        icon: "sap-icon://add",
+                                        type: "Accept",
+                                        press: this.onAddMeasurementRow.bind(this)
+                                    }),
+                                    new sap.m.Button({
+                                        text: "delete row",
+                                        icon: "sap-icon://delete",
+                                        type: "Reject",
+                                        press: this.onDeleteMeasurementRow.bind(this)
+                                    })
+                                ],
+                                justifyContent: "Start",
+                                alignItems: "Center"
+                            }),
                             new sap.m.Table({
                                 id: "editMeasurementsTable",
                                 items: "{/measurements}",
@@ -1278,9 +1320,26 @@ sap.ui.define([
                                 }
                             }),
 
+                            // Adjusted Conditions section with better button layout (icons and HBox)
                             new sap.m.Title({ text: "Conditions", level: "H3" }),
-                            new sap.m.Button({ text: "Add Condition", press: this.onAddConditionRow.bind(this) }),
-                            new sap.m.Button({ text: "Delete Condition", press: this.onDeleteConditionRow.bind(this) }),
+                            new sap.m.HBox({
+                                items: [
+                                    new sap.m.Button({
+                                        text: "add row",
+                                        icon: "sap-icon://add",
+                                        type: "Accept",
+                                        press: this.onAddConditionRow.bind(this)
+                                    }),
+                                    new sap.m.Button({
+                                        text: "delete row",
+                                        icon: "sap-icon://delete",
+                                        type: "Reject",
+                                        press: this.onDeleteConditionRow.bind(this)
+                                    })
+                                ],
+                                justifyContent: "Start",
+                                alignItems: "Center"
+                            }),
                             new sap.m.Table({
                                 id: "editConditionsTable",
                                 items: "{/conditions}",
@@ -1325,7 +1384,7 @@ sap.ui.define([
                         press: function () {
                             var oUpdatedData = this._oEditDialog.getModel().getData();
 
-                            // 🧩 Validate required fields
+                            // 🧩 Validate required fields (FIXED: Proper validation for Select/ComboBox vs Input/DatePicker)
                             var aRequiredFields = [
                                 { id: "editUnitDescInput", name: "Unit Description" },
                                 { id: "editCompanyCodeIdInput", name: "Company Code ID" },
@@ -1350,7 +1409,25 @@ sap.ui.define([
                             var bValid = true;
                             aRequiredFields.forEach(function (field) {
                                 var oControl = sap.ui.getCore().byId(field.id);
-                                if (!oControl.getValue()) {
+                                if (!oControl) return;
+
+                                // ✅ Skip disabled fields
+                                if (oControl.getEnabled && !oControl.getEnabled()) {
+                                    return;
+                                }
+
+                                var vValue = "";
+
+                                // For Select and ComboBox
+                                if (oControl.isA("sap.m.Select") || oControl.isA("sap.m.ComboBox")) {
+                                    vValue = oControl.getSelectedKey();
+                                }
+                                // For Input, DatePicker, etc.
+                                else if (oControl.getValue) {
+                                    vValue = oControl.getValue();
+                                }
+
+                                if (!vValue) {
                                     oControl.setValueState("Error");
                                     oControl.setValueStateText(field.name + " is required");
                                     bValid = false;
@@ -1432,21 +1509,25 @@ sap.ui.define([
 
             this._oEditDialog.open();
         },
+
+
         onCompanyCodeChange: function (oEvent) {
-            var oComboBox = oEvent.getSource();
-            var oSelectedItem = oComboBox.getSelectedItem();
+            var sSelectedKey = oEvent.getSource().getSelectedKey();  // Safer way to get the selected key
+            var oCompanyCodesList = this.getView().getModel("companyCodesList").getData();
 
-            var sDescription = oSelectedItem
-                ? (oSelectedItem.getText().split(" - ")[1] || "")
-                : "";
+            // Find the selected company's description
+            var oSelectedCompany = oCompanyCodesList.find(function (item) {
+                return item.companyCodeId === sSelectedKey;
+            });
+            console.log(oSelectedCompany.companyCodeDescription);
 
-            var oContext = oComboBox.getBindingContext();
-
-            if (oContext) {
-                // Update property via binding context (works for OData + JSON)
-                oContext.setProperty("companyCodeDescription", sDescription);
+            if (oSelectedCompany) {
+                // Set the description in the dialog model
+                this._oAddDialog.getModel().setProperty("/companyCodeDescription", oSelectedCompany.companyCodeDescription);
             }
         },
+
+
 
         onAddMeasurementRow: function (oEvent) {
             const oModel = oEvent.getSource().getModel();
@@ -1600,13 +1681,12 @@ sap.ui.define([
 
             oBinding.filter(oCombinedFilter ? [oCombinedFilter] : []);
         },
-        onCreateReservation: async function (oEvent) {
+        onCreateReservation: function (oEvent) {
             var oUnit = oEvent.getSource().getBindingContext().getObject();
             console.log("Unit selected:", oUnit);
 
-            // Base reservation draft
             var oReservationData = {
-                bua: oUnit.measurements?.find(m => m.code.trim() === "BUA")?.quantity || 0,
+                bua: oUnit.measurements?.find(m => m.code?.trim() === "BUA")?.quantity || 0,
                 companyCodeId: oUnit.companyCodeId,
                 project_projectId: oUnit.projectId,
                 buildingId: oUnit.buildingId,
@@ -1615,71 +1695,29 @@ sap.ui.define([
                 unitStatusDescription: oUnit.unitStatusDescription,
                 phase: oUnit.salesPhase,
                 currency: oUnit.conditions?.find(m => m.currency)?.currency,
-                savedSimulationId: oUnit.savedSimulationId || ""
+                // ✅ SEND ALL SIMULATIONS
+                simulations: (oUnit.simulations || []).map(sim => ({
+                    simulationId: sim.simulationId,
+
+                    // ✅ KEEP THE ORIGINAL FK NAME
+                    paymentPlan_paymentPlanId: sim.paymentPlan_paymentPlanId,
+
+                    pricePlanYears: sim.pricePlanYears,
+                    finalPrice: sim.finalPrice,
+                    projectId: sim.projectId,
+                    unitId: sim.unit_unitId
+                }))
+
             };
 
-            // Fetch PaymentPlanSimulations using FILTER
-            if (oUnit.savedSimulationId) {
-                try {
-                    const sFilter = encodeURIComponent(
-                        `simulationId eq '${oUnit.savedSimulationId}' and unitId eq '${oUnit.unitId}'`
-                    );
-
-                    const res = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations?$filter=${sFilter}`);
-
-                    if (res.ok) {
-                        const data = await res.json();
-
-                        if (data.value && data.value.length > 0) {
-                            const sim = data.value[0]; // first (and only) matching simulation
-
-                            console.log("Fetched Simulation:", sim);
-
-                            oReservationData.paymentPlan_paymentPlanId = sim.paymentPlan_paymentPlanId;
-                            oReservationData.pricePlanYears = sim.pricePlanYears;
-                        }
-                    }
-                } catch (err) {
-                    console.error("Failed to fetch simulation via filter:", err);
-                }
-            }
-            // Fetch PaymentPlanSimulationSchedules using FILTER
-            if (oUnit.savedSimulationId) {
-                try {
-                    const sFilter = encodeURIComponent(
-                        `simulation_simulationId eq '${oUnit.savedSimulationId}'`
-                    );
-
-                    const res2 = await fetch(`/odata/v4/real-estate/PaymentPlanSimulationSchedules?$filter=${sFilter}`);
-                    console.log("Filtered PaymentPlanSimulationSchedules", res2);
-
-                    if (res2.ok) {
-                        const dataSchedules = await res2.json();
-
-                        console.log("Fetched Schedules:", dataSchedules.value);
-
-                        // Map to UI table structure
-                        oReservationData.conditions = dataSchedules.value.map(s => ({
-                            conditionType: s.conditionType || "",
-                            amount: s.amount || "0",
-                            currency: "EGP", // static or derive if needed
-                            frequency: "",   // optional
-                            validFrom: s.dueDate || "",
-                            validTo: ""      // optional
-                        }));
-                    }
-                } catch (err) {
-                    console.error("Failed to fetch schedules:", err);
-                }
-            }
-            // ------------------------------------------------------------------
-
+            console.log("Reservation payload:", oReservationData);
 
             var sData = encodeURIComponent(JSON.stringify(oReservationData));
             sap.ui.core.UIComponent.getRouterFor(this).navTo("CreateReservation", {
                 reservationData: sData
             });
         }
+
         ,
         onClearFilter: function () {
             var oModel = this.getView().getModel("view");
@@ -1697,7 +1735,7 @@ sap.ui.define([
         },
 
         //#region Payment Plan Simulation Part 
-       
+
         // New: Reset function to clear all data when dialog closes
         _resetSimulationDialog: function () {
             if (this._oSimulationDialog) {
@@ -2062,7 +2100,7 @@ sap.ui.define([
                 sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");
             }
         },
- onOpenPaymentSimulation: async function (oEvent) {  // Added async
+        onOpenPaymentSimulation: async function (oEvent) {  // Added async
             var unitId = oEvent.getSource().getBindingContext().getObject().unitId;
             var units = this.getView().getModel("view").getProperty("/Units");
             if (!units || units.length === 0 || !units[0].bua) {  // Updated: Also check if units are enriched
@@ -2102,7 +2140,7 @@ sap.ui.define([
                                 // Table for remaining fields
                                 new sap.m.Table({
                                     id: "simulationHeaderTable",
-                                    width: "100%",
+                                    width: "20%",
                                     showSeparators: "All",
                                     columns: [
                                         new sap.m.Column({ header: new sap.m.Label({ text: "" }) }),
@@ -2230,7 +2268,7 @@ sap.ui.define([
             }
         },
 
-              onSimulatePPS: async function () {
+        onSimulatePPS: async function () {
             const oLocal = this._oSimulationDialog.getModel("local");
             const unitId = oLocal ? oLocal.getProperty("/unitId") : null;
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
@@ -2402,12 +2440,12 @@ sap.ui.define([
             const schedule = (fullSchedule || []).filter(s => s.conditionType !== "Total");
 
             try {
-                // Step 1: Save the simulation
+                // Step 1: Save the simulation as a deep insert under the unit
                 const payload = {
                     simulationId,
-                    unitId,
+                    // Removed: unitId (handled by the composition association)
                     projectId,
-                    paymentPlan_paymentPlanId: paymentPlanId,  // Added: Link to payment plan
+                    paymentPlan_paymentPlanId: paymentPlanId,  // Link to payment plan
                     pricePlanYears,
                     leadId,
                     finalPrice,
@@ -2420,7 +2458,7 @@ sap.ui.define([
                     }))
                 };
 
-                const res = await fetch("/odata/v4/real-estate/PaymentPlanSimulations", {
+                const res = await fetch(`/odata/v4/real-estate/Units('${unitId}')/simulations`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(payload)
@@ -2428,25 +2466,15 @@ sap.ui.define([
 
                 if (!res.ok) throw new Error("Failed to save simulation");
 
-                // Step 2: Update the unit with the saved simulation ID (overwrites any previous saved simulation)
-                const unitUpdateRes = await fetch(`/odata/v4/real-estate/Units(unitId='${unitId}')`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        savedSimulationId: simulationId  // Set the saved simulation ID on the unit
-                    })
-                });
+                // Removed: Step 2 (no longer needed, as savedSimulationId is removed and multiple simulations are allowed)
 
-                if (!unitUpdateRes.ok) {
-                    console.warn("Simulation saved, but failed to update unit with saved simulation ID:", unitUpdateRes.status);
-                }
-
-                MessageToast.show("Simulation saved successfully and linked to unit!");
+                MessageToast.show("Simulation saved successfully!");
                 this._oSimulationDialog.close();  // Close dialog after save
             } catch (err) {
                 MessageBox.error("Error: " + (err.message || err));
             }
         },
+
 
 
         // Helper: Map frequency description to months per installment
