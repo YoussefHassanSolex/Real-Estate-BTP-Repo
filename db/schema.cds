@@ -277,6 +277,8 @@ entity Reservations : managed {
         bua                : Decimal(15, 2);
         phase              : String(20);
         pricePlanYears     : Integer;
+        reservationType:String(20);
+        unitType:String(20);
 
         /* --- Partners --- */
         partners           : Composition of many ReservationPartners

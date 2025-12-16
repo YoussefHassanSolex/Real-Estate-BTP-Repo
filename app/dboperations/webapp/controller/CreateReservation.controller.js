@@ -33,19 +33,19 @@ sap.ui.define([
                 unitPrice: oReservation.unitPrice,
                 currency: oReservation.currency,
                 status: oReservation.unitStatusDescription,
-
-                // ✅ persisted simulations from unit
+                reservationType: oReservation.reservationType,
+                unitType: oReservation.unitType,
+                phase: oReservation.phase,
                 simulations: oReservation.simulations || [],
 
-                // selection state
                 selectedPricePlanYears: "",
                 selectedSimulationId: "",
                 paymentPlan_paymentPlanId: "",
 
                 // result
                 conditions: [],
-                partners:[],
-                payments:[]
+                partners: [],
+                payments: []
             });
 
             this.getView().setModel(oModel, "local");
@@ -153,13 +153,23 @@ sap.ui.define([
             const oData = oModel.getData();
 
             // Fixed: Transform conditions directly to match ReservationConditions entity (no invalid fields)
+            const reservationId = this._generateUUID();
+
             const transformedConditions = oData.conditions.map((c, index) => ({
-                ID: c.ID || this._generateUUID(),  // Auto-generate if missing
-                installment: c.installment || (index + 1),  // Use provided or sequential
-                dueDate: c.dueDate ? new Date(c.dueDate).toISOString().split("T")[0] : null,
-                amount: c.amount || 0,
-                maintenance: c.maintenance || 0
+                ID: c.ID || this._generateUUID(),
+                installment: c.installment ?? index + 1,
+                dueDate: c.dueDate
+                    ? new Date(c.dueDate).toISOString().split("T")[0]
+                    : null,
+                amount: c.amount ?? 0,
+                maintenance: c.maintenance ?? 0,
+
+                // 🔴 THIS IS THE KEY LINE
+                reservation_reservationId: reservationId
             }));
+
+
+            console.log("Conditions before save:", transformedConditions);
 
             // Fixed: Transform partners to match ReservationPartners entity
             const transformedPartners = oData.partners.map(p => ({
@@ -234,11 +244,12 @@ sap.ui.define([
                     const errorText = await res.text();
                     throw new Error(`Failed to create reservation: ${res.status} - ${errorText}`);
                 }
+                console.log("reservation saved", res);
 
                 MessageToast.show("Reservation created successfully!");
                 this._resetReservationForm();
                 const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-                oRouter.navTo("Units");
+                oRouter.navTo("Reservations");
 
             } catch (err) {
                 console.error("Save error:", err);

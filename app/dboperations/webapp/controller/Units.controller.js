@@ -1694,6 +1694,8 @@ sap.ui.define([
                 unitPrice: oUnit.originalPrice || 0,
                 unitStatusDescription: oUnit.unitStatusDescription,
                 phase: oUnit.salesPhase,
+                reservationType:oUnit.usageTypeDescription,
+                unitType:oUnit.unitTypeDescription,
                 currency: oUnit.conditions?.find(m => m.currency)?.currency,
                 // ✅ SEND ALL SIMULATIONS
                 simulations: (oUnit.simulations || []).map(sim => ({

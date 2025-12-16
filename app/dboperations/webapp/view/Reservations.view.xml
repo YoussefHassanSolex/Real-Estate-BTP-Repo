@@ -1,70 +1,80 @@
-<mvc:View
-    controllerName="dboperations.controller.Reservations"
-    xmlns:mvc="sap.ui.core.mvc"
-    xmlns="sap.m"
-    displayBlock="true">
-
-    <Page id="_IDGenPage1" title="Reservations">
-        <headerContent>
-            <!-- <Button
-                id="btnAddReservation"
-                icon="sap-icon://add"
-                tooltip="Add"
-                text="New Reservation"
-                press="onAddReservation"
-            /> -->
-        </headerContent>
-
+<mvc:View controllerName="dboperations.controller.Reservations" xmlns="sap.m" xmlns:mvc="sap.ui.core.mvc">
+    <Page id="ReservationsPage" title="Reservations">
         <content>
-            <ScrollContainer id="_IDGenScrollContainer5"
-                horizontal="true"
-                vertical="false"
-                width="100%"
-                height="100%"
-                focusable="true"
-                class="noPaddingScroll">
-
-                <Table
-                    id="reservationsTable"
-                    items="{reservations>/}"
-                    mode="SingleSelectMaster"
-                    width="120%"
-                    inset="false"
-                    class="noPaddingTable">
-
+            <ScrollContainer id="_IDGenScrollContainer5" horizontal="true" vertical="false" height="100%" width="100%">
+                <Table id="reservationsTable" items="{/Reservations}" width="300%">
                     <columns>
-                        <Column id="_IDGenColumn69"><Text id="_IDGenText120" text="Reservation ID"/></Column>
-                        <Column id="_IDGenColumn70"><Text id="_IDGenText121" text="Company Code"/></Column>
-                        <Column id="_IDGenColumn71"><Text id="_IDGenText122" text="Old Reservation ID"/></Column>
-                        <Column id="_IDGenColumn72"><Text id="_IDGenText123" text="EOI ID"/></Column>
-                        <Column id="_IDGenColumn73"><Text id="_IDGenText124" text="Description"/></Column>
-                        <Column id="_IDGenColumn74"><Text id="_IDGenText125" text="Sales Type"/></Column>
-                        <Column id="_IDGenColumn75"><Text id="_IDGenText126" text="Valid From"/></Column>
-                        <Column id="_IDGenColumn76"><Text id="_IDGenText127" text="Customer Type"/></Column>
-                        <Column id="_IDGenColumn77"><Text id="_IDGenText128" text="Currency"/></Column>
-                        <Column id="_IDGenColumn78"><Text id="_IDGenText129" text="After Sales"/></Column>
-                        <Column id="_IDGenColumn79"><Text id="_IDGenText130" text="Status"/></Column>
-                        <Column id="_IDGenColumn80"><Text id="_IDGenText131" text="Actions"/></Column>
+                        <Column id="_IDGenColumn69"><Text id="_IDGenText120" text="Reservation ID" /></Column>
+                        <Column id="_IDGenColumn78"><Text id="_IDGenText135" text="Company Code ID" /></Column>
+                        <Column id="_IDGenColumn79"><Text id="_IDGenText136" text="Old Reservation ID" /></Column>
+                        <Column id="_IDGenColumn80"><Text id="_IDGenText137" text="EOI ID" /></Column>
+                        <Column id="_IDGenColumn104"><Text id="_IDGenText138" text="Sales Type" /></Column>
+                        <Column id="_IDGenColumn105"><Text id="_IDGenText139" text="Reservation Type" /></Column>
+                        <Column id="_IDGenColumn70"><Text id="_IDGenText121" text="Description" /></Column>
+                        <Column id="_IDGenColumn74"><Text id="_IDGenText125" text="Valid From" /></Column>
+                        <Column id="_IDGenColumn75"><Text id="_IDGenText126" text="Status" /></Column>
+                        <Column id="_IDGenColumn106"><Text id="_IDGenText140" text="Customer Type" /></Column>
+                        <Column id="_IDGenColumn107"><Text id="_IDGenText141" text="Currency" /></Column>
+                        <Column id="_IDGenColumn108"><Text id="_IDGenText142" text="After Sales" /></Column>
+                        <Column id="_IDGenColumn71"><Text id="_IDGenText122" text="Project" /></Column>
+                        <Column id="_IDGenColumn109"><Text id="_IDGenText166" text="Project ID" /></Column>
+                        <Column id="_IDGenColumn72"><Text id="_IDGenText123" text="Building" /></Column>
+                        <Column id="_IDGenColumn110"><Text id="_IDGenText167" text="Building ID" /></Column>
+                        <Column id="_IDGenColumn73"><Text id="_IDGenText124" text="Unit" /></Column>
+                        <Column id="_IDGenColumn111"><Text id="_IDGenText168" text="Unit ID" /></Column>
+                        <Column id="_IDGenColumn112"><Text id="_IDGenText169" text="Unit Type" /></Column>
+                        <Column id="_IDGenColumn113"><Text id="_IDGenText170" text="BUA" /></Column>
+                        <Column id="_IDGenColumn114"><Text id="_IDGenText171" text="Phase" /></Column>
+                        <Column id="_IDGenColumn115"><Text id="_IDGenText172" text="Price Plan Years" /></Column>
+                        <Column id="_IDGenColumn116"><Text id="_IDGenText173" text="Payment Plan ID" /></Column>
+                        <Column id="_IDGenColumn117"><Text id="_IDGenText174" text="Unit Price" /></Column>
+                        <Column id="_IDGenColumn118"><Text id="_IDGenText175" text="Plan Currency" /></Column>
+                        <Column id="_IDGenColumn119"><Text id="_IDGenText176" text="Request Type" /></Column>
+                        <Column id="_IDGenColumn120"><Text id="_IDGenText177" text="Reason" /></Column>
+                        <Column id="_IDGenColumn121"><Text id="_IDGenText178" text="Cancellation Date" /></Column>
+                        <Column id="_IDGenColumn122"><Text id="_IDGenText179" text="Cancellation Status" /></Column>
+                        <Column id="_IDGenColumn123"><Text id="_IDGenText180" text="Rejection Reason" /></Column>
+                        <Column id="_IDGenColumn124"><Text id="_IDGenText181" text="Cancellation Fees" /></Column>
+                        <Column id="_IDGenColumn76"><Text id="_IDGenText127" text="Actions" /></Column>
                     </columns>
-
                     <items>
                         <ColumnListItem id="_IDGenColumnListItem7">
                             <cells>
-                                <Text id="_IDGenText132" text="{reservations>reservationId}"/>
-                                <Text id="_IDGenText133" text="{reservations>companyCodeId}"/>
-                                <Text id="_IDGenText134" text="{reservations>oldReservationId}"/>
-                                <Text id="_IDGenText135" text="{reservations>eoiId}"/>
-                                <Text id="_IDGenText136" text="{reservations>description}"/>
-                                <Text id="_IDGenText137" text="{reservations>salesType}"/>
-                                <Text id="_IDGenText138" text="{reservations>validFrom}"/>
-                                <Text id="_IDGenText139" text="{reservations>customerType}"/>
-                                <Text id="_IDGenText140" text="{reservations>currency}"/>
-                                <Text id="_IDGenText141" text="{reservations>afterSales}"/>
-                                <Text id="_IDGenText142" text="{reservations>status}"/>
+                                <Text id="_IDGenText128" text="{reservationId}" />
+                                <Text id="_IDGenText182" text="{companyCodeId}" />
+                                <Text id="_IDGenText183" text="{oldReservationId}" />
+                                <Text id="_IDGenText184" text="{eoiId}" />
+                                <Text id="_IDGenText185" text="{salesType}" />
+                                <Text id="_IDGenText186" text="{reservationType}" />
+                                <Text id="_IDGenText129" text="{description}" />
+                                <Text id="_IDGenText133" text="{validFrom}" />
+                                <Text id="_IDGenText134" text="{status}" />
+                                <Text id="_IDGenText187" text="{customerType}" />
+                                <Text id="_IDGenText188" text="{currency}" />
+                                <Text id="_IDGenText189" text="{afterSales}" />
+                                <Text id="_IDGenText130" text="{project/projectDescription}" />
+                                <Text id="_IDGenText190" text="{project_projectId}" />
+                                <Text id="_IDGenText131" text="{building/buildingDescription}" />
+                                <Text id="_IDGenText191" text="{building_buildingId}" />
+                                <Text id="_IDGenText132" text="{unit/unitDescription}" />
+                                <Text id="_IDGenText192" text="{unit_unitId}" />
+                                <Text id="_IDGenText193" text="{unitType}" />
+                                <Text id="_IDGenText194" text="{bua}" />
+                                <Text id="_IDGenText195" text="{phase}" />
+                                <Text id="_IDGenText196" text="{pricePlanYears}" />
+                                <Text id="_IDGenText197" text="{paymentPlan_paymentPlanId}" />
+                                <Text id="_IDGenText198" text="{unitPrice}" />
+                                <Text id="_IDGenText199" text="{planCurrency}" />
+                                <Text id="_IDGenText200" text="{requestType}" />
+                                <Text id="_IDGenText201" text="{reason}" />
+                                <Text id="_IDGenText202" text="{cancellationDate}" />
+                                <Text id="_IDGenText203" text="{cancellationStatus}" />
+                                <Text id="_IDGenText204" text="{rejectionReason}" />
+                                <Text id="_IDGenText205" text="{cancellationFees}" />
                                 <HBox id="_IDGenHBox5">
-                                    <Button id="_IDGenButton17" icon="sap-icon://information" tooltip="Details" press="onShowReservationDetails"/>
-                                    <Button id="_IDGenButton20" icon="sap-icon://edit" tooltip="Edit" press="onEditReservation"/>
-                                    <Button id="_IDGenButton25" icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDeleteReservation"/>
+                                    <Button id="_IDGenButton17" icon="sap-icon://information" tooltip="Details" press="onDetails" />
+                                    <Button id="_IDGenButton20" icon="sap-icon://edit" tooltip="Edit" press="onEditReservation" />
+                                    <Button id="_IDGenButton25" icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDelete" />
                                 </HBox>
                             </cells>
                         </ColumnListItem>
@@ -73,6 +83,4 @@
             </ScrollContainer>
         </content>
     </Page>
->
-
 </mvc:View>

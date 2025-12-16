@@ -6,11 +6,11 @@
     xmlns:l="sap.ui.layout"
     xmlns:f="sap.f"
 >
-    <Page
-        id="_IDGenPage"
+   <Page
+    id="_IDGenPage"
         title="Add / Edit Reservation"
-        showHeader="true"
-    >
+    showHeader="true"
+>
         <content>
             <VBox
                 id="_IDGenVBox3"
@@ -88,7 +88,15 @@
                             text="Reallocate"
                         />
                     </Select>
-
+                    <Label
+                        id="_IDGenLabel41"
+                        text="Reservation Type"
+                    />
+                    <Input
+                        id="_IDGenInput24"
+                        value="{local>/reservationType}"
+                        editable="false"
+                    />
                     <Label
                         id="_IDGenLabel31"
                         text="Description"
@@ -227,7 +235,15 @@
                         value="{local>/unit_unitId}"
                         editable="false"
                     />
-
+                    <Label
+                        id="_IDGenLabel44"
+                        text="Unit Type"
+                    />
+                    <Input
+                        id="_IDGenInput32"
+                        value="{local>/unitType}"
+                        editable="false"
+                    />
                     <Label
                         id="_IDGenLabel40"
                         text="BUA"
@@ -293,7 +309,8 @@
         path: 'local>/simulations'
     }"
                     >
-                      <core:Item id="_IDGenItem8"
+                        <core:Item
+                            id="_IDGenItem8"
                             key=" "
                             text="  "
                         />

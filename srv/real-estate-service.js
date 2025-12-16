@@ -445,7 +445,7 @@ module.exports = cds.service.impl(async function () {
 
 
   // UPDATE
-this.on('UPDATE', PaymentPlans, async (req) => {
+  this.on('UPDATE', PaymentPlans, async (req) => {
     console.log("UPDATE PaymentPlan called with:", req.data);
     const { paymentPlanId } = req.params[0];
     const db = cds.transaction(req);
@@ -867,7 +867,7 @@ this.on('UPDATE', PaymentPlans, async (req) => {
             db.run(
               INSERT.into(ReservationPartners).entries({
                 ...p,
-                reservation_ID: reservationData.reservationId,
+               reservation_reservationId: reservationData.reservationId,
               })
             )
           )
@@ -878,87 +878,92 @@ this.on('UPDATE', PaymentPlans, async (req) => {
       if (conditions?.length) {
         await Promise.all(
           conditions.map((c) =>
-            db.run(
+             db.run(
               INSERT.into(ReservationConditions).entries({
-                ...c,
-                reservation_ID: reservationData.reservationId,
+                ID: c.ID || uuidv4(),
+                installment: c.installment,
+                dueDate: c.dueDate,
+                amount: c.amount,
+                maintenance: c.maintenance,
+                reservation_reservationId: reservationData.reservationId
               })
             )
+
           )
         );
       }
 
-      // Insert payments
-      if (payments?.length) {
-        await Promise.all(
-          payments.map((pay) =>
-            db.run(
-              INSERT.into(ReservationPayments).entries({
-                ...pay,
-                reservation_ID: reservationData.reservationId,
-              })
-            )
-          )
-        );
-      }
+// Insert payments
+if (payments?.length) {
+  await Promise.all(
+    payments.map((pay) =>
+      db.run(
+        INSERT.into(ReservationPayments).entries({
+          ...pay,
+         reservation_reservationId: reservationData.reservationId,
+        })
+      )
+    )
+  );
+}
 
-      console.log("✅ Reservation created successfully:", reservationData.reservationId);
-      return reservationData;
+console.log("✅ Reservation created successfully:", reservationData.reservationId);
+return reservationData;
 
     } catch (error) {
-      console.error("❌ Error creating Reservation:", error);
-      req.error(500, "Error creating Reservation: " + error.message);
-    }
+  console.error("❌ Error creating Reservation:", error);
+  req.error(500, "Error creating Reservation: " + error.message);
+}
   });
 
 
 
-  /** ----------------------------------------------------------------
-   *  UPDATE Reservation
-   * ---------------------------------------------------------------- */
-  this.on("UPDATE", Reservations, async (req) => {
-    console.log("UPDATE Reservation called:", req.data);
-    const { reservationId } = req.params[0];
-    const db = cds.transaction(req);
+/** ----------------------------------------------------------------
+ *  UPDATE Reservation
+ * ---------------------------------------------------------------- */
+this.on("UPDATE", Reservations, async (req) => {
+  console.log("UPDATE Reservation called:", req.data);
+  const { reservationId } = req.params[0];
+  const db = cds.transaction(req);
 
-    try {
-      await validateReferencesForReservations(req, db);
+  try {
+    await validateReferencesForReservations(req, db);
 
-      await db.run(UPDATE(Reservations).set(req.data).where({ reservationId }));
-      const updated = await db.run(SELECT.one.from(Reservations).where({ reservationId }));
-      await db.commit();
-      console.log("✅ Reservation updated:", reservationId);
-      return updated;
+    await db.run(UPDATE(Reservations).set(req.data).where({ reservationId }));
+    const updated = await db.run(SELECT.one.from(Reservations).where({ reservationId }));
+    await db.commit();
+    console.log("✅ Reservation updated:", reservationId);
+    return updated;
 
-    } catch (error) {
-      await db.rollback();
-      console.error("❌ Error updating Reservation:", error);
-      req.error(500, "Error updating Reservation: " + error.message);
-    }
-  });
+  } catch (error) {
+    await db.rollback();
+    console.error("❌ Error updating Reservation:", error);
+    req.error(500, "Error updating Reservation: " + error.message);
+  }
+});
 
-  /** ----------------------------------------------------------------
-   *  DELETE Reservation
-   * ---------------------------------------------------------------- */
-  this.on("DELETE", Reservations, async (req) => {
-    console.log("DELETE Reservation called for:", req.data.reservationId);
-    const db = cds.transaction(req);
+/** ----------------------------------------------------------------
+ *  DELETE Reservation
+ * ---------------------------------------------------------------- */
+this.on("DELETE", Reservations, async (req) => {
+  console.log("DELETE Reservation called for:", req.data.reservationId);
+  const db = cds.transaction(req);
 
-    try {
-      const { reservationId } = req.data;
-      await db.run(DELETE.from(Reservations).where({ reservationId }));
-      await db.commit();
-      console.log("🗑️ Reservation deleted:", reservationId);
-      return { message: `Reservation ${reservationId} deleted.` };
-    } catch (error) {
-      await db.rollback();
-      console.error("❌ Error deleting Reservation:", error);
-      req.error(500, "Error deleting Reservation: " + error.message);
-    }
-  });
+  try {
+    const { reservationId } = req.data;
+    await db.run(DELETE.from(Reservations).where({ reservationId }));
+    await db.commit();
+    console.log("🗑️ Reservation deleted:", reservationId);
+    return { message: `Reservation ${reservationId} deleted.` };
+  } catch (error) {
+    await db.rollback();
+    console.error("❌ Error deleting Reservation:", error);
+    req.error(500, "Error deleting Reservation: " + error.message);
+  }
+});
 
-  /*---------------------Simulations-----------------------*/
-  // 🔹 Add handlers for PaymentPlanSimulations
+/*---------------------Simulations-----------------------*/
+// 🔹 Add handlers for PaymentPlanSimulations
 this.on('READ', PaymentPlanSimulations, async req => cds.transaction(req).run(req.query));
 
 this.on('CREATE', PaymentPlanSimulations, async req => {
@@ -1016,19 +1021,19 @@ this.on('CREATE', PaymentPlanSimulations, async req => {
 
 ///////////////////////////RE-CONTRACTS/////////////////////////
 
- // ------------------- READ / GET -------------------
-    this.on('READ', RealEstateContracts, async (req) => {
-        try {
-            // Connect to the S/4 API via BTP destination
-            const s4Service = await cds.connect.to('BTP_REAL_ESTATE_RE_CONTRACT');
-            
-            // Forward the request/query to S/4
-            return s4Service.tx(req).run(req.query);
+// ------------------- READ / GET -------------------
+this.on('READ', RealEstateContracts, async (req) => {
+  try {
+    // Connect to the S/4 API via BTP destination
+    const s4Service = await cds.connect.to('BTP_REAL_ESTATE_RE_CONTRACT');
 
-        } catch (error) {
-            console.error("Error fetching Real Estate Contracts:", error);
-            req.reject(500, "Failed to fetch Real Estate Contracts");
-        }
-    });
+    // Forward the request/query to S/4
+    return s4Service.tx(req).run(req.query);
+
+  } catch (error) {
+    console.error("Error fetching Real Estate Contracts:", error);
+    req.reject(500, "Failed to fetch Real Estate Contracts");
+  }
+});
 
 });
