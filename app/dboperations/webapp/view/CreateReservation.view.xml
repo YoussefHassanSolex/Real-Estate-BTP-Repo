@@ -8,7 +8,7 @@
 >
    <Page
     id="_IDGenPage"
-        title="Add / Edit Reservation"
+        title="{local>/title}"
     showHeader="true"
 >
         <content>
@@ -305,17 +305,9 @@
                         width="100%"
                         selectedKey="{local>/selectedPricePlanYears}"
                         change=".onPricePlanYearsChange"
-                        items="{
-        path: 'local>/simulations'
-    }"
+                        items="{path: 'local>/simulations'}"
                     >
-                        <core:Item
-                            id="_IDGenItem8"
-                            key=" "
-                            text="  "
-                        />
-                        <core:Item
-                            id="_IDGenItem7"
+                        <core:Item id="_IDGenItem7"
                             key="{local>pricePlanYears}"
                             text="{local>pricePlanYears} Years"
                         />
@@ -342,14 +334,14 @@
                         editable="false"
                     />
 
-                    <Label
+                    <!-- <Label
                         id="_IDGenLabel46"
                         text="Plan Currency"
                     />
                     <Input
                         id="_IDGenInput36"
                         value="{local>/planCurrency}"
-                    />
+                    /> -->
 
                     <!-- Cancellation -->
                     <Label
@@ -720,8 +712,8 @@
                         <ColumnListItem id="_IDGenColumnListItem10">
                             <cells>
                                 <Text
-                                    id="_IDGenTextConditionType"
-                                    text="{local>conditionType}"
+                                    id="_IDGenTextInstallment"
+                                    text="{local>installment}"
                                 />
                                 <Text
                                     id="_IDGenTextDueDate"

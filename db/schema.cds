@@ -265,7 +265,7 @@ entity Reservations : managed {
         salesType          : String(20);
         description        : String(100);
         validFrom          : Date;
-        status             : String(1);
+        status             : String(4);
         customerType       : String(20);
         currency           : String(3);
         afterSales         : String(20);
@@ -323,7 +323,8 @@ entity ReservationConditions : managed {
 
     reservation     : Association to Reservations;
 
-    installment     : Integer;
+    installment     : String(40);
+    conditionType   : String(40);
     dueDate         : Date;
     amount          : Decimal(15,2);
     maintenance     : Decimal(15,2);

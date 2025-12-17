@@ -41,6 +41,21 @@ sap.ui.define([
                 .then(data => {
                     console.log("Fetched reservations data:", data);
                     if (data.value) {
+                        // Ensure installment displays the correct type based on pattern
+                        data.value.forEach(reservation => {
+                            if (reservation.conditions) {
+                                reservation.conditions.forEach((condition, index) => {
+                                    const mod = index % 4;
+                                    if (mod === 0 || mod === 1) {
+                                        condition.installment = "Down Payment";
+                                    } else if (mod === 2) {
+                                        condition.installment = "Maintenance";
+                                    } else {
+                                        condition.installment = "Installement";
+                                    }
+                                });
+                            }
+                        });
                         oModel.setData({ Reservations: data.value });
                         this.getView().byId("reservationsTable").setModel(oModel);
                     } else {
@@ -112,15 +127,36 @@ sap.ui.define([
                                     columnsL: 2,
                                     content: [
                                         new Label({ text: "Reservation ID" }), new sap.m.Text({ text: "{/reservationId}" }),
-                                        new Label({ text: "Description" }), new sap.m.Text({ text: "{/description}" }),
                                         new Label({ text: "Company Code ID" }), new sap.m.Text({ text: "{/companyCodeId}" }),
+                                        new Label({ text: "Old Reservation ID" }), new sap.m.Text({ text: "{/oldReservationId}" }),
+                                        new Label({ text: "EOI ID" }), new sap.m.Text({ text: "{/eoiId}" }),
+                                        new Label({ text: "Sales Type" }), new sap.m.Text({ text: "{/salesType}" }),
+                                        new Label({ text: "Reservation Type" }), new sap.m.Text({ text: "{/reservationType}" }),
+                                        new Label({ text: "Description" }), new sap.m.Text({ text: "{/description}" }),
                                         new Label({ text: "Valid From" }), new sap.m.Text({ text: "{/validFrom}" }),
                                         new Label({ text: "Status" }), new sap.m.Text({ text: "{/status}" }),
+                                        new Label({ text: "Customer Type" }), new sap.m.Text({ text: "{/customerType}" }),
+                                        new Label({ text: "Currency" }), new sap.m.Text({ text: "{/currency}" }),
+                                        new Label({ text: "After Sales" }), new sap.m.Text({ text: "{/afterSales}" }),
                                         new Label({ text: "Project" }), new sap.m.Text({ text: "{/project/projectDescription}" }),
+                                        new Label({ text: "Project ID" }), new sap.m.Text({ text: "{/project_projectId}" }),
                                         new Label({ text: "Building" }), new sap.m.Text({ text: "{/building/buildingDescription}" }),
+                                        new Label({ text: "Building ID" }), new sap.m.Text({ text: "{/building_buildingId}" }),
                                         new Label({ text: "Unit" }), new sap.m.Text({ text: "{/unit/unitDescription}" }),
+                                        new Label({ text: "Unit ID" }), new sap.m.Text({ text: "{/unit_unitId}" }),
+                                        new Label({ text: "Unit Type" }), new sap.m.Text({ text: "{/unitType}" }),
+                                        new Label({ text: "BUA" }), new sap.m.Text({ text: "{/bua}" }),
+                                        new Label({ text: "Phase" }), new sap.m.Text({ text: "{/phase}" }),
+                                        new Label({ text: "Price Plan Years" }), new sap.m.Text({ text: "{/pricePlanYears}" }),
+                                        new Label({ text: "Payment Plan ID" }), new sap.m.Text({ text: "{/paymentPlan_paymentPlanId}" }),
                                         new Label({ text: "Unit Price" }), new sap.m.Text({ text: "{/unitPrice}" }),
-                                        new Label({ text: "Currency" }), new sap.m.Text({ text: "{/currency}" })
+                                        // new Label({ text: "Plan Currency" }), new sap.m.Text({ text: "{/planCurrency}" }),
+                                        new Label({ text: "Request Type" }), new sap.m.Text({ text: "{/requestType}" }),
+                                        new Label({ text: "Reason" }), new sap.m.Text({ text: "{/reason}" }),
+                                        new Label({ text: "Cancellation Date" }), new sap.m.Text({ text: "{/cancellationDate}" }),
+                                        new Label({ text: "Cancellation Status" }), new sap.m.Text({ text: "{/cancellationStatus}" }),
+                                        new Label({ text: "Rejection Reason" }), new sap.m.Text({ text: "{/rejectionReason}" }),
+                                        new Label({ text: "Cancellation Fees" }), new sap.m.Text({ text: "{/cancellationFees}" })
                                     ]
                                 })
                             }),
@@ -128,7 +164,6 @@ sap.ui.define([
                                 text: "Partners",
                                 content: new sap.m.Table({
                                     columns: [
-                                        new sap.m.Column({ header: new sap.m.Text({ text: "ID" }), width: "10%" }),
                                         new sap.m.Column({ header: new sap.m.Text({ text: "Customer Code" }), width: "15%" }),
                                         new sap.m.Column({ header: new sap.m.Text({ text: "Customer Name" }), width: "20%" }),
                                         new sap.m.Column({ header: new sap.m.Text({ text: "Customer Address" }), width: "30%" }),
@@ -138,7 +173,6 @@ sap.ui.define([
                                     path: "/partners",
                                     template: new sap.m.ColumnListItem({
                                         cells: [
-                                            new sap.m.Text({ text: "{ID}" }),
                                             new sap.m.Text({ text: "{customerCode}" }),
                                             new sap.m.Text({ text: "{customerName}" }),
                                             new sap.m.Text({ text: "{customerAddress}" }),
@@ -151,17 +185,15 @@ sap.ui.define([
                                 text: "Conditions",
                                 content: new sap.m.Table({
                                     columns: [
-                                        new sap.m.Column({ header: new sap.m.Text({ text: "ID" }), width: "10%" }),
-                                        new sap.m.Column({ header: new sap.m.Text({ text: "Installment" }), width: "15%" }),
-                                        new sap.m.Column({ header: new sap.m.Text({ text: "Due Date" }), width: "15%" }),
-                                        new sap.m.Column({ header: new sap.m.Text({ text: "Amount" }), width: "15%" }),
-                                        new sap.m.Column({ header: new sap.m.Text({ text: "Maintenance" }), width: "15%" })
+                                        new sap.m.Column({ header: new sap.m.Text({ text: "Installment" }), width: "20%" }),
+                                        new sap.m.Column({ header: new sap.m.Text({ text: "Due Date" }), width: "20%" }),
+                                        new sap.m.Column({ header: new sap.m.Text({ text: "Amount" }), width: "20%" }),
+                                        new sap.m.Column({ header: new sap.m.Text({ text: "Maintenance" }), width: "20%" })
                                     ]
                                 }).bindItems({
                                     path: "/conditions",
                                     template: new sap.m.ColumnListItem({
                                         cells: [
-                                            new sap.m.Text({ text: "{ID}" }),
                                             new sap.m.Text({ text: "{installment}" }),
                                             new sap.m.Text({ text: "{dueDate}" }),
                                             new sap.m.Text({ text: "{amount}" }),
@@ -174,7 +206,6 @@ sap.ui.define([
                                 text: "Payments",
                                 content: new sap.m.Table({
                                     columns: [
-                                        new sap.m.Column({ header: new sap.m.Text({ text: "ID" }), width: "8%" }),
                                         new sap.m.Column({ header: new sap.m.Text({ text: "Receipt Type" }), width: "10%" }),
                                         new sap.m.Column({ header: new sap.m.Text({ text: "Receipt Status" }), width: "10%" }),
                                         new sap.m.Column({ header: new sap.m.Text({ text: "Payment Method" }), width: "12%" }),
@@ -195,7 +226,6 @@ sap.ui.define([
                                     path: "/payments",
                                     template: new sap.m.ColumnListItem({
                                         cells: [
-                                            new sap.m.Text({ text: "{ID}" }),
                                             new sap.m.Text({ text: "{receiptType}" }),
                                             new sap.m.Text({ text: "{receiptStatus}" }),
                                             new sap.m.Text({ text: "{paymentMethod}" }),
@@ -209,7 +239,7 @@ sap.ui.define([
                                             new sap.m.Text({ text: "{customerBankAccount}" }),
                                             new sap.m.Text({ text: "{branch}" }),
                                             new sap.m.Text({ text: "{collectedAmount}" }),
-                                            new sap.m.Text({ text: "{arValidated}" }),
+                                            new sap.m.CheckBox({ selected: "{arValidated}", editable: false }),
                                             new sap.m.Text({ text: "{rejectionReason}" })
                                         ]
                                     })
@@ -245,7 +275,21 @@ sap.ui.define([
                 })
                 .then(data => {
                     console.log("Fetched reservation for edit:", data);
-                    this._openEditDialog(data);
+                    // Set pricePlanYears from paymentPlan.planYears if available and not 0
+                    if (data.paymentPlan && data.paymentPlan.planYears !== undefined && data.paymentPlan.planYears !== 0) {
+                        data.pricePlanYears = data.paymentPlan.planYears;
+                    } else {
+                        data.pricePlanYears = null;  // Set to null so Number input shows empty and it's not sent if unchanged
+                    }
+                    // Navigate to CreateReservation screen with edit mode
+                    var oReservationData = {
+                        ...data,
+                        mode: "edit"  // Indicate edit mode
+                    };
+                    var sData = encodeURIComponent(JSON.stringify(oReservationData));
+                    sap.ui.core.UIComponent.getRouterFor(this).navTo("CreateReservation", {
+                        reservationData: sData
+                    });
                 })
                 .catch(err => {
                     console.error("Error fetching reservation for edit:", err);
@@ -324,12 +368,12 @@ sap.ui.define([
                                         new sap.m.Label({ text: "Phase" }),
                                         new sap.m.Input({ value: "{/phase}", editable: false }),
                                         new sap.m.Label({ text: "Price Plan Years" }),
-                                        new sap.m.Input({ value: "{/pricePlanYears}", editable: false }),
+                                        new sap.m.Input({ value: "{/pricePlanYears}", type: "Number" }),
                                         new sap.m.Label({ text: "Payment Plan ID" }),
                                         new sap.m.Input({ value: "{/paymentPlan_paymentPlanId}", editable: false }),
                                         new sap.m.Label({ text: "Unit Price" }),
                                         new sap.m.Input({ value: "{/unitPrice}", editable: false }),
-                                        new sap.m.Label({ text: "Plan Currency" }),
+                                        // new sap.m.Label({ text: "Plan Currency" }),
                                         new sap.m.Input({ value: "{/planCurrency}" }),
                                         new sap.m.Label({ text: "Request Type" }),
                                         new sap.m.Input({ value: "{/requestType}" }),
@@ -432,17 +476,15 @@ sap.ui.define([
                                                 items: "{/conditions}",
                                                 width: "auto",
                                                 columns: [
-                                                    new sap.m.Column({ header: new sap.m.Text({ text: "ID" }), width: "10%" }),
-                                                    new sap.m.Column({ header: new sap.m.Text({ text: "Installment" }), width: "15%" }),
-                                                    new sap.m.Column({ header: new sap.m.Text({ text: "Due Date" }), width: "15%" }),
-                                                    new sap.m.Column({ header: new sap.m.Text({ text: "Amount" }), width: "15%" }),
-                                                    new sap.m.Column({ header: new sap.m.Text({ text: "Maintenance" }), width: "15%" })
+                                                    new sap.m.Column({ header: new sap.m.Text({ text: "Installment" }), width: "20%" }),
+                                                    new sap.m.Column({ header: new sap.m.Text({ text: "Due Date" }), width: "20%" }),
+                                                    new sap.m.Column({ header: new sap.m.Text({ text: "Amount" }), width: "20%" }),
+                                                    new sap.m.Column({ header: new sap.m.Text({ text: "Maintenance" }), width: "20%" })
                                                 ],
                                                 items: {
                                                     template: new sap.m.ColumnListItem({
                                                         cells: [
-                                                            new sap.m.Input({ value: "{ID}", editable: false }),
-                                                            new sap.m.Input({ value: "{installment}", type: "Number" }),
+                                                            new sap.m.Input({ value: "{installment}" }),
                                                             new sap.m.DatePicker({
                                                                 value: "{dueDate}",
                                                                 displayFormat: "yyyy-MM-dd",
@@ -548,6 +590,10 @@ sap.ui.define([
                             if (!oDescControl.getValue() || !oCompanyControl.getValue() || !oValidFromControl.getDateValue()) {
                                 sap.m.MessageBox.warning("Fill required fields: Description, Company Code ID, Valid From.");
                                 return;
+                            }
+                            // Remove pricePlanYears if it's 0 or null to avoid sending default value
+                            if (oData.pricePlanYears === 0 || oData.pricePlanYears === null) {
+                                delete oData.pricePlanYears;
                             }
                             // PATCH
                             fetch(`/odata/v4/real-estate/Reservations(reservationId=${oData.reservationId})`, {
