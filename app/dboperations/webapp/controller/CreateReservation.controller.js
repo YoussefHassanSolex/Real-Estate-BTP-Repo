@@ -232,7 +232,6 @@ sap.ui.define([
         onSaveReservation: async function () {
             const oModel = this.getView().getModel("local");
             const oData = oModel.getData();
-            alert(oData)
             const bIsEdit = oData.mode === "edit";
 
             // For edit mode, use existing reservationId; for create, generate new one
