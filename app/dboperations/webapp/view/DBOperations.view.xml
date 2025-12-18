@@ -137,7 +137,7 @@
                                     </TileContent>
                                 </GenericTile>
 
-                                <GenericTile
+                                <!-- <GenericTile
                                     id="_IDGenGenericTile7"
                                     class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout"
                                     header="Payment Plan Simulations"
@@ -152,7 +152,7 @@
                                             src="sap-icon://simulate"
                                         />
                                     </TileContent>
-                                </GenericTile>
+                                </GenericTile> -->
                             </HBox>
                         </ScrollContainer>
                     </IconTabFilter>

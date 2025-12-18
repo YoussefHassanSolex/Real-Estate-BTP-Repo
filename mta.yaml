@@ -66,23 +66,10 @@ modules:
     build-result: resources
     requires:
     - artifacts:
-      - realestateui.zip
-      name: realestateui
-      target-path: resources/
-    - artifacts:
       - dboperations.zip
       name: dboperations
       target-path: resources/
-- name: realestateui
-  type: html5
-  path: app/realestate-ui
-  build-parameters:
-    build-result: dist
-    builder: custom
-    commands:
-    - npm install
-    - npm run build:cf
-    supported-platforms: []
+
 - name: dboperations
   type: html5
   path: app/dboperations
@@ -104,7 +91,7 @@ resources:
   parameters:
     config:
       tenant-mode: dedicated
-      xsappname: RealEstate-${org}-${space}
+      xsappname: RealEstate
     path: ./xs-security.json
     service: xsuaa
     service-plan: application

@@ -1,6 +1,7 @@
 const cds = require('@sap/cds');
 const { ref } = cds.ql;
 const { v4: uuidv4 } = require('uuid');
+const axios = require('axios');
 
 module.exports = cds.service.impl(async function () {
 
@@ -26,9 +27,17 @@ module.exports = cds.service.impl(async function () {
       Frequencies,
       PaymentPlanSimulations,
       PaymentPlanSimulationSchedules,
-      RealEstateContracts
+      RealEstateContracts,
+      CompanyCodes
     } = this.entities;
 
+  /*-------------------------Company Codes-----------------------*/
+//Read
+this.on('READ',CompanyCodes, async (req) =>{
+    console.log('READ Company Codes called');
+    const db = cds.transaction(req);
+    return await db.run(req.query);
+});
 
   /*-----------------------Buildings---------------------------*/
   // READ
@@ -867,7 +876,7 @@ module.exports = cds.service.impl(async function () {
             db.run(
               INSERT.into(ReservationPartners).entries({
                 ...p,
-               reservation_reservationId: reservationData.reservationId,
+                reservation_reservationId: reservationData.reservationId,
               })
             )
           )
@@ -878,7 +887,7 @@ module.exports = cds.service.impl(async function () {
       if (conditions?.length) {
         await Promise.all(
           conditions.map((c) =>
-             db.run(
+            db.run(
               INSERT.into(ReservationConditions).entries({
                 ID: c.ID || uuidv4(),
                 installment: c.installment,
@@ -893,147 +902,160 @@ module.exports = cds.service.impl(async function () {
         );
       }
 
-// Insert payments
-if (payments?.length) {
-  await Promise.all(
-    payments.map((pay) =>
-      db.run(
-        INSERT.into(ReservationPayments).entries({
-          ...pay,
-         reservation_reservationId: reservationData.reservationId,
-        })
-      )
-    )
-  );
-}
+      // Insert payments
+      if (payments?.length) {
+        await Promise.all(
+          payments.map((pay) =>
+            db.run(
+              INSERT.into(ReservationPayments).entries({
+                ...pay,
+                reservation_reservationId: reservationData.reservationId,
+              })
+            )
+          )
+        );
+      }
 
-console.log("✅ Reservation created successfully:", reservationData.reservationId);
-return reservationData;
+      console.log("✅ Reservation created successfully:", reservationData.reservationId);
+      return reservationData;
 
     } catch (error) {
-  console.error("❌ Error creating Reservation:", error);
-  req.error(500, "Error creating Reservation: " + error.message);
-}
+      console.error("❌ Error creating Reservation:", error);
+      req.error(500, "Error creating Reservation: " + error.message);
+    }
   });
 
 
 
-/** ----------------------------------------------------------------
- *  UPDATE Reservation
- * ---------------------------------------------------------------- */
-this.on("UPDATE", Reservations, async (req) => {
-  console.log("UPDATE Reservation called:", req.data);
-  const { reservationId } = req.params[0];
-  const db = cds.transaction(req);
+  /** ----------------------------------------------------------------
+   *  UPDATE Reservation
+   * ---------------------------------------------------------------- */
+  this.on("UPDATE", Reservations, async (req) => {
+    console.log("UPDATE Reservation called:", req.data);
+    const { reservationId } = req.params[0];
+    const db = cds.transaction(req);
 
-  try {
-    await validateReferencesForReservations(req, db);
+    try {
+      await validateReferencesForReservations(req, db);
 
-    await db.run(UPDATE(Reservations).set(req.data).where({ reservationId }));
-    const updated = await db.run(SELECT.one.from(Reservations).where({ reservationId }));
-    await db.commit();
-    console.log("✅ Reservation updated:", reservationId);
-    return updated;
+      await db.run(UPDATE(Reservations).set(req.data).where({ reservationId }));
+      const updated = await db.run(SELECT.one.from(Reservations).where({ reservationId }));
+      await db.commit();
+      console.log("✅ Reservation updated:", reservationId);
+      return updated;
 
-  } catch (error) {
-    await db.rollback();
-    console.error("❌ Error updating Reservation:", error);
-    req.error(500, "Error updating Reservation: " + error.message);
-  }
-});
+    } catch (error) {
+      await db.rollback();
+      console.error("❌ Error updating Reservation:", error);
+      req.error(500, "Error updating Reservation: " + error.message);
+    }
+  });
 
-/** ----------------------------------------------------------------
- *  DELETE Reservation
- * ---------------------------------------------------------------- */
-this.on("DELETE", Reservations, async (req) => {
-  console.log("DELETE Reservation called for:", req.data.reservationId);
-  const db = cds.transaction(req);
+  /** ----------------------------------------------------------------
+   *  DELETE Reservation
+   * ---------------------------------------------------------------- */
+  this.on("DELETE", Reservations, async (req) => {
+    console.log("DELETE Reservation called for:", req.data.reservationId);
+    const db = cds.transaction(req);
 
-  try {
-    const { reservationId } = req.data;
-    await db.run(DELETE.from(Reservations).where({ reservationId }));
-    await db.commit();
-    console.log("🗑️ Reservation deleted:", reservationId);
-    return { message: `Reservation ${reservationId} deleted.` };
-  } catch (error) {
-    await db.rollback();
-    console.error("❌ Error deleting Reservation:", error);
-    req.error(500, "Error deleting Reservation: " + error.message);
-  }
-});
+    try {
+      const { reservationId } = req.data;
+      await db.run(DELETE.from(Reservations).where({ reservationId }));
+      await db.commit();
+      console.log("🗑️ Reservation deleted:", reservationId);
+      return { message: `Reservation ${reservationId} deleted.` };
+    } catch (error) {
+      await db.rollback();
+      console.error("❌ Error deleting Reservation:", error);
+      req.error(500, "Error deleting Reservation: " + error.message);
+    }
+  });
 
-/*---------------------Simulations-----------------------*/
-// 🔹 Add handlers for PaymentPlanSimulations
-this.on('READ', PaymentPlanSimulations, async req => cds.transaction(req).run(req.query));
+  /*---------------------Simulations-----------------------*/
+  // 🔹 Add handlers for PaymentPlanSimulations
+  this.on('READ', PaymentPlanSimulations, async req => cds.transaction(req).run(req.query));
 
-this.on('CREATE', PaymentPlanSimulations, async req => {
-  const data = req.data;
+  this.on('CREATE', PaymentPlanSimulations, async req => {
+    const data = req.data;
 
-  // For deep inserts (e.g., via /Units('U0001')/simulations), get unitId from req.params
-  // req.params[0] contains the parent entity keys (e.g., { unitId: 'U0001' })
-  const unitId = req.params[0]?.unitId;
+    // For deep inserts (e.g., via /Units('U0001')/simulations), get unitId from req.params
+    // req.params[0] contains the parent entity keys (e.g., { unitId: 'U0001' })
+    const unitId = req.params[0]?.unitId;
 
-  // If unitId is not available from params (e.g., direct insert), fall back to data.unitId
-  const effectiveUnitId = unitId || data.unitId;
+    // If unitId is not available from params (e.g., direct insert), fall back to data.unitId
+    const effectiveUnitId = unitId || data.unitId;
 
-  if (!effectiveUnitId) {
-    req.reject(400, 'Unit ID is required for creating a simulation.');
-    return;
-  }
+    if (!effectiveUnitId) {
+      req.reject(400, 'Unit ID is required for creating a simulation.');
+      return;
+    }
 
-  // Transform unitId into the unit association only if unitId was provided in data (for direct inserts)
-  if (data.unitId && !unitId) {  // Only if not a deep insert
-    data.unit = { unitId: data.unitId };
-    delete data.unitId;  // Remove the direct field to avoid insertion errors
-  }
+    // Transform unitId into the unit association only if unitId was provided in data (for direct inserts)
+    if (data.unitId && !unitId) {  // Only if not a deep insert
+      data.unit = { unitId: data.unitId };
+      delete data.unitId;  // Remove the direct field to avoid insertion errors
+    }
 
-  // Check for existing simulation with the same unit and pricePlanYears
-  // Use the foreign key field name 'unit_unitId' as seen in the response data
-  const existingSimulation = await cds.transaction(req).run(
-    SELECT.from(PaymentPlanSimulations)
-      .where({
-        unit_unitId: effectiveUnitId,
-        pricePlanYears: data.pricePlanYears
-      })
-  );
+    // Check for existing simulation with the same unit and pricePlanYears
+    // Use the foreign key field name 'unit_unitId' as seen in the response data
+    const existingSimulation = await cds.transaction(req).run(
+      SELECT.from(PaymentPlanSimulations)
+        .where({
+          unit_unitId: effectiveUnitId,
+          pricePlanYears: data.pricePlanYears
+        })
+    );
 
-  if (existingSimulation.length > 0) {
-    req.reject(400, `A simulation with pricePlanYears ${data.pricePlanYears} already exists for this unit.`);
-    return;  // Exit early to prevent insertion
-  }
+    if (existingSimulation.length > 0) {
+      req.reject(400, `A simulation with pricePlanYears ${data.pricePlanYears} already exists for this unit.`);
+      return;  // Exit early to prevent insertion
+    }
 
-  // Handle deep insert for schedule (ensure only required fields are included)
-  if (data.schedule) {
-    data.schedule = data.schedule.map(s => ({
-      conditionType: s.conditionType,
-      dueDate: s.dueDate,
-      amount: s.amount,
-      maintenance: s.maintenance
-    }));
-  }
+    // Handle deep insert for schedule (ensure only required fields are included)
+    if (data.schedule) {
+      data.schedule = data.schedule.map(s => ({
+        conditionType: s.conditionType,
+        dueDate: s.dueDate,
+        amount: s.amount,
+        maintenance: s.maintenance
+      }));
+    }
 
-  return await cds.transaction(req).run(
-    INSERT.into(PaymentPlanSimulations).entries(data)
-  );
-});
+    return await cds.transaction(req).run(
+      INSERT.into(PaymentPlanSimulations).entries(data)
+    );
+  });
 
 
 
-///////////////////////////RE-CONTRACTS/////////////////////////
+  /////////////////////////// CONTRACTS /////////////////////////
 
-// ------------------- READ / GET -------------------
+ async function fetchRealEstateContracts(limit = 10) {
+  // Hardcoded Basic Auth credentials (use env vars in production!)
+  const credentials = 'BTP_RE_CONTRACT:z834%S6f}tL&e2V(@rKN&xhz4XgLy$VAg}C9QL4[';
+  const encoded = Buffer.from(credentials, 'utf8').toString('base64');
+
+  const url = `https://my405604-api.s4hana.cloud.sap/sap/opu/odata4/sap/api_real_estate_contract/srvd_a2x/sap/api_recontract/0001/A_REContract?$top=${limit}`;
+
+  const response = await axios.get(url, {
+    headers: {
+      Authorization: `Basic ${encoded}`,
+      Accept: 'application/json'
+    }
+  });
+
+  return response.data.value; // Return array of contracts
+}
 this.on('READ', RealEstateContracts, async (req) => {
   try {
-    // Connect to the S/4 API via BTP destination
-    const s4Service = await cds.connect.to('BTP_REAL_ESTATE_RE_CONTRACT');
-
-    // Forward the request/query to S/4
-    return s4Service.tx(req).run(req.query);
-
-  } catch (error) {
-    console.error("Error fetching Real Estate Contracts:", error);
-    req.reject(500, "Failed to fetch Real Estate Contracts");
+    const contracts = await fetchRealEstateContracts(10); // adjust limit
+    return contracts;
+  } catch (err) {
+    console.error('Failed to fetch Real Estate Contracts', err.message);
+    req.reject(500, 'Failed to fetch Real Estate Contracts');
   }
 });
+
+
 
 });

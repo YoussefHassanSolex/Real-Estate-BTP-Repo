@@ -6,8 +6,10 @@ sap.ui.define([
     "sap/m/Button",
     "sap/m/Label",
     "sap/m/VBox",
-    "sap/ui/model/json/JSONModel"
-], function (Controller, MessageBox, Dialog, Input, Button, Label, VBox, JSONModel) {
+    "sap/ui/model/json/JSONModel",
+    "sap/m/ComboBox",
+    "sap/ui/core/Item"
+], function (Controller, MessageBox, Dialog, Input, Button, Label, VBox, JSONModel, ComboBox, Item) {
     "use strict";
 
     return Controller.extend("dboperations.controller.Projects", {
@@ -21,6 +23,12 @@ sap.ui.define([
             });
             this.getView().setModel(oModel, "view");
 
+            // For auto-generating projectId
+            this._projectIdCounter = parseInt(localStorage.getItem("projectIdCounter")) || 0;
+
+            // For auto-generating buildingId
+            this._buildingIdCounter = parseInt(localStorage.getItem("buildingIdCounter")) || 0;
+
             // Fetch data from CAP OData service
             var oModel = new JSONModel();
             fetch("/odata/v4/real-estate/Projects")
@@ -32,6 +40,9 @@ sap.ui.define([
                 .catch(err => {
                     console.error("Error fetching projects", err);
                 });
+
+            // Load company codes list
+            this._loadCompanyCodesList();
         },
 
         _onRouteMatched: function () {
@@ -48,6 +59,27 @@ sap.ui.define([
                 })
                 .catch(err => {
                     console.error("Error fetching projects", err);
+                });
+        },
+
+        _loadCompanyCodesList: function () {
+            fetch("/odata/v4/real-estate/CompanyCodes")
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("HTTP error! status: " + response.status);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log("Fetched company codes data:", data);
+                    var oModel = new sap.ui.model.json.JSONModel();
+                    oModel.setData({ companyCodesList: data.value });
+                    this.getView().setModel(oModel, "companyCodes");
+                    console.log("Company codes model set:", this.getView().getModel("companyCodes").getData());
+                })
+                .catch(err => {
+                    console.error("Error fetching company codes", err);
+                    sap.m.MessageBox.error("Failed to load company codes: " + err.message);
                 });
         },
 
@@ -73,12 +105,6 @@ sap.ui.define([
                     content: new sap.ui.layout.form.SimpleForm({
                         editable: true,
                         content: [
-                            new sap.m.Label({ text: "Project ID", required: true }),
-                            new sap.m.Input("projectIdInput", {
-                                value: "{/projectId}",
-                                tooltip: "Must be 8 characters or fewer" // 🧩 Tip added here
-                            }),
-
                             new sap.m.Label({ text: "Description", required: true }),
                             new sap.m.Input("projectDescInput", {
                                 value: "{/projectDescription}",
@@ -86,15 +112,29 @@ sap.ui.define([
                             }),
 
                             new sap.m.Label({ text: "Company Code", required: true }),
-                            new sap.m.Input("companyCodeInput", {
-                                value: "{/companyCodeId}",
-                                tooltip: "Must be 4 characters"
+                            new sap.m.ComboBox("companyCodeComboBox", {
+                                selectedKey: "{/companyCodeId}",
+                                selectionChange: function (oEvent) {
+                                    var oSelectedItem = oEvent.getParameter("selectedItem");
+                                    if (oSelectedItem) {
+                                        var oData = oSelectedItem.getBindingContext("companyCodes").getObject();
+                                        this._oAddDialog.getModel().setProperty("/companyCodeDescription", oData.companyCodeDescription);
+                                    }
+                                }.bind(this),
+                                items: {
+                                    path: "companyCodes>/companyCodesList",
+                                    template: new sap.ui.core.Item({
+                                        key: "{companyCodes>companyCodeId}",
+                                        text: "{companyCodes>companyCodeId} - {companyCodes>companyCodeDescription}"
+                                    })
+                                }
                             }),
 
                             new sap.m.Label({ text: "Company Code Description", required: true }),
                             new sap.m.Input("companyCodeDescInput", {
                                 value: "{/companyCodeDescription}",
-                                tooltip: "Up to 60 characters"
+                                editable: false,
+                                tooltip: "Auto-populated from Company Code selection"
                             }),
 
                             new sap.m.Label({ text: "Valid From", required: true }),
@@ -141,9 +181,8 @@ sap.ui.define([
 
                             // 🧩 Required field validation
                             var aRequiredFields = [
-                                { id: "projectIdInput", name: "Project ID" },
                                 { id: "projectDescInput", name: "Description" },
-                                { id: "companyCodeInput", name: "Company Code" },
+                                { id: "companyCodeComboBox", name: "Company Code" },
                                 { id: "companyCodeDescInput", name: "Company Code Description" },
                                 { id: "validFromInput", name: "Valid From" },
                                 { id: "validToInput", name: "Valid To" },
@@ -234,6 +273,12 @@ sap.ui.define([
 
             // 🧼 Reset data every time dialog opens
             this._resetAddDialogFields();
+
+            // Generate auto projectId
+            this._projectIdCounter++;
+            localStorage.setItem("projectIdCounter", this._projectIdCounter);
+            var sProjectId = "PRJ" + String(this._projectIdCounter).padStart(3, '0');
+            this._oAddDialog.getModel().setProperty("/projectId", sProjectId);
 
             this._oAddDialog.open();
         },
@@ -468,10 +513,30 @@ sap.ui.define([
                             new sap.m.Input("editProjectDescInput", { value: "{/projectDescription}" }),
 
                             new sap.m.Label({ text: "Company Code", required: true }),
-                            new sap.m.Input("editCompanyCodeInput", { value: "{/companyCodeId}" }),
+                            new sap.m.ComboBox("editCompanyCodeComboBox", {
+                                selectedKey: "{/companyCodeId}",
+                                selectionChange: function (oEvent) {
+                                    var oSelectedItem = oEvent.getParameter("selectedItem");
+                                    if (oSelectedItem) {
+                                        var oData = oSelectedItem.getBindingContext("companyCodes").getObject();
+                                        this._oEditDialog.getModel().setProperty("/companyCodeDescription", oData.companyCodeDescription);
+                                    }
+                                }.bind(this),
+                                items: {
+                                    path: "companyCodes>/companyCodesList",
+                                    template: new sap.ui.core.Item({
+                                        key: "{companyCodes>companyCodeId}",
+                                        text: "{companyCodes>companyCodeId} - {companyCodes>companyCodeDescription}"
+                                    })
+                                }
+                            }),
 
                             new sap.m.Label({ text: "Company Code Description", required: true }),
-                            new sap.m.Input("editCompanyCodeDescInput", { value: "{/companyCodeDescription}" }),
+                            new sap.m.Input("editCompanyCodeDescInput", {
+                                value: "{/companyCodeDescription}",
+                                editable: false,
+                                tooltip: "Auto-populated from Company Code selection"
+                            }),
 
                             new sap.m.Label({ text: "Valid From", required: true }),
                             new sap.m.DatePicker("editValidFromInput", {
@@ -515,7 +580,7 @@ sap.ui.define([
                                                         // 🧩 Validate required fields
                             var aRequiredFields = [
                                 { id: "editProjectDescInput", name: "Description" },
-                                { id: "editCompanyCodeInput", name: "Company Code" },
+                                { id: "editCompanyCodeComboBox", name: "Company Code" },
                                 { id: "editCompanyCodeDescInput", name: "Company Code Description" },
                                 { id: "editValidFromInput", name: "Valid From" },
                                 { id: "editValidToInput", name: "Valid To" },
@@ -590,6 +655,7 @@ sap.ui.define([
                 });
 
                 this.getView().addDependent(this._oEditDialog);
+                this._oEditDialog.setModel(this.getView().getModel("companyCodes"), "companyCodes");
             }
 
             this._oEditDialog.setModel(oDialogModel);
@@ -629,9 +695,6 @@ sap.ui.define([
                     content: new sap.ui.layout.form.SimpleForm({
                         editable: true,
                         content: [
-                            new sap.m.Label({ text: "Building ID", required: true }),
-                            new sap.m.Input("buildingIdInput", { value: "{/buildingId}" }),
-
                             new sap.m.Label({ text: "Building Description", required: true }),
                             new sap.m.Input("buildingDescInput", { value: "{/buildingDescription}" }),
 
@@ -690,7 +753,6 @@ sap.ui.define([
 
                             // 🔹 Required field validation
                             var aRequiredFields = [
-                                { id: "buildingIdInput", name: "Building ID" },
                                 { id: "buildingDescInput", name: "Building Description" },
                                 { id: "buildingLocationInput", name: "Location" },
                                 { id: "buildingValidFromInput", name: "Valid From" },
@@ -782,6 +844,13 @@ sap.ui.define([
             }
 
             this._oAddBuildingDialog.setModel(oNewBuildingModel);
+
+            // Generate auto buildingId
+            this._buildingIdCounter++;
+            localStorage.setItem("buildingIdCounter", this._buildingIdCounter);
+            var sBuildingId = "B00" + String(this._buildingIdCounter);
+            this._oAddBuildingDialog.getModel().setProperty("/buildingId", sBuildingId);
+
             this._oAddBuildingDialog.open();
         }
     });

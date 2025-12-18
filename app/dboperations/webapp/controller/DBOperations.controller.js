@@ -29,9 +29,9 @@ sap.ui.define([
             onNavigateToEOI() {
             this.getOwnerComponent().getRouter().navTo("EOI");
         },
-            onNavigateToPaymentPlanSimulations() {
-            this.getOwnerComponent().getRouter().navTo("PaymentPlanSimulations");
-        },
+        //     onNavigateToPaymentPlanSimulations() {
+        //     this.getOwnerComponent().getRouter().navTo("PaymentPlanSimulations");
+        // },
             onNavigateToConditionTypes() {
             this.getOwnerComponent().getRouter().navTo("ConditionTypes");
         },

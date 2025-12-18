@@ -2,6 +2,11 @@ namespace real.estate;
 
 using {managed} from '@sap/cds/common';
 
+entity CompanyCodes {
+    key companyCodeId          : String(4);
+        companyCodeDescription : String(60);
+}
+
 entity Buildings {
         companyCodeId          : String(4);
         companyCodeDescription : String(60);
