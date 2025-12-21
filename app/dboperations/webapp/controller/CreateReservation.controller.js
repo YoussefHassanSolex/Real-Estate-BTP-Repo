@@ -12,7 +12,18 @@ sap.ui.define([
             oRouter.getRoute("CreateReservation")
                 .attachPatternMatched(this._onRouteMatched, this);
         },
+        formatDateToYMD: function (oDate) {
+            if (!oDate) {
+                return null;
+            }
 
+            const year = oDate.getFullYear();
+            const month = String(oDate.getMonth() + 1).padStart(2, "0");
+            const day = String(oDate.getDate()).padStart(2, "0");
+
+            return `${year}-${month}-${day}`;
+        }
+        ,
         _onRouteMatched: async function (oEvent) {
             this._resetReservationForm();
 
@@ -22,7 +33,7 @@ sap.ui.define([
             }
 
             var oReservation = JSON.parse(decodeURIComponent(sData));
-            
+
             console.log("Decoded reservation:", oReservation);
 
             var bIsEdit = oReservation.mode === "edit";
@@ -38,7 +49,11 @@ sap.ui.define([
                 eoiId: oReservation.eoiId,
                 salesType: oReservation.salesType,
                 description: oReservation.description,
-                validFrom: oReservation.validFrom,
+                //validFrom: new Date() || oReservation.validFrom,
+                validFrom: oReservation.validFrom
+                    ? oReservation.validFrom
+                    : this.formatDateToYMD(new Date()),
+
                 status: oReservation.status === "O" ? "Open" : oReservation.status || "Open",
                 customerType: oReservation.customerType,
                 currency: oReservation.currency,
@@ -149,6 +164,7 @@ sap.ui.define([
             const aSims = oModel.getProperty("/simulations") || [];
 
             const oSelectedSim = aSims.find(
+
                 sim => Number(sim.pricePlanYears) === iYears
             );
 
@@ -304,8 +320,8 @@ sap.ui.define([
                 building_buildingId: oData.building_buildingId || "",
                 unit_unitId: oData.unit_unitId || "",
                 bua: oData.bua || 0,
-                reservationType:oData.reservationType,
-                unitType:oData.unitType,
+                reservationType: oData.reservationType,
+                unitType: oData.unitType,
                 phase: oData.phase || "",
                 paymentPlan_paymentPlanId: oData.paymentPlan_paymentPlanId || "",
                 unitPrice: oData.unitPrice || 0,
@@ -345,6 +361,17 @@ sap.ui.define([
                     const errorText = await res.text();
                     throw new Error(`Failed to ${bIsEdit ? 'update' : 'create'} reservation: ${res.status} - ${errorText}`);
                 }
+                // const oViewModel = this.getView().getModel("view");
+                // if (oViewModel) {
+                //     const aUnits = oViewModel.getProperty("/Units");
+
+                //     const oUnit = aUnits.find(u => u.unitId === oData.unit_unitId);
+                //     if (oUnit) {
+                //         oUnit.unitStatusDescription = "Reserved";
+                //         oViewModel.refresh(true);
+                //     }
+                // }
+
                 console.log("reservation saved", res);
 
                 MessageToast.show(`Reservation ${bIsEdit ? 'updated' : 'created'} successfully!`);

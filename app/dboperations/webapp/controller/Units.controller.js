@@ -74,11 +74,16 @@ sap.ui.define([
                     // 🔹 Post-process units to extract BUA & Original Price
                     const enrichedUnits = data.value.map(unit => {
                         // Extract BUA (from measurements where code = 'BUA')
-                        let buaMeasurement = unit.measurements?.find(m => m.code?.toUpperCase() === "BUA");
-                        let bua = buaMeasurement ? buaMeasurement.quantity : null;
+                        console.log("Measurements for unit", unit.unitId, unit.measurements);
 
+                        let buaMeasurement = unit.measurements?.find(m =>
+                            m.code && m.code.trim().toUpperCase() === "BUA"
+                        );
+
+                        let bua = buaMeasurement ? Number(buaMeasurement.quantity) : null;
                         let uom = buaMeasurement ? buaMeasurement.uom : null;
                         let measurementCode = buaMeasurement ? buaMeasurement.code : null;
+
 
                         /* 
                         
@@ -387,13 +392,17 @@ sap.ui.define([
                                     new sap.ui.core.Item({ key: "4", text: "4" })
                                 ]
                             }),
-                            // new sap.m.Label({ text: "Sales Phase", required: true }),
-                            // new sap.m.Input("salesPhaseInput", { value: "{/salesPhase}" }),
-
                             new sap.m.Label({ text: "Finishing Spex Description", required: true }),
-                            new sap.m.Input("finishingSpexDescInput", { value: "{/finishingSpexDescription}" }),
+                            new sap.m.Select("finishingSpexDescInput", {
+                                selectedKey: "{/finishingSpexDescription}",
+                                items: [
+                                    new sap.ui.core.Item({ key: "", text: "" }),
+                                    new sap.ui.core.Item({ key: "Core and Shell", text: "Core and Shell" }),
+                                    new sap.ui.core.Item({ key: "Semi Finished", text: "Semi Finished" }),
+                                    new sap.ui.core.Item({ key: "Fully Finished", text: "Fully Finished" }),
+                                ]
+                            }),
 
-                            // NEW: Replaced inputs with read-only Text fields (auto-populated from building)
                             new sap.m.Label({ text: "Profit Center" }),
                             new sap.m.Text({ text: "{/profitCenter}" }),  // Read-only display
                             new sap.m.Label({ text: "Functional Area" }),
@@ -1695,8 +1704,8 @@ sap.ui.define([
                 unitPrice: oUnit.originalPrice || 0,
                 unitStatusDescription: oUnit.unitStatusDescription,
                 phase: oUnit.salesPhase,
-                reservationType:oUnit.usageTypeDescription,
-                unitType:oUnit.unitTypeDescription,
+                reservationType: oUnit.usageTypeDescription,
+                unitType: oUnit.unitTypeDescription,
                 currency: oUnit.conditions?.find(m => m.currency)?.currency,
                 // ✅ SEND ALL SIMULATIONS
                 simulations: (oUnit.simulations || []).map(sim => ({
@@ -2468,9 +2477,9 @@ sap.ui.define([
                 });
 
                 if (!res.ok) {
-                   const errorData = await res.json();
-        const errorMessage = errorData.error?.message || "Unknown error";
-        throw new Error(errorMessage);
+                    const errorData = await res.json();
+                    const errorMessage = errorData.error?.message || "Unknown error";
+                    throw new Error(errorMessage);
                 }
 
                 // Removed: Step 2 (no longer needed, as savedSimulationId is removed and multiple simulations are allowed)

@@ -41,6 +41,7 @@
                     <Input
                         id="_IDGenInput14"
                         value="{local>/oldReservationId}"
+                        editable="false"
                     />
 
                     <Label
@@ -61,12 +62,7 @@
                         width="100%"
                         selectedKey="{local>/salesType}"
                     >
-                        <core:Item
-                            id="_IDGenItem16"
-                            key=""
-                            text=""
-                        />
-
+                
                         <core:Item
                             id="_IDGenItem3"
                             key="New sale"
@@ -168,11 +164,6 @@
                         selectedKey="{local>/customerType}"
                         width="100%"
                     >
-                        <core:Item
-                            id="_IDGenItem23"
-                            key=""
-                            text=""
-                        />
 
                         <core:Item
                             id="_IDGenItem24"
@@ -195,15 +186,47 @@
                         value="{local>/currency}"
                         editable="false"
                     />
-
+<!-- 
                     <Label
                         id="_IDGenLabel36"
                         text="After Sales"
                     />
-                    <Input
+                     <Select
+                        id="_IDGenSelect1"
+                        selectedKey="{local>/afterSales}"
+                        width="100%"
+                    >
+                       
+
+                        <core:Item
+                            id="_IDGenItem8"
+                            key="Cancel"
+                            text="Cancel"
+                        />
+                        <core:Item
+                            id="_IDGenItem9"
+                            key="Terminate"
+                            text="Terminate"
+                        />
+                        <core:Item
+                            id="_IDGenItem10"
+                            key="Downgrade"
+                            text="Downgrade"
+                        />
+                        <core:Item
+                            id="_IDGenItem11"
+                            key="Upgrade"
+                            text="Upgrade"
+                        />
+                         <core:Item id="_IDGenItem12"
+                            key="Reallocate"
+                            text="Reallocate"
+                        />
+                    </Select> -->
+                    <!-- <Input
                         id="_IDGenInput26"
                         value="{local>/afterSales}"
-                    />
+                    /> -->
 
                     <!-- Unit Details -->
                     <Label
@@ -264,37 +287,7 @@
                         value="{local>/phase}"
                         editable="false"
                     />
-                    <!-- <Select
-                        id="_IDGenSelect2"
-                        selectedKey="{local>/phase}"
-                        width="100%"
-                    >
-                        <core:Item
-                            id="_IDGenItem7"
-                            key=""
-                            text=""
-                        />
-                        <core:Item
-                            id="_IDGenItem12"
-                            key="1"
-                            text="1"
-                        />
-                        <core:Item
-                            id="_IDGenItem13"
-                            key="2"
-                            text="2"
-                        />
-                        <core:Item
-                            id="_IDGenItem14"
-                            key="3"
-                            text="3"
-                        />
-                        <core:Item
-                            id="_IDGenItem15"
-                            key="4"
-                            text="4"
-                        />
-                    </Select> -->
+                 
 
                     <Label
                         id="_IDGenLabel42"
@@ -334,72 +327,7 @@
                         editable="false"
                     />
 
-                    <!-- <Label
-                        id="_IDGenLabel46"
-                        text="Plan Currency"
-                    />
-                    <Input
-                        id="_IDGenInput36"
-                        value="{local>/planCurrency}"
-                    /> -->
-
-                    <!-- Cancellation -->
-                    <Label
-                        id="_IDGenLabel47"
-                        text="Request Type"
-                    />
-                    <Input
-                        id="_IDGenInput37"
-                        value="{local>/requestType}"
-                    />
-
-                    <Label
-                        id="_IDGenLabel48"
-                        text="Reason"
-                    />
-                    <Input
-                        id="_IDGenInput38"
-                        value="{local>/reason}"
-                    />
-
-                    <Label
-                        id="_IDGenLabel49"
-                        text="Cancellation Date"
-                    />
-                    <DatePicker
-                        id="_IDGenDatePicker3"
-                        value="{local>/cancellationDate}"
-                        displayFormat="yyyy-MM-dd"
-                        valueFormat="yyyy-MM-dd"
-                    />
-
-                    <Label
-                        id="_IDGenLabel50"
-                        text="Cancellation Status"
-                    />
-                    <Input
-                        id="_IDGenInput39"
-                        value="{local>/cancellationStatus}"
-                    />
-
-                    <Label
-                        id="_IDGenLabel51"
-                        text="Rejection Reason"
-                    />
-                    <Input
-                        id="_IDGenInput40"
-                        value="{local>/rejectionReason}"
-                    />
-
-                    <Label
-                        id="_IDGenLabel52"
-                        text="Cancellation Fees"
-                    />
-                    <Input
-                        id="_IDGenInput41"
-                        value="{local>/cancellationFees}"
-                        type="Number"
-                    />
+                   
                 </l:Grid>
                 <!-- Payments Table -->
                 <Title

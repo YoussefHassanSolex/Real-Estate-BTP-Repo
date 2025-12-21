@@ -1,4 +1,4 @@
 {
     "xsappname": "Real-Estate-${org}-${space}",
     "tenant-mode": "dedicated"
-  }
+}
