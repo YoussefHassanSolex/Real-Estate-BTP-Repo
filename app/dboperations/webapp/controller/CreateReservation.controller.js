@@ -61,7 +61,7 @@ sap.ui.define([
                 building_buildingId: oReservation.buildingId,
                 unitPrice: oReservation.unitPrice,
                 planCurrency: oReservation.planCurrency,
-                reservationStatus:"",
+                reservationStatus: "",
                 requestType: oReservation.requestType,
                 reason: oReservation.reason,
                 cancellationDate: oReservation.cancellationDate,
@@ -228,6 +228,25 @@ sap.ui.define([
                 default: return 12;
             }
         },
+        _reserveUnit: async function (sUnitId) {
+            if (!sUnitId) return;
+
+            const res = await fetch(
+                `/odata/v4/real-estate/Units(unitId='${sUnitId}')`,
+                {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        unitStatusDescription: "Reserved"
+                    })
+                }
+            );
+
+            if (!res.ok) {
+                throw new Error("Failed to update unit status");
+            }
+        }
+        ,
         // Added: Generate UUID for IDs
         _generateUUID: function () {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -301,7 +320,7 @@ sap.ui.define([
                 eoiId: oData.eoiId || "",
                 salesType: oData.salesType || "",
                 description: oData.description || "",
-                reservationStatus:oData.reservationStatus||"",
+                reservationStatus: oData.reservationStatus || "",
                 validFrom: oData.validFrom ? new Date(oData.validFrom).toISOString().split("T")[0] : null,
                 status: oData.status || "O",  // Default to 'O' (Open)
                 customerType: oData.customerType || "",
@@ -352,19 +371,13 @@ sap.ui.define([
                     const errorText = await res.text();
                     throw new Error(`Failed to ${bIsEdit ? 'update' : 'create'} reservation: ${res.status} - ${errorText}`);
                 }
-                // const oViewModel = this.getView().getModel("view");
-                // if (oViewModel) {
-                //     const aUnits = oViewModel.getProperty("/Units");
 
-                //     const oUnit = aUnits.find(u => u.unitId === oData.unit_unitId);
-                //     if (oUnit) {
-                //         oUnit.unitStatusDescription = "Reserved";
-                //         oViewModel.refresh(true);
-                //     }
-                // }
+               
 
-                console.log("reservation saved", res);
+                await this._reserveUnit(oData.unit_unitId);
 
+                /* 3️⃣ Success + Navigate */
+                MessageToast.show("Reservation created. Unit is now reserved.");
                 MessageToast.show(`Reservation ${bIsEdit ? 'updated' : 'created'} successfully!`);
                 this._resetReservationForm();
                 const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
