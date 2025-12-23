@@ -93,6 +93,35 @@
                         value="{local>/reservationType}"
                         editable="false"
                     />
+                     <Label id="_IDGenLabel46"
+                        text="Reservation Status"
+                    />
+                    <Select id="_IDGenSelect1"
+                        width="100%"
+                        selectedKey="{local>/reservationStatus}"
+                    >
+                
+                        <core:Item id="_IDGenItem8"
+                            key="Open"
+                            text="Open"
+                        />
+                        <core:Item id="_IDGenItem9"
+                            key="Approved"
+                            text="Approved"
+                        />
+                        <core:Item id="_IDGenItem10"
+                            key="Paid"
+                            text="Paid"
+                        />
+                        <core:Item id="_IDGenItem11"
+                            key="Closed"
+                            text="Closed"
+                        />
+                        <core:Item id="_IDGenItem12" 
+                            key="Canceled"
+                            text="Canceled"
+                        />
+                    </Select>
                     <Label
                         id="_IDGenLabel31"
                         text="Description"
@@ -115,7 +144,7 @@
 
                     <Label
                         id="_IDGenLabel30"
-                        text="Status"
+                        text="Unit Status"
                     />
                     <Input
                         id="_IDGenInput21"
@@ -323,7 +352,7 @@
                     />
                     <Input
                         id="_IDGenInput35"
-                        value="{local>/unitPrice}"
+                        value="{local>/selectedSimulationFinalPrice}"
                         editable="false"
                     />
 

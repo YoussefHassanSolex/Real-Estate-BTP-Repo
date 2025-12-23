@@ -5,7 +5,6 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel"
 ], (Controller, MessageBox, MessageToast, JSONModel) => {
     "use strict";
-
     return Controller.extend("dboperations.controller.CreateReservation", {
         onInit: function () {
             var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
@@ -22,8 +21,7 @@ sap.ui.define([
             const day = String(oDate.getDate()).padStart(2, "0");
 
             return `${year}-${month}-${day}`;
-        }
-        ,
+        },
         _onRouteMatched: async function (oEvent) {
             this._resetReservationForm();
 
@@ -63,6 +61,7 @@ sap.ui.define([
                 building_buildingId: oReservation.buildingId,
                 unitPrice: oReservation.unitPrice,
                 planCurrency: oReservation.planCurrency,
+                reservationStatus:"",
                 requestType: oReservation.requestType,
                 reason: oReservation.reason,
                 cancellationDate: oReservation.cancellationDate,
@@ -149,8 +148,6 @@ sap.ui.define([
                 oModel.setProperty("/conditions", aConditions);
             }
         },
-
-
         onPricePlanYearsChange: async function (oEvent) {
             const iYears = Number(oEvent.getSource().getSelectedKey());
             const oModel = this.getView().getModel("local");
@@ -158,7 +155,6 @@ sap.ui.define([
             oModel.setProperty("/planYears", iYears);
             await this._resolveSimulationByYears(iYears);
         },
-
         _resolveSimulationByYears: async function (iYears) {
             const oModel = this.getView().getModel("local");
             const aSims = oModel.getProperty("/simulations") || [];
@@ -175,6 +171,8 @@ sap.ui.define([
 
             oModel.setProperty("/selectedPricePlanYears", String(iYears));
             oModel.setProperty("/selectedSimulationId", oSelectedSim.simulationId);
+            oModel.setProperty("/selectedSimulationFinalPrice", oSelectedSim.finalPrice);
+
             oModel.setProperty(
                 "/paymentPlan_paymentPlanId",
                 oSelectedSim.paymentPlan_paymentPlanId
@@ -182,13 +180,11 @@ sap.ui.define([
             console.log(
                 "Years:", iYears,
                 "Simulation:", oSelectedSim.simulationId,
-                "PaymentPlan:", oSelectedSim.paymentPlan_paymentPlanId
+                "PaymentPlan:", oSelectedSim.paymentPlan_paymentPlanId,
+                "final Price", oSelectedSim.finalPrice
             );
             await this._loadConditionsFromSimulation(oSelectedSim.simulationId);
         },
-
-
-
         _loadConditionsFromSimulation: async function (sSimulationId) {
             if (!sSimulationId) {
                 return;
@@ -220,11 +216,7 @@ sap.ui.define([
                 }));
 
             oModel.setProperty("/conditions", aConditions);
-        }
-        ,
-
-
-
+        },
         // Helper: Get frequency interval (from PPS)
         _getFrequencyIntervalPPS: function (frequencyDesc) {
             if (!frequencyDesc) return 12;
@@ -236,7 +228,6 @@ sap.ui.define([
                 default: return 12;
             }
         },
-
         // Added: Generate UUID for IDs
         _generateUUID: function () {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -244,7 +235,6 @@ sap.ui.define([
                 return v.toString(16);
             });
         },
-
         onSaveReservation: async function () {
             const oModel = this.getView().getModel("local");
             const oData = oModel.getData();
@@ -311,6 +301,7 @@ sap.ui.define([
                 eoiId: oData.eoiId || "",
                 salesType: oData.salesType || "",
                 description: oData.description || "",
+                reservationStatus:oData.reservationStatus||"",
                 validFrom: oData.validFrom ? new Date(oData.validFrom).toISOString().split("T")[0] : null,
                 status: oData.status || "O",  // Default to 'O' (Open)
                 customerType: oData.customerType || "",
@@ -384,7 +375,6 @@ sap.ui.define([
                 MessageBox.error(err.message);
             }
         },
-
         _resetReservationForm: function () {
             const oEmptyModel = new sap.ui.model.json.JSONModel({
                 reservationId: "",
@@ -421,7 +411,6 @@ sap.ui.define([
 
             this.getView().setModel(oEmptyModel, "local");
         },
-
         // Payments table
         onAddPaymentRow: function () {
             const oModel = this.getView().getModel("local");
@@ -446,7 +435,6 @@ sap.ui.define([
             });
             oModel.refresh();
         },
-
         onDeletePaymentRow: function (oEvent) {
             const oContext = oEvent.getSource().getBindingContext("local");
             const sPath = oContext.getPath();
@@ -456,7 +444,6 @@ sap.ui.define([
             aPayments.splice(iIndex, 1);
             oModel.refresh();
         },
-
         // Partners table
         onAddPartnerRow: function () {
             const oModel = this.getView().getModel("local");
@@ -470,7 +457,6 @@ sap.ui.define([
             });
             oModel.refresh();
         },
-
         onDeletePartnerRow: function (oEvent) {
             const oContext = oEvent.getSource().getBindingContext("local");
             const sPath = oContext.getPath();
@@ -480,7 +466,6 @@ sap.ui.define([
             aPartners.splice(iIndex, 1);
             oModel.refresh();
         },
-
         // Conditions table (now editable, can add/delete)
         onAddConditionRow: function () {
             const oModel = this.getView().getModel("local");
@@ -494,7 +479,6 @@ sap.ui.define([
             });
             oModel.refresh();
         },
-
         onDeleteConditionRow: function (oEvent) {
             const oContext = oEvent.getSource().getBindingContext("local");
             const sPath = oContext.getPath();
@@ -504,7 +488,6 @@ sap.ui.define([
             aConditions.splice(iIndex, 1);
             oModel.refresh();
         },
-
         onCancelReservation: function () {
             this.getView().getModel("local").setData({}); // Clear form
             const oRouter = sap.ui.core.UIComponent.getRouterFor(this);

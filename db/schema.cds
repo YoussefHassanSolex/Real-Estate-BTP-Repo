@@ -270,7 +270,7 @@ entity Reservations : managed {
         salesType          : String(20);
         description        : String(100);
         validFrom          : Date;
-        status             : String(4);
+        status             : String(20);
         customerType       : String(20);
         currency           : String(3);
         afterSales         : String(20);
@@ -284,7 +284,7 @@ entity Reservations : managed {
         pricePlanYears     : Integer;
         reservationType:String(20);
         unitType:String(20);
-
+        reservationStatus:String(20);
         /* --- Partners --- */
         partners           : Composition of many ReservationPartners
                                  on partners.reservation = $self;
