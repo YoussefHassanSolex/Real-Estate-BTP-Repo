@@ -215,43 +215,38 @@
                         value="{local>/currency}"
                         editable="false"
                     />
-<!-- 
+
                     <Label
                         id="_IDGenLabel36"
                         text="After Sales"
                     />
-                     <Select
-                        id="_IDGenSelect1"
+                     <Select id="_IDGenSelect3"
                         selectedKey="{local>/afterSales}"
                         width="100%"
                     >
                        
 
-                        <core:Item
-                            id="_IDGenItem8"
+                        <core:Item id="_IDGenItem14"
                             key="Cancel"
                             text="Cancel"
                         />
-                        <core:Item
-                            id="_IDGenItem9"
+                        <core:Item id="_IDGenItem15"
                             key="Terminate"
                             text="Terminate"
                         />
-                        <core:Item
-                            id="_IDGenItem10"
+                        <core:Item id="_IDGenItem16"
                             key="Downgrade"
                             text="Downgrade"
                         />
-                        <core:Item
-                            id="_IDGenItem11"
+                        <core:Item id="_IDGenItem17"
                             key="Upgrade"
                             text="Upgrade"
                         />
-                         <core:Item id="_IDGenItem12"
+                         <core:Item id="_IDGenItem18" 
                             key="Reallocate"
                             text="Reallocate"
                         />
-                    </Select> -->
+                    </Select>
                     <!-- <Input
                         id="_IDGenInput26"
                         value="{local>/afterSales}"
