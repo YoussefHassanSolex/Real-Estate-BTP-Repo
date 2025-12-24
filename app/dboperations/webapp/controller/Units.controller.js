@@ -680,8 +680,6 @@ sap.ui.define([
 
             this._oAddDialog.open();
         },
-
-
         onAddDialogUsageTypeChange: function () {
             var oUsageSelect = sap.ui.getCore().byId("usageTypeDescInput");
             var oUnitTypeSelect = sap.ui.getCore().byId("unitTypeDescInput");
@@ -720,7 +718,6 @@ sap.ui.define([
             // oUnitTypeSelect.setSelectedKey("");
             oModel.setProperty("/unitTypeDescription", sUnitType); // reset
         },
-
         onProjectChange: function (oEvent) {
             var oComboBox = oEvent.getSource();
             var sSelectedKey = oComboBox.getSelectedKey();
@@ -753,7 +750,6 @@ sap.ui.define([
             oModel.setProperty("/buildingDescription", sDescription);
         },
 
-        // 🧹 Helper function to reset dialog data and value states
         _resetAddDialogFields: function () {
             var oModel = this._oAddDialog.getModel();
             oModel.setData({
@@ -1092,9 +1088,7 @@ sap.ui.define([
                 oUnitTypeSelect.setSelectedKey(aTypes[0] || "");
                 oModel.setProperty("/unitTypeDescription", aTypes[0] || "");
             }
-        }
-
-        ,
+        },
         _populateUnitTypeOnEdit: function (oModel) {
 
             var sUsageType = oModel.getProperty("/usageTypeDescription");
@@ -1128,8 +1122,7 @@ sap.ui.define([
                 oUnitTypeSelect.setSelectedKey(aTypes[0] || "");
                 oModel.setProperty("/unitTypeDescription", aTypes[0] || "");
             }
-        }
-        ,
+        },
         onEditUnit: function (oEvent) {
             var oBindingContext = oEvent.getSource().getBindingContext();
             if (!oBindingContext) return;
@@ -1258,9 +1251,17 @@ sap.ui.define([
                                     new sap.ui.core.Item({ key: "4", text: "4" })
                                 ]
                             }),
-                            new sap.m.Label({ text: "Finishing Spex Description", required: true }),
-                            new sap.m.Input("editFinishingSpexDescInput", { value: "{/finishingSpexDescription}" }),
-
+                              new sap.m.Label({ text: "Finishing Spex Description", required: true }),
+                            new sap.m.Select("editFinishingSpexDescInput", {
+                                selectedKey: "{/finishingSpexDescription}",
+                                items: [
+                                    //new sap.ui.core.Item({ key: "", text: "" }),
+                                    new sap.ui.core.Item({ key: "Core and Shell", text: "Core and Shell" }),
+                                    new sap.ui.core.Item({ key: "Semi Finished", text: "Semi Finished" }),
+                                    new sap.ui.core.Item({ key: "Fully Finished", text: "Fully Finished" }),
+                                ]
+                            }),
+                           
                             new sap.m.Label({ text: "Profit Center", required: true }),
                             new sap.m.Input("editProfitCenterInput", { value: "{/profitCenter}" }),
 
@@ -1275,7 +1276,7 @@ sap.ui.define([
                                 placeholder: "Select a date"
                             }),
 
-                            new sap.m.Label({ text: "Supplementary Text", required: true }),
+                            new sap.m.Label({ text: "Supplementary Text"}),
                             new sap.m.Input("editSupplementaryTextInput", { value: "{/supplementaryText}" }),
 
                             // Adjusted Measurements section with better button layout (icons and HBox)
@@ -1519,8 +1520,6 @@ sap.ui.define([
 
             this._oEditDialog.open();
         },
-
-
         onCompanyCodeChange: function (oEvent) {
             var sSelectedKey = oEvent.getSource().getSelectedKey();  // Safer way to get the selected key
             var oCompanyCodesList = this.getView().getModel("companyCodesList").getData();
@@ -1536,9 +1535,6 @@ sap.ui.define([
                 this._oAddDialog.getModel().setProperty("/companyCodeDescription", oSelectedCompany.companyCodeDescription);
             }
         },
-
-
-
         onAddMeasurementRow: function (oEvent) {
             const oModel = oEvent.getSource().getModel();
             oModel.getProperty("/measurements").push({ code: "", description: "", quantity: 0, uom: "" });
@@ -1694,7 +1690,6 @@ sap.ui.define([
         onCreateReservation: function (oEvent) {
             var oUnit = oEvent.getSource().getBindingContext().getObject();
             console.log("Unit selected:", oUnit);
-
             var oReservationData = {
                 bua: oUnit.measurements?.find(m => m.code?.trim() === "BUA")?.quantity || 0,
                 companyCodeId: oUnit.companyCodeId,
@@ -1707,13 +1702,17 @@ sap.ui.define([
                 reservationType: oUnit.usageTypeDescription,
                 unitType: oUnit.unitTypeDescription,
                 currency: oUnit.conditions?.find(m => m.currency)?.currency,
-                // ✅ SEND ALL SIMULATIONS
+                // Map Conditions to get the Price Plan Years of unit
+                 unitConditions: (oUnit.conditions || []).map(cond => ({
+                    conditionId: cond.ID,
+                    pricePlanYears: cond.code,
+                    finalPrice: cond.amount,
+                    
+                })),
+
                 simulations: (oUnit.simulations || []).map(sim => ({
                     simulationId: sim.simulationId,
-
-                    // ✅ KEEP THE ORIGINAL FK NAME
                     paymentPlan_paymentPlanId: sim.paymentPlan_paymentPlanId,
-
                     pricePlanYears: sim.pricePlanYears,
                     finalPrice: sim.finalPrice,
                     projectId: sim.projectId,
@@ -2206,7 +2205,7 @@ sap.ui.define([
                     beforeClose: this._resetSimulationDialog.bind(this),  // Added: Reset on close
                     buttons: [
                         new sap.m.Button({
-                            text: "Save Simulation",
+                            text: "",
                             type: "Accept",
                             press: this.onSaveSimulationPPS.bind(this)
                         }),
@@ -2359,7 +2358,7 @@ sap.ui.define([
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
                                 simulationSchedule.push({
-                                    conditionType: "Maintenance",  // Keep as is for maintenance
+                                    conditionType: "",  // Keep as is for maintenance
                                     dueDate: dueDate.toISOString().split('T')[0],
                                     amount: 0,  // Maintenance has no amount
                                     maintenance: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100  // Round to 2 decimals

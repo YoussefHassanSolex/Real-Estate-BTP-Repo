@@ -29,13 +29,10 @@ sap.ui.define([
             if (!sData) {
                 return;
             }
-
             var oReservation = JSON.parse(decodeURIComponent(sData));
-
             console.log("Decoded reservation:", oReservation);
 
             var bIsEdit = oReservation.mode === "edit";
-
             var oModel = new sap.ui.model.json.JSONModel({
                 mode: oReservation.mode || "create",
                 isEditMode: bIsEdit,
@@ -51,7 +48,6 @@ sap.ui.define([
                 validFrom: oReservation.validFrom
                     ? oReservation.validFrom
                     : this.formatDateToYMD(new Date()),
-
                 status: oReservation.status === "O" ? "Open" : oReservation.status || "Open",
                 customerType: oReservation.customerType,
                 currency: oReservation.currency,
@@ -72,10 +68,10 @@ sap.ui.define([
                 unitType: oReservation.unitType,
                 phase: oReservation.phase,
                 pricePlanYears: oReservation.pricePlanYears,
-                planYears: oReservation.pricePlanYears,
+                //planYears: oReservation.pricePlanYears,
                 paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
                 simulations: oReservation.simulations || [],
-
+                unitConditions: oReservation.unitConditions,
                 selectedPricePlanYears: "",
                 selectedSimulationId: "",
                 // result
@@ -93,21 +89,21 @@ sap.ui.define([
                     if (unitRes.ok) {
                         const unit = await unitRes.json();
                         console.log("Loaded simulations for edit:", unit.simulations);
-                        let aSimulations = unit.simulations || [];
+                        let aConditions = unit.unitConditions || [];
                         // Ensure the current pricePlanYears is in the simulations for the Select
-                        if (oReservation.pricePlanYears !== undefined && oReservation.pricePlanYears !== null && !aSimulations.some(sim => sim.pricePlanYears === String(oReservation.pricePlanYears))) {
-                            aSimulations.push({
-                                simulationId: `edit-${oReservation.pricePlanYears}`,
+                        if (oReservation.pricePlanYears !== undefined && oReservation.pricePlanYears !== null && !aConditions.some(cond => cond.pricePlanYears === String(oReservation.pricePlanYears))) {
+                            aConditions.push({
+                                ID: `edit-${oReservation.pricePlanYears}`,
                                 pricePlanYears: String(oReservation.pricePlanYears),
-                                paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId || ""
+                               // paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId || ""
                             });
                         }
                         // Ensure all simulations have pricePlanYears as string
-                        aSimulations.forEach(sim => {
+                        aConditions.forEach(sim => {
                             sim.pricePlanYears = String(sim.pricePlanYears);
                         });
                         // Remove duplicates based on pricePlanYears
-                        const uniqueSimulations = aSimulations.filter((sim, index, self) =>
+                        const uniqueSimulations = aConditions.filter((sim, index, self) =>
                             index === self.findIndex(s => s.pricePlanYears === sim.pricePlanYears)
                         );
                         oModel.setProperty("/simulations", uniqueSimulations);
@@ -127,8 +123,8 @@ sap.ui.define([
                 } catch (err) {
                     console.error("Failed to load simulations for edit", err);
                 }
-            } else if (oReservation.simulations?.length) {
-                const iDefaultYears = oReservation.simulations[0].pricePlanYears;
+            } else if (oReservation.unitConditions?.length) {
+                const iDefaultYears = oReservation.unitConditions[0].pricePlanYears;
                 console.log("Setting selectedPricePlanYears to default:", iDefaultYears);
                 oModel.setProperty("/selectedPricePlanYears", iDefaultYears);
                 oModel.updateBindings(true);
@@ -157,12 +153,15 @@ sap.ui.define([
         },
         _resolveSimulationByYears: async function (iYears) {
             const oModel = this.getView().getModel("local");
-            const aSims = oModel.getProperty("/simulations") || [];
+            const aCond = oModel.getProperty("/unitConditions") || [];
 
-            const oSelectedSim = aSims.find(
+            const oSelectedSim = aCond.find(
 
-                sim => Number(sim.pricePlanYears) === iYears
+                cond => Number(cond.pricePlanYears) === iYears
+
             );
+            console.log("Unit cond ", oSelectedSim);
+
 
             if (!oSelectedSim) {
                 oModel.setProperty("/conditions", []);
@@ -179,8 +178,7 @@ sap.ui.define([
             );
             console.log(
                 "Years:", iYears,
-                "Simulation:", oSelectedSim.simulationId,
-                "PaymentPlan:", oSelectedSim.paymentPlan_paymentPlanId,
+                "Condition", oSelectedSim.ID,
                 "final Price", oSelectedSim.finalPrice
             );
             await this._loadConditionsFromSimulation(oSelectedSim.simulationId);
@@ -217,7 +215,6 @@ sap.ui.define([
 
             oModel.setProperty("/conditions", aConditions);
         },
-        // Helper: Get frequency interval (from PPS)
         _getFrequencyIntervalPPS: function (frequencyDesc) {
             if (!frequencyDesc) return 12;
             switch (frequencyDesc.toLowerCase()) {
@@ -245,9 +242,7 @@ sap.ui.define([
             if (!res.ok) {
                 throw new Error("Failed to update unit status");
             }
-        }
-        ,
-        // Added: Generate UUID for IDs
+        },
         _generateUUID: function () {
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
                 const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -372,7 +367,7 @@ sap.ui.define([
                     throw new Error(`Failed to ${bIsEdit ? 'update' : 'create'} reservation: ${res.status} - ${errorText}`);
                 }
 
-               
+
 
                 await this._reserveUnit(oData.unit_unitId);
 

@@ -247,11 +247,7 @@
                             text="Reallocate"
                         />
                     </Select>
-                    <!-- <Input
-                        id="_IDGenInput26"
-                        value="{local>/afterSales}"
-                    /> -->
-
+                   
                     <!-- Unit Details -->
                     <Label
                         id="_IDGenLabel37"
@@ -322,11 +318,11 @@
                         width="100%"
                         selectedKey="{local>/selectedPricePlanYears}"
                         change=".onPricePlanYearsChange"
-                        items="{path: 'local>/simulations'}"
+                        items="{path: 'local>/unitConditions'}"
                     >
                         <core:Item id="_IDGenItem7"
                             key="{local>pricePlanYears}"
-                            text="{local>pricePlanYears} Years"
+                            text="{local>pricePlanYears}"
                         />
                     </Select>
 

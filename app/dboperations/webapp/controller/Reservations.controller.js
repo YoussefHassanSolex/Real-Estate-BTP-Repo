@@ -740,6 +740,40 @@ sap.ui.define([
                     }
                 }.bind(this)
             });
-        }
-    });
+        },
+         
+
+        onPrint: function () {
+            var printWindow = window.open('', '_blank');
+            var htmlContent = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Reservation Document</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 20px; }
+                        .header { text-align: center; margin-bottom: 30px; }
+                        .section { margin-bottom: 20px; }
+                        .field { margin-bottom: 10px; }
+                        .field label { display: inline-block; width: 150px; font-weight: bold; }
+                        .field input, .field textarea { width: 300px; padding: 5px; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+                        table, th, td { border: 1px solid #ddd; }
+                        th, td { padding: 8px; text-align: left; }
+                        @media print { body { margin: 0; } }
+                    </style>
+                </head>
+                <body>
+                 <div>
+                    </div>
+                </body>
+                </html>
+            `;
+
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        },
+        });
 });
