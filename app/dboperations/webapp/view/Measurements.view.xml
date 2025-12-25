@@ -4,27 +4,27 @@
     xmlns="sap.m"
     displayBlock="true"
 >
-    <Page title="Measurements">
+    <Page id="_IDGenPage2" title="Measurements">
         <headerContent>
-            <Button icon="sap-icon://add" text="Add Measurement" press="onAddMeasurement"/>
+            <Button id="_IDGenButton38" icon="sap-icon://add" text="Add Measurement" press="onAddMeasurement"/>
         </headerContent>
 
         <content>
             <Table id="measurementsTable" items="{measurements>/}" width="100%">
                 <columns>
-                    <Column><Text text="Code"/></Column>
-                    <Column><Text text="Description"/></Column>
-                    <Column><Text text="Actions"/></Column>
+                    <Column id="_IDGenColumn77"><Text id="_IDGenText213" text="Code"/></Column>
+                    <Column id="_IDGenColumn129"><Text id="_IDGenText214" text="Description"/></Column>
+                    <Column id="_IDGenColumn130"><Text id="_IDGenText215" text="Actions"/></Column>
                 </columns>
 
                 <items>
-                    <ColumnListItem>
+                    <ColumnListItem id="_IDGenColumnListItem12">
                         <cells>
-                            <Text text="{measurements>code}"/>
-                            <Text text="{measurements>description}"/>
-                            <HBox>
-                                <Button icon="sap-icon://edit" press="onEditMeasurement"/>
-                                <Button icon="sap-icon://delete" type="Reject" press="onDeleteMeasurement"/>
+                            <Text id="_IDGenText216" text="{measurements>code}"/>
+                            <Text id="_IDGenText217" text="{measurements>description}"/>
+                            <HBox id="_IDGenHBox7">
+                                <Button id="_IDGenButton39" icon="sap-icon://edit" press="onEditMeasurement"/>
+                                <Button id="_IDGenButton40" icon="sap-icon://delete" type="Reject" press="onDeleteMeasurement"/>
                             </HBox>
                         </cells>
                     </ColumnListItem>
@@ -33,18 +33,18 @@
         </content>
 
         <Dialog id="measurementDialog" title="Add/Edit Measurement" stretchOnPhone="true">
-            <VBox class="sapUiSmallMargin">
-                <Label text="Code"/>
-                <Input value="{local>/code}" editable="{= !${local>/isEdit}}" placeholder="Enter Code"/>
-                <Label text="Description"/>
-                <Input value="{local>/description}" placeholder="Enter Description"/>
+            <VBox id="_IDGenVBox4" class="sapUiSmallMargin">
+                <Label id="_IDGenLabel47" text="Code"/>
+                <Input id="_IDGenInput36" value="{local>/code}" editable="{= !${local>/isEdit}}" placeholder="Enter Code"/>
+                <Label id="_IDGenLabel52" text="Description"/>
+                <Input id="_IDGenInput37" value="{local>/description}" placeholder="Enter Description"/>
             </VBox>
 
             <beginButton>
-                <Button text="Save" press="onSaveMeasurement"/>
+                <Button id="_IDGenButton41" text="Save" press="onSaveMeasurement"/>
             </beginButton>
             <endButton>
-                <Button text="Cancel" press="onCancelMeasurement"/>
+                <Button id="_IDGenButton42" text="Cancel" press="onCancelMeasurement"/>
             </endButton>
         </Dialog>
     </Page>

@@ -271,6 +271,19 @@
                                         />
                                     </TileContent>
                                 </GenericTile>
+                                <GenericTile id="_IDGenGenericTile"
+                                    class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout"
+                                    header="Partners"
+                                    press="onNavigateToPartners"
+                                >
+                                    <TileContent id="_IDGenTileContent7"
+                                        footer="Partners Info CRUD OPs"
+                                    >
+                                        <ImageContent id="_IDGenImageContent3"
+                                            src="sap-icon://add-employee"
+                                        />
+                                    </TileContent>
+                                </GenericTile>
                             </HBox>
                         </ScrollContainer>
                     </IconTabFilter>

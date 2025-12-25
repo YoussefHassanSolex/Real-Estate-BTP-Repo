@@ -50,5 +50,8 @@ sap.ui.define([
           onNavigateToBasePrices() {
             this.getOwnerComponent().getRouter().navTo("BasePrices");
         },
+        onNavigateToPartners() {
+            this.getOwnerComponent().getRouter().navTo("Partners");
+        },
     });
 });

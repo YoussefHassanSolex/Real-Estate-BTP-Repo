@@ -1,0 +1,72 @@
+<mvc:View
+    controllerName="dboperations.controller.Partners"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns="sap.m"
+    displayBlock="true"
+>
+    <Page id="_IDGenPage1" title="Partners">
+      <headerContent>
+            <Button id="_IDGenButton30"  icon="sap-icon://add" text="Add Partner" press="onAddPartner"/>
+        </headerContent>
+
+        <content>
+            <Table id="partnerTable" items="{Partners>/}" width="100%">
+                <columns>
+                    <Column id="_IDGenColumn118" ><Text id="_IDGenText175" text="Customer Code"/></Column>
+                    <Column id="_IDGenColumn125" ><Text id="_IDGenText199"  text="Customer Name"/></Column>
+                    <Column id="_IDGenColumn126" ><Text id="_IDGenText206"  text="Customer Address"/></Column>
+                    <Column id="_IDGenColumn127" ><Text id="_IDGenText207"  text="Valid From"/></Column>
+
+                    <Column id="_IDGenColumn128"><Text id="_IDGenText208" text="Actions"/></Column>
+                </columns>
+
+                <items>
+                    <ColumnListItem id="_IDGenColumnListItem11" >
+                        <cells>
+                            <Text id="_IDGenText209" text="{Partners>customerCode}"/>
+                            <Text id="_IDGenText210"  text="{Partners>customerName}"/>
+                            <Text id="_IDGenText211"  text="{Partners>customerAddress}"/>
+                            <Text id="_IDGenText212"  text="{Partners>validFrom}"/>
+
+                            <HBox id="_IDGenHBox6">
+                                <Button id="_IDGenButton34"  icon="sap-icon://edit" press="onEditPartner"/>
+                                <Button id="_IDGenButton35" icon="sap-icon://delete" type="Reject" press="onDeletePartner"/>
+                            </HBox>
+                        </cells>
+                    </ColumnListItem>
+                </items>
+            </Table>
+        </content>
+    </Page>
+
+    <!-- Add/Edit Dialog -->
+    <Dialog id="PartnerDialog" title="Add/Edit Partner" stretchOnPhone="true">
+        <content>
+            <VBox id="_IDGenVBox2" >
+                <Label id="_IDGenLabel48"  text="Customer Code"/>
+                <Input id="_IDGenInput26"  value="{local>/customerCode}" editable="{= !${local>/isEdit}}" placeholder="Enter Customer Code (e.g., CT01)"/>
+
+                <Label id="_IDGenLabel49"  text="Customer Name"/>
+                <Input id="_IDGenInput31"  value="{local>/customerName}" placeholder="Enter Customer Name"/>
+
+                <Label id="_IDGenLabel50"  text="Customer Address"/>
+                <Input id="_IDGenInput34"  value="{local>/customerAddress}" placeholder="Enter Customer Address"/>
+                  <Label id="_IDGenLabel51"
+                        text="Valid From"
+                    />
+                    <DatePicker id="_IDGenDatePicker3"
+                        value="{local>/validFrom}"
+                        displayFormat="yyyy-MM-dd"
+                        valueFormat="yyyy-MM-dd"
+                    />
+            </VBox>
+        </content>
+
+        <beginButton>
+            <Button id="_IDGenButton36" text="Save" press="onSavePartner"/>
+        </beginButton>
+        <endButton>
+            <Button id="_IDGenButton37"  text="Cancel" press="onCancelPartner"/>
+        </endButton>
+    </Dialog>
+</mvc:View>

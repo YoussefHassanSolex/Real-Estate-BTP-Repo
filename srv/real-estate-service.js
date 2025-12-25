@@ -227,6 +227,91 @@ this.on('READ',CompanyCodes, async (req) =>{
       req.error(500, 'Error deleting Unit: ' + error.message);
     }
   });
+  /*----------------------- Partners ---------------------------*/
+
+  // READ
+  this.on('READ', ReservationPartners, async (req) => {
+    console.log('READ Partners called');
+    const db = cds.transaction(req);
+    return await db.run(req.query);
+  });
+  this.on('CREATE', 'ReservationPartners', async (req) => {
+    const { ReservationPartners } = this.entities;
+
+    try {
+        const data = { ...req.data };
+        if (data.reservation?.ID) {
+            data.reservation_ID = data.reservation.ID;
+            delete data.reservation;
+        }
+        if (!data.customerCode) {
+            return req.reject(400, 'Customer Code is mandatory');
+        }
+        return await INSERT.into(ReservationPartners).entries(data);
+
+    } catch (error) {
+        console.error('Error creating ReservationPartner:', error);
+        return req.reject(500, 'Error creating ReservationPartner');
+    }
+});
+
+  this.on('UPDATE', 'ReservationPartners', async (req) => {
+    const { ReservationPartners } = this.entities;
+
+    try {
+        const data = { ...req.data };
+
+        if (!data.ID) {
+            return req.reject(400, 'ReservationPartner ID is required for update');
+        }
+
+        if (data.reservation?.ID) {
+            data.reservation_ID = data.reservation.ID;
+            delete data.reservation;
+        }
+
+        if (data.customerCode === '') {
+            return req.reject(400, 'Customer Code cannot be empty');
+        }
+
+        const affectedRows = await UPDATE(ReservationPartners)
+            .set(data)
+            .where({ ID: data.ID });
+
+        if (affectedRows === 0) {
+            return req.reject(404, 'ReservationPartner not found');
+        }
+
+        return affectedRows;
+
+    } catch (error) {
+        console.error('Error updating ReservationPartner:', error);
+        return req.reject(500, 'Error updating ReservationPartner');
+    }
+});
+
+this.on('DELETE', 'ReservationPartners', async (req) => {
+    const { ReservationPartners } = this.entities;
+    const { ID } = req.data;
+
+    try {
+        if (!ID) {
+            return req.reject(400, 'ID is mandatory');
+        }
+
+        const affectedRows = await DELETE.from(ReservationPartners).where({ ID });
+
+        if (affectedRows === 0) {
+            return req.reject(404, 'ReservationPartner not found');
+        }
+
+        return affectedRows;
+
+    } catch (error) {
+        console.error('Error deleting ReservationPartner:', error);
+        return req.reject(500, 'Error deleting ReservationPartner');
+    }
+});
 
   /*----------------------- Measurements ---------------------------*/
 
@@ -236,6 +321,8 @@ this.on('READ',CompanyCodes, async (req) =>{
     const db = cds.transaction(req);
     return await db.run(req.query);
   });
+
+
 
   // CREATE
   this.on('CREATE', Measurements, async (req) => {
@@ -258,6 +345,8 @@ this.on('READ',CompanyCodes, async (req) =>{
       req.error(500, 'Error creating Measurement');
     }
   });
+
+
 
   // UPDATE
   this.on('UPDATE', Measurements, async (req) => {

@@ -124,6 +124,11 @@
           "target": "EOI"
         },
         {
+          "name": "Partners",
+          "pattern": "Partners",
+          "target": "Partners"
+        },
+        {
           "name": "Reservations",
           "pattern": "Reservations",
           "target": "Reservations"
@@ -191,6 +196,9 @@
         },
         "EOI": {
           "viewName": "EOI"
+        },
+        "Partners":{
+          "viewName": "Partners"
         },
         "Reservations": {
           "viewName": "Reservations"
