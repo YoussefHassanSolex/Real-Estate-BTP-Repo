@@ -4,7 +4,7 @@ sap.ui.define([
     "sap/m/MessageToast",
     "sap/ui/model/json/JSONModel",
     "sap/m/SelectDialog",
-    "sap/m/StandardListItem"
+    "sap/m/StandardListItem",
 ], (Controller, MessageBox, MessageToast, JSONModel) => {
     "use strict";
     return Controller.extend("dboperations.controller.CreateReservation", {
@@ -28,15 +28,31 @@ sap.ui.define([
 
             return `${year}-${month}-${day}`;
         },
+        _loadPartners: async function () {
+            fetch("/odata/v4/real-estate/ReservationPartners")
+                .then(res => res.json())
+                .then(data => {
+                    this.getView().setModel(new JSONModel(data.value || []), "partnersList");
+                    console.log("Partners", data.value);
+                })
+                .catch(err => console.error("Failed to load Partners list:", err));
+        },
         _loadPaymentPlansForReservation: async function () {
             try {
-                const plansRes = await fetch("/odata/v4/real-estate/PaymentPlans?$expand=assignedProjects($expand=project)");
+                const plansRes = await fetch(
+                    "/odata/v4/real-estate/PaymentPlans?$expand=assignedProjects($expand=project)"
+                );
                 if (!plansRes.ok) {
-                    throw new Error(`Failed to fetch payment plans: ${plansRes.status}`);
+                    throw new Error(
+                        `Failed to fetch payment plans: ${plansRes.status}`
+                    );
                 }
                 const plans = await plansRes.json();
                 this._oPaymentPlansModel.setData(plans.value || []);
-                console.log("Payment plans loaded:", this._oPaymentPlansModel.getData());  // Debug log
+                console.log(
+                    "Payment plans loaded:",
+                    this._oPaymentPlansModel.getData()
+                ); // Debug log
             } catch (err) {
                 console.error("Failed to load payment plans for reservation:", err);
                 MessageBox.error("Unable to load payment plans. Please try again.");
@@ -49,16 +65,23 @@ sap.ui.define([
                 console.warn("No payment plans available for populating years.");
                 return;
             }
-            const filteredPlans = aPlans.filter(p =>
-                Array.isArray(p.assignedProjects) &&
-                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+            const filteredPlans = aPlans.filter(
+                (p) =>
+                    Array.isArray(p.assignedProjects) &&
+                    p.assignedProjects.some((ap) => ap.project?.projectId === projectId)
             );
-            const uniqueYears = [...new Set(filteredPlans.map(p => p.planYears))].sort((a, b) => a - b);
+            const uniqueYears = [
+                ...new Set(filteredPlans.map((p) => p.planYears)),
+            ].sort((a, b) => a - b);
             const oModel = this.getView().getModel("local");
-            oModel.setProperty("/availableYears", uniqueYears.map(year => ({ year: year, text: `${year} Years` })));
+            oModel.setProperty(
+                "/availableYears",
+                uniqueYears.map((year) => ({ year: year, text: `${year} Years` }))
+            );
             oModel.refresh();
-            console.log("Available years populated:", uniqueYears);  // Debug log
+            console.log("Available years populated:", uniqueYears); // Debug log
         },
+
         _loadPartners: async function () {
             fetch("/odata/v4/real-estate/ReservationPartners")
                 .then(res => res.json())
@@ -84,10 +107,11 @@ sap.ui.define([
 
             var bIsEdit = oReservation.mode === "edit";
             var oModel = new sap.ui.model.json.JSONModel({
-                availableYears: [],  // For populating select items
+                availableYears: [], // For populating select items
                 selectedPricePlanYears: "",
                 selectedSimulationId: "",
-                selectedSimulationFinalPrice: 0,
+                selectedSimulationFinalPrice: oReservation.unitPrice || 0,
+
                 mode: oReservation.mode || "create",
                 isEditMode: bIsEdit,
                 title: bIsEdit ? `Edit Reservation - ${oReservation.description || ''}` : "Create Reservation",
@@ -135,7 +159,7 @@ sap.ui.define([
             this.getView().setModel(oModel, "local");
 
             // Populate available years after model is set and plans are loaded (if unitConditions exist)
-            if (oReservation.unitConditions?.length) {
+            if (oReservation.project_projectId) {
                 this._populateAvailableYears(oReservation.project_projectId);
             }
 
@@ -159,6 +183,7 @@ sap.ui.define([
                         aConditions.forEach(sim => {
                             sim.pricePlanYears = String(sim.pricePlanYears);
                         });
+
                         // Remove duplicates based on pricePlanYears
                         const uniqueSimulations = aConditions.filter((sim, index, self) =>
                             index === self.findIndex(s => s.pricePlanYears === sim.pricePlanYears)
@@ -166,7 +191,6 @@ sap.ui.define([
                         oModel.setProperty("/simulations", uniqueSimulations);
                         oModel.refresh();
                         this.getView().byId("_IDGenSelect2").updateItems();
-                        // Set selected price plan years after simulations are loaded
                         console.log("Setting selectedPricePlanYears to:", oReservation.pricePlanYears);
                         oModel.setProperty("/selectedPricePlanYears", String(oReservation.pricePlanYears));
                         this.getView().byId("_IDGenSelect2").invalidate();
@@ -193,20 +217,35 @@ sap.ui.define([
                 const aConditions = oModel.getProperty("/conditions") || [];
                 console.log("Conditions before installment fix:", aConditions);
                 aConditions.forEach((condition, index) => {
-                    if (!condition.installment) {
-                        condition.installment = condition.conditionType || "Installment";
-                    }
+                    condition.installment =
+                        condition.conditionType === "Maintenance"
+                            ? ""
+                            : condition.conditionType || "Installment";
                 });
                 console.log("Conditions after installment fix:", aConditions);
                 oModel.setProperty("/conditions", aConditions);
+
+                // FIX: Calculate unitPrice from conditions if it's 0
+                const currentUnitPrice = oModel.getProperty("/unitPrice") || 0;
+                if (currentUnitPrice === 0 && aConditions.length > 0) {
+                    const total = aConditions.reduce(
+                        (sum, c) => sum + (Number(c.amount) || 0),
+                        0
+                    );
+                    console.log("Calculated unitPrice from conditions:", total); // Debug log
+                    oModel.setProperty("/unitPrice", total);
+                }
             }
         },
         onOpenPricePlanValueHelpReservation: function () {
-            const projectId = this.getView().getModel("local").getProperty("/project_projectId");
+            const projectId = this.getView()
+                .getModel("local")
+                .getProperty("/project_projectId");
             const aPlans = this._oPaymentPlansModel.getData();
-            const filteredPlans = aPlans.filter(p =>
-                Array.isArray(p.assignedProjects) &&
-                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+            const filteredPlans = aPlans.filter(
+                (p) =>
+                    Array.isArray(p.assignedProjects) &&
+                    p.assignedProjects.some((ap) => ap.project?.projectId === projectId)
             );
 
             if (!this._oPricePlanValueHelp) {
@@ -216,24 +255,32 @@ sap.ui.define([
                         path: "filteredPlans>/",
                         template: new StandardListItem({
                             title: "{filteredPlans>planYears} Years",
-                            description: "{filteredPlans>description}"
-                        })
+                            description: "{filteredPlans>description}",
+                        }),
                     },
                     confirm: function (oEvent) {
                         const oSelectedItem = oEvent.getParameter("selectedItem");
                         if (oSelectedItem) {
-                            const oContext = oSelectedItem.getBindingContext("filteredPlans");
+                            const oContext =
+                                oSelectedItem.getBindingContext("filteredPlans");
                             const oPlan = oContext.getObject();
                             const selectedYear = oPlan.planYears;
-                            this.getView().byId("_IDGenSelect2").setSelectedKey(selectedYear);
-                            this.onPricePlanYearsChange({ getSource: () => ({ getSelectedKey: () => selectedYear }) });  // Trigger change
+                            this.getView()
+                                .byId("_IDGenSelect2")
+                                .setSelectedKey(selectedYear);
+                            this.onPricePlanYearsChange({
+                                getSource: () => ({ getSelectedKey: () => selectedYear }),
+                            }); // Trigger change
                         }
-                    }.bind(this)
+                    }.bind(this),
                 });
                 this.getView().addDependent(this._oPricePlanValueHelp);
             }
 
-            this._oPricePlanValueHelp.setModel(new JSONModel(filteredPlans), "filteredPlans");
+            this._oPricePlanValueHelp.setModel(
+                new JSONModel(filteredPlans),
+                "filteredPlans"
+            );
             this._oPricePlanValueHelp.open();
         },
         onPricePlanYearsChange: async function (oEvent) {
@@ -242,13 +289,19 @@ sap.ui.define([
             oModel.setProperty("/pricePlanYears", iYears);
             oModel.setProperty("/planYears", iYears);
 
-            // First, try to resolve from existing simulations (your original logic)
-            await this._resolveSimulationByYears(iYears);
+            const bIsEdit = oModel.getProperty("/isEditMode");
 
-            // NEW: If no conditions were set (no matching simulation), run on-the-fly simulation
-            const aConditions = oModel.getProperty("/conditions") || [];
-            if (aConditions.length === 0) {
+            if (bIsEdit) {
+                // In edit mode, always run on-the-fly simulation on change to update conditions
                 await this._simulateConditionsForReservation(iYears);
+            } else {
+                // In create mode, try to resolve from existing simulations first
+                await this._resolveSimulationByYears(iYears);
+                // If no conditions were set (no matching simulation), run on-the-fly simulation
+                const aConditions = oModel.getProperty("/conditions") || [];
+                if (aConditions.length === 0) {
+                    await this._simulateConditionsForReservation(iYears);
+                }
             }
         },
         _simulateConditionsForReservation: async function (pricePlanYears) {
@@ -261,23 +314,32 @@ sap.ui.define([
                 return;
             }
 
-            let matchingPlan = null;  // Declare at function level to avoid scope issues
+            let matchingPlan = null; // Ensure declared at function level
 
             try {
                 // Fetch and filter unit conditions
-                const conditionsRes = await fetch(`/odata/v4/real-estate/Conditions?$filter=unit_unitId eq '${unitId}'`);
+                const conditionsRes = await fetch(
+                    `/odata/v4/real-estate/Conditions?$filter=unit_unitId eq '${unitId}'`
+                );
                 if (!conditionsRes.ok) {
-                    throw new Error(`Failed to fetch conditions: ${conditionsRes.status}`);
+                    throw new Error(
+                        `Failed to fetch conditions: ${conditionsRes.status}`
+                    );
                 }
                 const conditions = await conditionsRes.json();
                 const aConditions = conditions.value || [];
-                const filteredConditions = aConditions.filter(c => c.numberOfYears === pricePlanYears);
+                const filteredConditions = aConditions.filter(
+                    (c) => c.numberOfYears === pricePlanYears
+                );
 
                 if (filteredConditions.length === 0) {
                     throw new Error(`No conditions found for ${pricePlanYears} years.`);
                 }
 
-                const finalPrice = filteredConditions.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+                const finalPrice = filteredConditions.reduce(
+                    (sum, c) => sum + Number(c.amount || 0),
+                    0
+                );
                 let simulationSchedule = [];
 
                 if (pricePlanYears === 0) {
@@ -286,72 +348,107 @@ sap.ui.define([
                     simulationSchedule.push({
                         installment: "Cash Payment",
                         conditionType: "Cash",
-                        dueDate: today.toISOString().split('T')[0],
+                        dueDate: today.toISOString().split("T")[0],
                         amount: Math.round(finalPrice * 100) / 100,
-                        maintenance: 0
+                        maintenance: 0,
                     });
                 } else {
                     // Find matching plan
                     const aPlans = this._oPaymentPlansModel.getData();
-                    console.log("Plans data:", aPlans);  // Debug log
-                    matchingPlan = aPlans.find(p =>
-                        p.planYears === pricePlanYears &&
-                        Array.isArray(p.assignedProjects) &&
-                        p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+                    console.log("Plans data:", aPlans); // Debug log
+                    matchingPlan = aPlans.find(
+                        (p) =>
+                            p.planYears === pricePlanYears &&
+                            Array.isArray(p.assignedProjects) &&
+                            p.assignedProjects.some(
+                                (ap) => ap.project?.projectId === projectId
+                            )
                     );
-                    console.log("Matching plan for years", pricePlanYears, ":", matchingPlan);  // Debug log
+                    console.log(
+                        "Matching plan for years",
+                        pricePlanYears,
+                        ":",
+                        matchingPlan
+                    ); // Debug log
 
                     if (!matchingPlan) {
-                        throw new Error(`No payment plan found for ${pricePlanYears} years.`);
+                        throw new Error(
+                            `No payment plan found for ${pricePlanYears} years.`
+                        );
                     }
 
                     // ADDED: Extra check and log to ensure matchingPlan is defined
-                    console.log("About to fetch with matchingPlan:", matchingPlan);  // Debug log
+                    console.log("About to fetch with matchingPlan:", matchingPlan); // Debug log
                     if (!matchingPlan || !matchingPlan.paymentPlanId) {
-                        throw new Error("Matching plan is invalid or missing paymentPlanId.");
+                        throw new Error(
+                            "Matching plan is invalid or missing paymentPlanId."
+                        );
                     }
 
                     // Fetch schedules
-                    const scheduleRes = await fetch(`/odata/v4/real-estate/PaymentPlanSchedules?$filter=paymentPlan_paymentPlanId eq '${matchingPlan.paymentPlanId}'&$expand=conditionType,basePrice,frequency`);
+                    const scheduleRes = await fetch(
+                        `/odata/v4/real-estate/PaymentPlanSchedules?$filter=paymentPlan_paymentPlanId eq '${matchingPlan.paymentPlanId}'&$expand=conditionType,basePrice,frequency`
+                    );
                     if (!scheduleRes.ok) {
-                        throw new Error(`Failed to fetch schedules: ${scheduleRes.status}`);
+                        throw new Error(
+                            `Failed to fetch schedules: ${scheduleRes.status}`
+                        );
                     }
                     const scheduleData = await scheduleRes.json();
                     const aSchedules = scheduleData.value || [];
                     const today = new Date();
 
-                    aSchedules.forEach(schedule => {
+                    aSchedules.forEach((schedule) => {
                         const basePriceCode = schedule.basePrice?.code;
-                        const condition = filteredConditions.find(c => c.code === basePriceCode);
+                        const condition = filteredConditions.find(
+                            (c) => c.code === basePriceCode
+                        );
                         const baseAmount = condition ? Number(condition.amount) : 0;
                         const amount = (baseAmount * schedule.percentage) / 100;
-                        const interval = this._getFrequencyIntervalPPS(schedule.frequency?.description);
+                        const interval = this._getFrequencyIntervalPPS(
+                            schedule.frequency?.description
+                        );
 
                         if (schedule.conditionType?.description === "Maintenance") {
                             for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
-                                const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
+                                const dueDate = new Date(
+                                    today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000
+                                );
                                 simulationSchedule.push({
                                     installment: "",
-                                    conditionType: schedule.conditionType?.description || "Maintenance",
-                                    dueDate: dueDate.toISOString().split('T')[0],
+                                    conditionType:
+                                        schedule.conditionType?.description || "Maintenance",
+                                    dueDate: dueDate.toISOString().split("T")[0],
                                     amount: 0,
-                                    maintenance: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100
+                                    maintenance:
+                                        Math.round(
+                                            (amount / Math.max(1, schedule.numberOfInstallments)) *
+                                            100
+                                        ) / 100,
                                 });
                             }
                         } else {
-                            let conditionType = schedule.conditionType?.description || "Installment";
-                            if (conditionType === "Down payment") conditionType = "Down Payment";
+                            let conditionType =
+                                schedule.conditionType?.description || "Installment";
+                            if (conditionType === "Down payment")
+                                conditionType = "Down Payment";
 
                             for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
-                                const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
+                                const dueDate = new Date(
+                                    today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000
+                                );
                                 simulationSchedule.push({
                                     installment: conditionType,
                                     conditionType: conditionType,
-                                    dueDate: dueDate.toISOString().split('T')[0],
-                                    amount: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100,
-                                    maintenance: 0
+                                    dueDate: dueDate.toISOString().split("T")[0],
+                                    amount:
+                                        Math.round(
+                                            (amount / Math.max(1, schedule.numberOfInstallments)) *
+                                            100
+                                        ) / 100,
+                                    maintenance: 0,
                                 });
                             }
                         }
@@ -360,53 +457,37 @@ sap.ui.define([
 
                 // Sort and set to conditions
                 simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-                oModel.setProperty("/conditions", simulationSchedule.map(s => ({
-                    ID: this._generateUUID(),
-                    installment: s.installment,
-                    conditionType: s.conditionType,
-                    dueDate: s.dueDate,
-                    amount: s.amount,
-                    maintenance: s.maintenance
-                })));
+                oModel.setProperty(
+                    "/conditions",
+                    simulationSchedule.map((s) => ({
+                        ID: this._generateUUID(),
+                        installment: s.installment,
+                        conditionType: s.conditionType,
+                        dueDate: s.dueDate,
+                        amount: s.amount,
+                        maintenance: s.maintenance,
+                    }))
+                );
                 oModel.setProperty("/selectedSimulationFinalPrice", finalPrice);
-                oModel.setProperty("/paymentPlan_paymentPlanId", matchingPlan?.paymentPlanId || "");  // Now safe, matchingPlan is in scope
-
+                oModel.setProperty(
+                    "/paymentPlan_paymentPlanId",
+                    matchingPlan?.paymentPlanId || ""
+                ); // Safe access
+                oModel.setProperty("/unitPrice", finalPrice);
+                oModel.refresh(); // Force model refresh
+                console.log(
+                    "Simulation completed: conditions set, unitPrice updated to",
+                    finalPrice
+                ); // Debug log
             } catch (err) {
-                console.error("Simulation error:", err);  // Debug log
+                console.error("Simulation error:", err); // Debug log
                 MessageBox.error("Simulation failed: " + (err.message || err));
+                // ADDED: In case of error, don't clear conditions in edit mode
+                const bIsEdit = oModel.getProperty("/isEditMode");
+                if (!bIsEdit) {
+                    oModel.setProperty("/conditions", []);
+                }
             }
-        },
-        _resolveSimulationByYears: async function (iYears) {
-            const oModel = this.getView().getModel("local");
-            const aCond = oModel.getProperty("/unitConditions") || [];
-
-            const oSelectedSim = aCond.find(
-
-                cond => Number(cond.pricePlanYears) === iYears
-
-            );
-            console.log("Unit cond ", oSelectedSim);
-
-
-            if (!oSelectedSim) {
-                oModel.setProperty("/conditions", []);
-                return;
-            }
-
-            oModel.setProperty("/selectedPricePlanYears", String(iYears));
-            oModel.setProperty("/selectedSimulationId", oSelectedSim.simulationId);
-            oModel.setProperty("/selectedSimulationFinalPrice", oSelectedSim.finalPrice);
-
-            oModel.setProperty(
-                "/paymentPlan_paymentPlanId",
-                oSelectedSim.paymentPlan_paymentPlanId
-            );
-            console.log(
-                "Years:", iYears,
-                "Condition", oSelectedSim.ID,
-                "final Price", oSelectedSim.finalPrice
-            );
-            await this._loadConditionsFromSimulation(oSelectedSim.simulationId);
         },
         _loadConditionsFromSimulation: async function (sSimulationId) {
             if (!sSimulationId) {
@@ -427,27 +508,71 @@ sap.ui.define([
             const bIsEdit = oModel.getProperty("/isEditMode");
 
             const aConditions = (simulation.schedule || [])
-                .filter(s => s.conditionType !== "Total")
+                .filter((s) => s.conditionType !== "Total")
                 .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
                 .map((s, index) => ({
                     ID: this._generateUUID(),
-                    installment: s.conditionType,
+                    installment:
+                        s.conditionType === "Maintenance" ? "" : s.conditionType,
                     conditionType: s.conditionType,
                     dueDate: s.dueDate,
                     amount: s.amount,
-                    maintenance: s.maintenance
+                    maintenance: s.maintenance,
                 }));
 
             oModel.setProperty("/conditions", aConditions);
         },
+        _resolveSimulationByYears: async function (iYears) {
+            const oModel = this.getView().getModel("local");
+            const aCond = oModel.getProperty("/unitConditions") || [];
+
+            const oSelectedSim = aCond.find(
+                (cond) => Number(cond.pricePlanYears) === iYears
+            );
+            console.log("Unit cond ", oSelectedSim);
+
+            if (!oSelectedSim) {
+                // For edit mode, don't clear conditions if no sim found; keep existing pre-loaded conditions
+                if (!oModel.getProperty("/isEditMode")) {
+                    oModel.setProperty("/conditions", []);
+                }
+                return;
+            }
+
+            oModel.setProperty("/selectedPricePlanYears", String(iYears));
+            oModel.setProperty("/selectedSimulationId", oSelectedSim.simulationId);
+            oModel.setProperty(
+                "/selectedSimulationFinalPrice",
+                oSelectedSim.finalPrice
+            );
+
+            oModel.setProperty(
+                "/paymentPlan_paymentPlanId",
+                oSelectedSim.paymentPlan_paymentPlanId
+            );
+            console.log(
+                "Years:",
+                iYears,
+                "Condition",
+                oSelectedSim.ID,
+                "final Price",
+                oSelectedSim.finalPrice
+            );
+            await this._loadConditionsFromSimulation(oSelectedSim.simulationId);
+        },
         _getFrequencyIntervalPPS: function (frequencyDesc) {
             if (!frequencyDesc) return 12;
             switch (frequencyDesc.toLowerCase()) {
-                case "monthly": return 1;
-                case "quarterly": return 3;
-                case "semi-annual": return 6;
-                case "annual": return 12;
-                default: return 12;
+                case "monthly":
+                    return 1;
+                case "quarterly":
+                    return 3;
+                case "semi-annual":
+                    return 6;
+                case "annual":
+                    return 12;
+                default:
+                    return 12;
             }
         },
         _reserveUnit: async function (sUnitId) {
@@ -459,8 +584,8 @@ sap.ui.define([
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        unitStatusDescription: "Reserved"
-                    })
+                        unitStatusDescription: "Reserved",
+                    }),
                 }
             );
 
@@ -469,10 +594,14 @@ sap.ui.define([
             }
         },
         _generateUUID: function () {
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
+            return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+                /[xy]/g,
+                function (c) {
+                    const r = (Math.random() * 16) | 0,
+                        v = c === "x" ? r : (r & 0x3) | 0x8;
+                    return v.toString(16);
+                }
+            );
         },
         onSaveReservation: async function () {
             const oModel = this.getView().getModel("local");
@@ -480,7 +609,9 @@ sap.ui.define([
             const bIsEdit = oData.mode === "edit";
 
             // For edit mode, use existing reservationId; for create, generate new one
-            const reservationId = bIsEdit ? oData.reservationId : this._generateUUID();
+            const reservationId = bIsEdit
+                ? oData.reservationId
+                : this._generateUUID();
 
             const transformedConditions = oData.conditions.map((c, index) => ({
                 ID: c.ID || this._generateUUID(),
@@ -491,22 +622,24 @@ sap.ui.define([
                     : null,
                 amount: c.amount ?? 0,
                 maintenance: c.maintenance ?? 0,
-                reservation_reservationId: reservationId
+                reservation_reservationId: reservationId,
             }));
 
             console.log("Conditions before save:", transformedConditions);
 
             // Fixed: Transform partners to match ReservationPartners entity
-            const transformedPartners = oData.partners.map(p => ({
+            const transformedPartners = oData.partners.map((p) => ({
                 ID: p.ID || this._generateUUID(),
                 customerCode: p.customerCode || "",
                 customerName: p.customerName || "",
                 customerAddress: p.customerAddress || "",
-                validFrom: p.validFrom ? new Date(p.validFrom).toISOString().split("T")[0] : null
+                validFrom: p.validFrom
+                    ? new Date(p.validFrom).toISOString().split("T")[0]
+                    : null,
             }));
 
             // Fixed: Transform payments to match ReservationPayments entity
-            const transformedPayments = oData.payments.map(p => ({
+            const transformedPayments = oData.payments.map((p) => ({
                 ID: p.ID || this._generateUUID(),
                 receiptType: p.receiptType || "",
                 receiptStatus: p.receiptStatus || "",
@@ -514,7 +647,9 @@ sap.ui.define([
                 amount: p.amount || 0,
                 houseBank: p.houseBank || "",
                 bankAccount: p.bankAccount || "",
-                dueDate: p.dueDate ? new Date(p.dueDate).toISOString().split("T")[0] : null,
+                dueDate: p.dueDate
+                    ? new Date(p.dueDate).toISOString().split("T")[0]
+                    : null,
                 transferNumber: p.transferNumber || "",
                 checkNumber: p.checkNumber || "",
                 customerBank: p.customerBank || "",
@@ -522,7 +657,7 @@ sap.ui.define([
                 branch: p.branch || "",
                 collectedAmount: p.collectedAmount || 0,
                 arValidated: p.arValidated || false,
-                rejectionReason: p.rejectionReason || ""
+                rejectionReason: p.rejectionReason || "",
             }));
 
             // Remove pricePlanYears and planYears if they are 0 or null to avoid sending default values
@@ -541,12 +676,14 @@ sap.ui.define([
                 salesType: oData.salesType || "",
                 description: oData.description || "",
                 reservationStatus: oData.reservationStatus || "",
-                validFrom: oData.validFrom ? new Date(oData.validFrom).toISOString().split("T")[0] : null,
-                status: oData.status || "O",  // Default to 'O' (Open)
+                validFrom: oData.validFrom
+                    ? new Date(oData.validFrom).toISOString().split("T")[0]
+                    : null,
+                status: oData.status || "O", // Default to 'O' (Open)
                 customerType: oData.customerType || "",
                 currency: oData.currency || "",
                 afterSales: oData.afterSales || "",
-                project_projectId: oData.project_projectId || "",  // Association
+                project_projectId: oData.project_projectId || "", // Association
                 building_buildingId: oData.building_buildingId || "",
                 unit_unitId: oData.unit_unitId || "",
                 bua: oData.bua || 0,
@@ -558,13 +695,15 @@ sap.ui.define([
                 planCurrency: oData.planCurrency || "",
                 requestType: oData.requestType || "",
                 reason: oData.reason || "",
-                cancellationDate: oData.cancellationDate ? new Date(oData.cancellationDate).toISOString().split("T")[0] : null,
+                cancellationDate: oData.cancellationDate
+                    ? new Date(oData.cancellationDate).toISOString().split("T")[0]
+                    : null,
                 cancellationStatus: oData.cancellationStatus || "",
                 rejectionReason: oData.rejectionReason || "",
                 cancellationFees: oData.cancellationFees || 0,
-                partners: transformedPartners,  // Composition
-                conditions: transformedConditions,  // Composition
-                payments: transformedPayments  // Composition
+                partners: transformedPartners, // Composition
+                conditions: transformedConditions, // Composition
+                payments: transformedPayments, // Composition
             };
 
             // Conditionally add pricePlanYears and planYears if they exist
@@ -584,25 +723,32 @@ sap.ui.define([
                 const res = await fetch(url, {
                     method: method,
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(payload),
                 });
 
                 if (!res.ok) {
                     const errorText = await res.text();
-                    throw new Error(`Failed to ${bIsEdit ? 'update' : 'create'} reservation: ${res.status} - ${errorText}`);
+                    throw new Error(
+                        `Failed to ${bIsEdit ? "update" : "create"} reservation: ${res.status
+                        } - ${errorText}`
+                    );
                 }
-
-
 
                 await this._reserveUnit(oData.unit_unitId);
 
+                // Save simulation to unit for future edits (only for create mode)
+                if (!bIsEdit) {
+                    await this._saveSimulationToUnit(oData);
+                }
+
                 /* 3️⃣ Success + Navigate */
                 MessageToast.show("Reservation created. Unit is now reserved.");
-                MessageToast.show(`Reservation ${bIsEdit ? 'updated' : 'created'} successfully!`);
+                MessageToast.show(
+                    `Reservation ${bIsEdit ? "updated" : "created"} successfully!`
+                );
                 this._resetReservationForm();
                 const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
                 oRouter.navTo("Reservations");
-
             } catch (err) {
                 console.error("Save error:", err);
                 MessageBox.error(err.message);
@@ -644,7 +790,6 @@ sap.ui.define([
 
             this.getView().setModel(oEmptyModel, "local");
         },
-        // Payments table
         onAddPaymentRow: function () {
             const oModel = this.getView().getModel("local");
             const aPayments = oModel.getProperty("/payments");
@@ -677,10 +822,11 @@ sap.ui.define([
             aPayments.splice(iIndex, 1);
             oModel.refresh();
         },
-        // Partners table
         onAddPartnerRow: function () {
+
             const oModel = this.getView().getModel("local");
             const aPartners = oModel.getProperty("/partners");
+
             aPartners.push({
                 ID: this._generateUUID(),
                 customerCode: "",
@@ -693,10 +839,6 @@ sap.ui.define([
         onCustomerCodeChange: function (oEvent) {
             const oSelect = oEvent.getSource();
             const sSelectedCode = oSelect.getSelectedKey();
-            console.log("onCustomerCodeChange triggered"); // <-- Add this
-
-            //const sCode = oSelect.getSelectedKey();
-            console.log("Selected Customer Code:", sSelectedCode); // <-- Add this
 
             if (!sSelectedCode) {
                 console.log("No code selected");
@@ -706,11 +848,8 @@ sap.ui.define([
                 return;
             }
 
-            // 1. Get the lookup data from the "partnersList" model
             const oPartnersModel = this.getView().getModel("partnersList");
-            const aPartners = oPartnersModel.getData(); // array of partners
-
-            // 2. Find the selected partner
+            const aPartners = oPartnersModel.getData();
             const oSelectedPartner = aPartners.find(partner =>
                 partner.customerCode === sSelectedCode
             );
@@ -720,17 +859,14 @@ sap.ui.define([
                 return;
             }
 
-            // 3. Get the binding context of the current row (from "local" model)
             const oContext = oSelect.getBindingContext("local");
             const sRowPath = oContext.getPath(); // e.g. "/partners/2"
 
-            // 4. Update the fields in the same row using the "local" model
             const oLocalModel = this.getView().getModel("local");
 
             oLocalModel.setProperty(sRowPath + "/customerName", oSelectedPartner.customerName || "");
             oLocalModel.setProperty(sRowPath + "/customerAddress", oSelectedPartner.customerAddress || "");
 
-            // Format date properly for DatePicker (yyyy-MM-dd)
             let sValidFrom = "";
             if (oSelectedPartner.validFrom) {
                 const oDate = new Date(oSelectedPartner.validFrom);
@@ -740,29 +876,6 @@ sap.ui.define([
             }
             oLocalModel.setProperty(sRowPath + "/validFrom", sValidFrom);
         },
-        // onCustomerCodeChange: function (oEvent) {
-        //     const sCode = oEvent.getSource().getSelectedKey();
-        //     if (!sCode) return;
-
-        //     // Get the named model that holds the lookup data
-        //     const oLookupModel = this.getView().getModel("partnersList");
-        //     const aPartners = oLookupModel.getData();  // assuming data is the array directly
-        //     // Or: oLookupModel.getProperty("/") if needed
-
-        //     const oPartner = aPartners.find(p => p.customerCode === sCode);
-        //     if (!oPartner) return;
-
-        //     // Get the row context from the "local" model
-        //     const oContext = oEvent.getSource().getBindingContext("local");
-        //     const sPath = oContext.getPath();  // e.g. "/partners/0"
-
-        //     // Update the same row in the "local" model
-        //     const oLocalModel = this.getView().getModel("local");
-        //     oLocalModel.setProperty(sPath + "/customerName", oPartner.customerName);
-        //     oLocalModel.setProperty(sPath + "/customerAddress", oPartner.customerAddress);
-        //     oLocalModel.setProperty(sPath + "/validFrom", oPartner.validFrom);  // format as needed, e.g. to "YYYY-MM-DD"
-        // },
-
         onDeletePartnerRow: function (oEvent) {
             const oContext = oEvent.getSource().getBindingContext("local");
             const sPath = oContext.getPath();
@@ -772,7 +885,6 @@ sap.ui.define([
             aPartners.splice(iIndex, 1);
             oModel.refresh();
         },
-        // Conditions table (now editable, can add/delete)
         onAddConditionRow: function () {
             const oModel = this.getView().getModel("local");
             const aConditions = oModel.getProperty("/conditions");
@@ -798,6 +910,46 @@ sap.ui.define([
             this.getView().getModel("local").setData({}); // Clear form
             const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             oRouter.navTo("Units"); // Navigate back
-        }
+        },
+        _saveSimulationToUnit: async function (oData) {
+            const simulationId = this._generateUUID();
+            const schedule = oData.conditions.map((c) => ({
+                ID: this._generateUUID(),
+                conditionType: c.conditionType || c.installment,
+                dueDate: c.dueDate,
+                amount: c.amount,
+                maintenance: c.maintenance,
+                simulation_simulationId: simulationId,
+            }));
+
+            const simulationPayload = {
+                simulationId: simulationId,
+                pricePlanYears: oData.pricePlanYears,
+                finalPrice: oData.selectedSimulationFinalPrice || 0,
+                paymentPlan_paymentPlanId: oData.paymentPlan_paymentPlanId,
+                unit_unitId: oData.unit_unitId,
+                schedule: schedule,
+            };
+
+            try {
+                const res = await fetch(
+                    "/odata/v4/real-estate/PaymentPlanSimulations",
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(simulationPayload),
+                    }
+                );
+
+                if (!res.ok) {
+                    console.error("Failed to save simulation to unit");
+                } else {
+                    console.log("Simulation saved to unit successfully");
+                }
+            } catch (err) {
+                console.error("Error saving simulation:", err);
+            }
+        },
+
     });
 });

@@ -20,7 +20,10 @@ sap.ui.define([
             var oModel = new JSONModel({ Reservations: [] });
             this.getView().setModel(oModel);  // Default model (no name)
 
+            this._oPaymentPlansModel = new JSONModel([]);
+            this.getView().setModel(this._oPaymentPlansModel, "paymentPlans");
 
+            this._loadPaymentPlans();
             this._loadReservations();
         },
 
@@ -41,21 +44,6 @@ sap.ui.define([
                 .then(data => {
                     console.log("Fetched reservations data:", data);
                     if (data.value) {
-                        // Ensure installment displays the correct type based on pattern
-                        data.value.forEach(reservation => {
-                            if (reservation.conditions) {
-                                reservation.conditions.forEach((condition, index) => {
-                                    const mod = index % 4;
-                                    if (mod === 0 || mod === 1) {
-                                        condition.installment = "Down Payment";
-                                    } else if (mod === 2) {
-                                        condition.installment = "Maintenance";
-                                    } else {
-                                        condition.installment = "Installement";
-                                    }
-                                });
-                            }
-                        });
                         oModel.setData({ Reservations: data.value });
                         this.getView().byId("reservationsTable").setModel(oModel);
                     } else {
@@ -106,8 +94,123 @@ sap.ui.define([
                 });
         },
 
+        _loadPaymentPlans: function () {
+            fetch("/odata/v4/real-estate/PaymentPlans")
+                .then(response => response.json())
+                .then(data => {
+                    this._oPaymentPlansModel.setData(data.value);
+                })
+                .catch(err => console.error("Error loading payment plans:", err));
+        },
+
+        _populateAvailableYears: function (oDialogModel) {
+            var aPaymentPlans = this._oPaymentPlansModel.getData();
+            var aAvailableYears = [];
+            aPaymentPlans.forEach(function (oPlan) {
+                if (oPlan.planYears && oPlan.planYears > 0) {
+                    aAvailableYears.push({ key: oPlan.planYears, text: oPlan.planYears + " Years" });
+                }
+            });
+            oDialogModel.setProperty("/availableYears", aAvailableYears);
+        },
+
+        onPricePlanYearsChange: function (oEvent) {
+            var sSelectedYears = oEvent.getParameter("selectedItem").getKey();
+            var oDialogModel = this._oEditDialog.getModel();
+            oDialogModel.setProperty("/pricePlanYears", parseInt(sSelectedYears));
+            this._resolveSimulations(oDialogModel);
+        },
+
+        _resolveSimulations: function (oDialogModel) {
+            var sUnitId = oDialogModel.getProperty("/unit_unitId");
+            var iPricePlanYears = oDialogModel.getProperty("/pricePlanYears");
+            if (sUnitId && iPricePlanYears) {
+                fetch(`/odata/v4/real-estate/Units(unitId='${sUnitId}')?$expand=simulations`)
+                    .then(response => response.json())
+                    .then(data => {
+                        var aSimulations = data.simulations || [];
+                        var aFilteredSimulations = aSimulations.filter(function (oSim) {
+                            return oSim.years === iPricePlanYears;
+                        });
+                        oDialogModel.setProperty("/simulations", aFilteredSimulations);
+                        // Set Payment Plan ID and Unit Price from the first matching simulation
+                        if (aFilteredSimulations.length > 0) {
+                            var oSelectedSim = aFilteredSimulations[0];
+                            oDialogModel.setProperty("/paymentPlan_paymentPlanId", oSelectedSim.paymentPlan_paymentPlanId || "");
+                            oDialogModel.setProperty("/unitPrice", oSelectedSim.finalPrice || 0);
+                            this._loadConditionsFromSimulation(oSelectedSim.simulationId, oDialogModel);
+                        }
+                    })
+                    .catch(err => console.error("Error resolving simulations:", err));
+            }
+        },
+
+        _simulateConditions: function (oDialogModel) {
+            var aSimulations = oDialogModel.getProperty("/simulations") || [];
+            var aConditions = [];
+            var iTotalAmount = 0;
+            aSimulations.forEach(function (oSim, index) {
+                var sInstallmentType = "";
+                var mod = index % 4;
+                if (mod === 0 || mod === 1) {
+                    sInstallmentType = "Down Payment";
+                } else if (mod === 2) {
+                    sInstallmentType = "Maintenance";
+                } else {
+                    sInstallmentType = "Installement";
+                }
+                aConditions.push({
+                    ID: this._generateUUID(),
+                    installment: sInstallmentType,
+                    dueDate: oSim.dueDate || "",
+                    amount: oSim.amount || 0,
+                    maintenance: oSim.maintenance || 0
+                });
+                iTotalAmount += oSim.amount || 0;
+            }.bind(this));
+            oDialogModel.setProperty("/conditions", aConditions);
+            oDialogModel.setProperty("/unitPrice", iTotalAmount);
+        },
+
+        _loadConditionsFromSimulation: async function (sSimulationId, oDialogModel) {
+            if (!sSimulationId) {
+                return;
+            }
+
+            const res = await fetch(
+                `/odata/v4/real-estate/PaymentPlanSimulations(simulationId='${sSimulationId}')?$expand=schedule`
+            );
+
+            if (!res.ok) {
+                sap.m.MessageBox.error("Failed to load simulation conditions");
+                return;
+            }
+
+            const simulation = await res.json();
+
+            const aConditions = (simulation.schedule || [])
+                .filter(s => s.conditionType !== "Total")
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+                .map((s, index) => ({
+                    ID: this._generateUUID(),
+                    installment: s.conditionType,
+                    conditionType: s.conditionType,
+                    dueDate: s.dueDate,
+                    amount: s.amount,
+                    maintenance: s.maintenance
+                }));
+
+            oDialogModel.setProperty("/conditions", aConditions);
+        },
+
         onDetails: function (oEvent) {
             var oData = oEvent.getSource().getBindingContext().getObject();
+            // Ensure installment is set based on conditionType for consistency
+            if (oData.conditions) {
+                oData.conditions.forEach(condition => {
+                    condition.installment = condition.conditionType === "Maintenance" ? "" : (condition.conditionType || "Installment");
+                });
+            }
             var oDialogModel = new JSONModel(oData);
 
             if (!this._oDetailsDialog) {
@@ -262,7 +365,7 @@ sap.ui.define([
             this._oDetailsDialog.open();
         },
 
-        // Replace your existing onEditReservation method with this:
+        // UPDATED: onEditReservation - Navigate to CreateReservation in edit mode
         onEditReservation: function (oEvent) {
             var oData = oEvent.getSource().getBindingContext().getObject();
             var sReservationId = oData.reservationId;
@@ -275,12 +378,24 @@ sap.ui.define([
                 })
                 .then(data => {
                     console.log("Fetched reservation for edit:", data);
-                    // Set pricePlanYears from paymentPlan.planYears if available and not 0
-                    if (data.paymentPlan && data.paymentPlan.planYears !== undefined && data.paymentPlan.planYears !== 0) {
+                    // FIXED: Syntax error (was !==  &&)
+                    if (data.paymentPlan && data.paymentPlan.planYears !== undefined && data.paymentPlan.planYears !== null && data.paymentPlan.planYears !== 0) {
                         data.pricePlanYears = data.paymentPlan.planYears;
                     } else {
                         data.pricePlanYears = null;  // Set to null so Number input shows empty and it's not sent if unchanged
                     }
+                    // Fetch unit conditions (simulations) to enable simulation in CreateReservation
+                    if (data.unit_unitId) {
+                        return fetch(`/odata/v4/real-estate/Units(unitId='${data.unit_unitId}')?$expand=simulations`)
+                            .then(unitRes => unitRes.ok ? unitRes.json() : { simulations: [] })
+                            .then(unitData => {
+                                data.unitConditions = unitData.simulations || [];
+                                return data;
+                            });
+                    }
+                    return data;
+                })
+                .then(data => {
                     // Navigate to CreateReservation screen with edit mode
                     var oReservationData = {
                         ...data,
@@ -368,7 +483,17 @@ sap.ui.define([
                                         new sap.m.Label({ text: "Phase" }),
                                         new sap.m.Input({ value: "{/phase}", editable: false }),
                                         new sap.m.Label({ text: "Price Plan Years" }),
-                                        new sap.m.Input({ value: "{/pricePlanYears}", type: "Number" }),
+                                        new sap.m.Select({
+                                            selectedKey: "{/pricePlanYears}",
+                                            change: this.onPricePlanYearsChange.bind(this),
+                                            items: {
+                                                path: "/availableYears",
+                                                template: new sap.ui.core.Item({
+                                                    key: "{key}",
+                                                    text: "{text}"
+                                                })
+                                            }
+                                        }),
                                         new sap.m.Label({ text: "Payment Plan ID" }),
                                         new sap.m.Input({ value: "{/paymentPlan_paymentPlanId}", editable: false }),
                                         new sap.m.Label({ text: "Unit Price" }),
@@ -628,6 +753,7 @@ sap.ui.define([
             }
 
             var oDialogModel = new sap.ui.model.json.JSONModel(oReservationData);
+            this._populateAvailableYears(oDialogModel);
             this._oEditDialog.setModel(oDialogModel);
             this._oEditDialog.open();
         },
@@ -741,7 +867,7 @@ sap.ui.define([
                 }.bind(this)
             });
         },
-         
+
 
         onPrint: function () {
             var printWindow = window.open('', '_blank');
@@ -775,5 +901,5 @@ sap.ui.define([
             printWindow.focus();
             printWindow.print();
         },
-        });
+    });
 });
