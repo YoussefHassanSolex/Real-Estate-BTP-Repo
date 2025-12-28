@@ -32,12 +32,12 @@ module.exports = cds.service.impl(async function () {
     } = this.entities;
 
   /*-------------------------Company Codes-----------------------*/
-//Read
-this.on('READ',CompanyCodes, async (req) =>{
+  //Read
+  this.on('READ', CompanyCodes, async (req) => {
     console.log('READ Company Codes called');
     const db = cds.transaction(req);
     return await db.run(req.query);
-});
+  });
 
   /*-----------------------Buildings---------------------------*/
   // READ
@@ -239,79 +239,79 @@ this.on('READ',CompanyCodes, async (req) =>{
     const { ReservationPartners } = this.entities;
 
     try {
-        const data = { ...req.data };
-        if (data.reservation?.ID) {
-            data.reservation_ID = data.reservation.ID;
-            delete data.reservation;
-        }
-        if (!data.customerCode) {
-            return req.reject(400, 'Customer Code is mandatory');
-        }
-        return await INSERT.into(ReservationPartners).entries(data);
+      const data = { ...req.data };
+      if (data.reservation?.ID) {
+        data.reservation_ID = data.reservation.ID;
+        delete data.reservation;
+      }
+      if (!data.customerCode) {
+        return req.reject(400, 'Customer Code is mandatory');
+      }
+      return await INSERT.into(ReservationPartners).entries(data);
 
     } catch (error) {
-        console.error('Error creating ReservationPartner:', error);
-        return req.reject(500, 'Error creating ReservationPartner');
+      console.error('Error creating ReservationPartner:', error);
+      return req.reject(500, 'Error creating ReservationPartner');
     }
-});
+  });
+  
+    this.on('UPDATE', 'ReservationPartners', async (req) => {
+      const { ReservationPartners } = this.entities;
 
-  this.on('UPDATE', 'ReservationPartners', async (req) => {
-    const { ReservationPartners } = this.entities;
+      try {
+          const data = { ...req.data };
 
-    try {
-        const data = { ...req.data };
+          if (!data.ID) {
+              return req.reject(400, 'ReservationPartner ID is required for update');
+          }
 
-        if (!data.ID) {
-            return req.reject(400, 'ReservationPartner ID is required for update');
-        }
+          if (data.reservation?.ID) {
+              data.reservation_ID = data.reservation.ID;
+              delete data.reservation;
+          }
 
-        if (data.reservation?.ID) {
-            data.reservation_ID = data.reservation.ID;
-            delete data.reservation;
-        }
+          if (data.customerCode === '') {
+              return req.reject(400, 'Customer Code cannot be empty');
+          }
 
-        if (data.customerCode === '') {
-            return req.reject(400, 'Customer Code cannot be empty');
-        }
+          const affectedRows = await UPDATE(ReservationPartners)
+              .set(data)
+              .where({ ID: data.ID });
 
-        const affectedRows = await UPDATE(ReservationPartners)
-            .set(data)
-            .where({ ID: data.ID });
+          if (affectedRows === 0) {
+              return req.reject(404, 'ReservationPartner not found');
+          }
 
-        if (affectedRows === 0) {
-            return req.reject(404, 'ReservationPartner not found');
-        }
+          return ;
 
-        return affectedRows;
+      } catch (error) {
+          console.error('Error updating ReservationPartner:', error);
+          return req.reject(500, 'Error updating ReservationPartner');
+      }
+  });
 
-    } catch (error) {
-        console.error('Error updating ReservationPartner:', error);
-        return req.reject(500, 'Error updating ReservationPartner');
-    }
-});
-
-this.on('DELETE', 'ReservationPartners', async (req) => {
+  this.on('DELETE', 'ReservationPartners', async (req) => {
     const { ReservationPartners } = this.entities;
     const { ID } = req.data;
 
     try {
-        if (!ID) {
-            return req.reject(400, 'ID is mandatory');
-        }
+      if (!ID) {
+        return req.reject(400, 'ID is mandatory');
+      }
 
-        const affectedRows = await DELETE.from(ReservationPartners).where({ ID });
+      const affectedRows = await DELETE.from(ReservationPartners).where({ ID });
 
-        if (affectedRows === 0) {
-            return req.reject(404, 'ReservationPartner not found');
-        }
+      if (affectedRows === 0) {
+        return req.reject(404, 'ReservationPartner not found');
+      }
 
-        return affectedRows;
+      return affectedRows;
 
     } catch (error) {
-        console.error('Error deleting ReservationPartner:', error);
-        return req.reject(500, 'Error deleting ReservationPartner');
+      console.error('Error deleting ReservationPartner:', error);
+      return req.reject(500, 'Error deleting ReservationPartner');
     }
-});
+  });
 
   /*----------------------- Measurements ---------------------------*/
 
@@ -1119,31 +1119,31 @@ this.on('DELETE', 'ReservationPartners', async (req) => {
 
   /////////////////////////// CONTRACTS /////////////////////////
 
- async function fetchRealEstateContracts(limit = 10) {
-  // Hardcoded Basic Auth credentials (use env vars in production!)
-  const credentials = 'BTP_RE_CONTRACT:z834%S6f}tL&e2V(@rKN&xhz4XgLy$VAg}C9QL4[';
-  const encoded = Buffer.from(credentials, 'utf8').toString('base64');
+  async function fetchRealEstateContracts(limit = 10) {
+    // Hardcoded Basic Auth credentials (use env vars in production!)
+    const credentials = 'BTP_RE_CONTRACT:z834%S6f}tL&e2V(@rKN&xhz4XgLy$VAg}C9QL4[';
+    const encoded = Buffer.from(credentials, 'utf8').toString('base64');
 
-  const url = `https://my405604-api.s4hana.cloud.sap/sap/opu/odata4/sap/api_real_estate_contract/srvd_a2x/sap/api_recontract/0001/A_REContract?$top=${limit}`;
+    const url = `https://my405604-api.s4hana.cloud.sap/sap/opu/odata4/sap/api_real_estate_contract/srvd_a2x/sap/api_recontract/0001/A_REContract?$top=${limit}`;
 
-  const response = await axios.get(url, {
-    headers: {
-      Authorization: `Basic ${encoded}`,
-      Accept: 'application/json'
+    const response = await axios.get(url, {
+      headers: {
+        Authorization: `Basic ${encoded}`,
+        Accept: 'application/json'
+      }
+    });
+
+    return response.data.value; // Return array of contracts
+  }
+  this.on('READ', RealEstateContracts, async (req) => {
+    try {
+      const contracts = await fetchRealEstateContracts(10); // adjust limit
+      return contracts;
+    } catch (err) {
+      console.error('Failed to fetch Real Estate Contracts', err.message);
+      req.reject(500, 'Failed to fetch Real Estate Contracts');
     }
   });
-
-  return response.data.value; // Return array of contracts
-}
-this.on('READ', RealEstateContracts, async (req) => {
-  try {
-    const contracts = await fetchRealEstateContracts(10); // adjust limit
-    return contracts;
-  } catch (err) {
-    console.error('Failed to fetch Real Estate Contracts', err.message);
-    req.reject(500, 'Failed to fetch Real Estate Contracts');
-  }
-});
 
 
 

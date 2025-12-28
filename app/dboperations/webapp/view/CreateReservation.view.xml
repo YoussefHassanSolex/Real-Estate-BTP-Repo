@@ -309,22 +309,20 @@
                     />
                  
 
-                    <Label
-                        id="_IDGenLabel42"
-                        text="Price Plan Years"
-                    />
-                    <Select
-                        id="_IDGenSelect2"
-                        width="100%"
-                        selectedKey="{local>/selectedPricePlanYears}"
-                        change=".onPricePlanYearsChange"
-                        items="{path: 'local>/unitConditions'}"
-                    >
-                        <core:Item id="_IDGenItem7"
-                            key="{local>pricePlanYears}"
-                            text="{local>pricePlanYears}"
-                        />
-                    </Select>
+                    <Label id="_IDGenLabel42" text="Price Plan Years" />
+<Select
+    id="_IDGenSelect2"
+    width="100%"
+    selectedKey="{local>/selectedPricePlanYears}"
+    change=".onPricePlanYearsChange"
+    
+    items="{path: 'local>/availableYears'}" 
+>
+    <core:Item id="_IDGenItem7"
+        key="{local>year}"
+        text="{local>text}"
+    />
+</Select>
 
                     <!-- Payment Plan -->
                     <Label
@@ -560,62 +558,62 @@
                     />
                 </Toolbar>
 
-                <Table
-                    id="partnersTable"
-                    items="{path: 'local>/partners'}"
-                    inset="false"
-                >
-                    <columns>
-                        <Column id="_IDGenColumn96">
-                            <Text
-                                id="_IDGenText158"
-                                text="Customer Code"
-                            />
-                        </Column>
-                        <Column id="_IDGenColumn97">
-                            <Text
-                                id="_IDGenText159"
-                                text="Customer Name"
-                            />
-                        </Column>
-                        <Column id="_IDGenColumn98">
-                            <Text
-                                id="_IDGenText160"
-                                text="Customer Address"
-                            />
-                        </Column>
-                        <Column id="_IDGenColumn99">
-                            <Text
-                                id="_IDGenText161"
-                                text="Valid From"
-                            />
-                        </Column>
-                    </columns>
-                    <items>
-                        <ColumnListItem id="_IDGenColumnListItem9">
-                            <cells>
-                                <Input
-                                    id="_IDGenInput55"
-                                    value="{local>customerCode}"
-                                />
-                                <Input
-                                    id="_IDGenInput56"
-                                    value="{local>customerName}"
-                                />
-                                <Input
-                                    id="_IDGenInput57"
-                                    value="{local>customerAddress}"
-                                />
-                                <DatePicker
-                                    id="_IDGenDatePicker5"
-                                    value="{local>validFrom}"
-                                    displayFormat="yyyy-MM-dd"
-                                    valueFormat="yyyy-MM-dd"
-                                />
-                            </cells>
-                        </ColumnListItem>
-                    </items>
-                </Table>
+             <Table
+    id="partnersTable"
+    items="{path: 'local>/partners'}"
+    inset="false">
+
+    <columns>
+        <Column id="_IDGenColumn96">
+            <Text id="_IDGenText158" text="Customer Code" />
+        </Column>
+        <Column id="_IDGenColumn97">
+            <Text id="_IDGenText159" text="Customer Name" />
+        </Column>
+        <Column id="_IDGenColumn98">
+            <Text id="_IDGenText160" text="Customer Address" />
+        </Column>
+        <Column id="_IDGenColumn99">
+            <Text id="_IDGenText161" text="Valid From" />
+        </Column>
+    </columns>
+
+    <items>
+        <ColumnListItem id="_IDGenColumnListItem9">
+            <cells>
+
+                <!-- Customer Code dropdown -->
+                <Select id="customerMenu"
+                    selectedKey="{local>customerCode}"
+                    change=".onCustomerCodeChange"
+                    items="{
+                        path: 'partnersList>/'
+                    }">
+                    <core:Item id="_IDGenItem13"
+                        key="{partnersList>customerCode}"
+                        text="{partnersList>customerCode}" />
+                </Select>
+
+                <!-- Auto-filled fields -->
+                <Input id="_IDGenInput39"
+                    value="{local>customerName}"
+                    editable="false" />
+
+                <Input id="_IDGenInput40"
+                    value="{local>customerAddress}"
+                    editable="false" />
+
+                <DatePicker id="_IDGenDatePicker5"
+                    value="{local>validFrom}"
+                    editable="false"
+                    displayFormat="yyyy-MM-dd"
+                    valueFormat="yyyy-MM-dd" />
+
+            </cells>
+        </ColumnListItem>
+    </items>
+</Table>
+
 
                 <!-- Conditions Table (Updated to match simulation output) -->
                 <Title

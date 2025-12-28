@@ -2,7 +2,9 @@ sap.ui.define([
     "sap/ui/core/mvc/Controller",
     "sap/m/MessageBox",
     "sap/m/MessageToast",
-    "sap/ui/model/json/JSONModel"
+    "sap/ui/model/json/JSONModel",
+    "sap/m/SelectDialog",
+    "sap/m/StandardListItem"
 ], (Controller, MessageBox, MessageToast, JSONModel) => {
     "use strict";
     return Controller.extend("dboperations.controller.CreateReservation", {
@@ -10,6 +12,10 @@ sap.ui.define([
             var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             oRouter.getRoute("CreateReservation")
                 .attachPatternMatched(this._onRouteMatched, this);
+            this._oPaymentPlansModel = new JSONModel([]);
+            this.getView().setModel(this._oPaymentPlansModel, "paymentPlans");
+            this._loadPartners()
+
         },
         formatDateToYMD: function (oDate) {
             if (!oDate) {
@@ -22,6 +28,47 @@ sap.ui.define([
 
             return `${year}-${month}-${day}`;
         },
+        _loadPaymentPlansForReservation: async function () {
+            try {
+                const plansRes = await fetch("/odata/v4/real-estate/PaymentPlans?$expand=assignedProjects($expand=project)");
+                if (!plansRes.ok) {
+                    throw new Error(`Failed to fetch payment plans: ${plansRes.status}`);
+                }
+                const plans = await plansRes.json();
+                this._oPaymentPlansModel.setData(plans.value || []);
+                console.log("Payment plans loaded:", this._oPaymentPlansModel.getData());  // Debug log
+            } catch (err) {
+                console.error("Failed to load payment plans for reservation:", err);
+                MessageBox.error("Unable to load payment plans. Please try again.");
+            }
+        },
+
+        _populateAvailableYears: function (projectId) {
+            const aPlans = this._oPaymentPlansModel.getData();
+            if (!aPlans || aPlans.length === 0) {
+                console.warn("No payment plans available for populating years.");
+                return;
+            }
+            const filteredPlans = aPlans.filter(p =>
+                Array.isArray(p.assignedProjects) &&
+                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+            );
+            const uniqueYears = [...new Set(filteredPlans.map(p => p.planYears))].sort((a, b) => a - b);
+            const oModel = this.getView().getModel("local");
+            oModel.setProperty("/availableYears", uniqueYears.map(year => ({ year: year, text: `${year} Years` })));
+            oModel.refresh();
+            console.log("Available years populated:", uniqueYears);  // Debug log
+        },
+        _loadPartners: async function () {
+            fetch("/odata/v4/real-estate/ReservationPartners")
+                .then(res => res.json())
+                .then(data => {
+                    this.getView().setModel(new JSONModel(data.value || []), "partnersList");
+                    console.log("Partners", data.value);
+
+                })
+                .catch(err => console.error("Failed to load Partners list:", err));
+        },
         _onRouteMatched: async function (oEvent) {
             this._resetReservationForm();
 
@@ -32,8 +79,15 @@ sap.ui.define([
             var oReservation = JSON.parse(decodeURIComponent(sData));
             console.log("Decoded reservation:", oReservation);
 
+            // Load payment plans first (await to ensure data is available)
+            await this._loadPaymentPlansForReservation();
+
             var bIsEdit = oReservation.mode === "edit";
             var oModel = new sap.ui.model.json.JSONModel({
+                availableYears: [],  // For populating select items
+                selectedPricePlanYears: "",
+                selectedSimulationId: "",
+                selectedSimulationFinalPrice: 0,
                 mode: oReservation.mode || "create",
                 isEditMode: bIsEdit,
                 title: bIsEdit ? `Edit Reservation - ${oReservation.description || ''}` : "Create Reservation",
@@ -44,7 +98,6 @@ sap.ui.define([
                 eoiId: oReservation.eoiId,
                 salesType: oReservation.salesType,
                 description: oReservation.description,
-                //validFrom: new Date() || oReservation.validFrom,
                 validFrom: oReservation.validFrom
                     ? oReservation.validFrom
                     : this.formatDateToYMD(new Date()),
@@ -68,7 +121,6 @@ sap.ui.define([
                 unitType: oReservation.unitType,
                 phase: oReservation.phase,
                 pricePlanYears: oReservation.pricePlanYears,
-                //planYears: oReservation.pricePlanYears,
                 paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
                 simulations: oReservation.simulations || [],
                 unitConditions: oReservation.unitConditions,
@@ -81,6 +133,11 @@ sap.ui.define([
             });
 
             this.getView().setModel(oModel, "local");
+
+            // Populate available years after model is set and plans are loaded (if unitConditions exist)
+            if (oReservation.unitConditions?.length) {
+                this._populateAvailableYears(oReservation.project_projectId);
+            }
 
             // For edit mode, load simulations from the unit
             if (bIsEdit && oReservation.unit_unitId) {
@@ -95,7 +152,7 @@ sap.ui.define([
                             aConditions.push({
                                 ID: `edit-${oReservation.pricePlanYears}`,
                                 pricePlanYears: String(oReservation.pricePlanYears),
-                               // paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId || ""
+                                // paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId || ""
                             });
                         }
                         // Ensure all simulations have pricePlanYears as string
@@ -144,12 +201,180 @@ sap.ui.define([
                 oModel.setProperty("/conditions", aConditions);
             }
         },
+        onOpenPricePlanValueHelpReservation: function () {
+            const projectId = this.getView().getModel("local").getProperty("/project_projectId");
+            const aPlans = this._oPaymentPlansModel.getData();
+            const filteredPlans = aPlans.filter(p =>
+                Array.isArray(p.assignedProjects) &&
+                p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+            );
+
+            if (!this._oPricePlanValueHelp) {
+                this._oPricePlanValueHelp = new SelectDialog({
+                    title: "Select Payment Plan Year",
+                    items: {
+                        path: "filteredPlans>/",
+                        template: new StandardListItem({
+                            title: "{filteredPlans>planYears} Years",
+                            description: "{filteredPlans>description}"
+                        })
+                    },
+                    confirm: function (oEvent) {
+                        const oSelectedItem = oEvent.getParameter("selectedItem");
+                        if (oSelectedItem) {
+                            const oContext = oSelectedItem.getBindingContext("filteredPlans");
+                            const oPlan = oContext.getObject();
+                            const selectedYear = oPlan.planYears;
+                            this.getView().byId("_IDGenSelect2").setSelectedKey(selectedYear);
+                            this.onPricePlanYearsChange({ getSource: () => ({ getSelectedKey: () => selectedYear }) });  // Trigger change
+                        }
+                    }.bind(this)
+                });
+                this.getView().addDependent(this._oPricePlanValueHelp);
+            }
+
+            this._oPricePlanValueHelp.setModel(new JSONModel(filteredPlans), "filteredPlans");
+            this._oPricePlanValueHelp.open();
+        },
         onPricePlanYearsChange: async function (oEvent) {
             const iYears = Number(oEvent.getSource().getSelectedKey());
             const oModel = this.getView().getModel("local");
             oModel.setProperty("/pricePlanYears", iYears);
             oModel.setProperty("/planYears", iYears);
+
+            // First, try to resolve from existing simulations (your original logic)
             await this._resolveSimulationByYears(iYears);
+
+            // NEW: If no conditions were set (no matching simulation), run on-the-fly simulation
+            const aConditions = oModel.getProperty("/conditions") || [];
+            if (aConditions.length === 0) {
+                await this._simulateConditionsForReservation(iYears);
+            }
+        },
+        _simulateConditionsForReservation: async function (pricePlanYears) {
+            const oModel = this.getView().getModel("local");
+            const unitId = oModel.getProperty("/unit_unitId");
+            const projectId = oModel.getProperty("/project_projectId");
+
+            if (!unitId) {
+                MessageBox.error("Unit ID is missing.");
+                return;
+            }
+
+            let matchingPlan = null;  // Declare at function level to avoid scope issues
+
+            try {
+                // Fetch and filter unit conditions
+                const conditionsRes = await fetch(`/odata/v4/real-estate/Conditions?$filter=unit_unitId eq '${unitId}'`);
+                if (!conditionsRes.ok) {
+                    throw new Error(`Failed to fetch conditions: ${conditionsRes.status}`);
+                }
+                const conditions = await conditionsRes.json();
+                const aConditions = conditions.value || [];
+                const filteredConditions = aConditions.filter(c => c.numberOfYears === pricePlanYears);
+
+                if (filteredConditions.length === 0) {
+                    throw new Error(`No conditions found for ${pricePlanYears} years.`);
+                }
+
+                const finalPrice = filteredConditions.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+                let simulationSchedule = [];
+
+                if (pricePlanYears === 0) {
+                    // Cash: Single installment
+                    const today = new Date();
+                    simulationSchedule.push({
+                        installment: "Cash Payment",
+                        conditionType: "Cash",
+                        dueDate: today.toISOString().split('T')[0],
+                        amount: Math.round(finalPrice * 100) / 100,
+                        maintenance: 0
+                    });
+                } else {
+                    // Find matching plan
+                    const aPlans = this._oPaymentPlansModel.getData();
+                    console.log("Plans data:", aPlans);  // Debug log
+                    matchingPlan = aPlans.find(p =>
+                        p.planYears === pricePlanYears &&
+                        Array.isArray(p.assignedProjects) &&
+                        p.assignedProjects.some(ap => ap.project?.projectId === projectId)
+                    );
+                    console.log("Matching plan for years", pricePlanYears, ":", matchingPlan);  // Debug log
+
+                    if (!matchingPlan) {
+                        throw new Error(`No payment plan found for ${pricePlanYears} years.`);
+                    }
+
+                    // ADDED: Extra check and log to ensure matchingPlan is defined
+                    console.log("About to fetch with matchingPlan:", matchingPlan);  // Debug log
+                    if (!matchingPlan || !matchingPlan.paymentPlanId) {
+                        throw new Error("Matching plan is invalid or missing paymentPlanId.");
+                    }
+
+                    // Fetch schedules
+                    const scheduleRes = await fetch(`/odata/v4/real-estate/PaymentPlanSchedules?$filter=paymentPlan_paymentPlanId eq '${matchingPlan.paymentPlanId}'&$expand=conditionType,basePrice,frequency`);
+                    if (!scheduleRes.ok) {
+                        throw new Error(`Failed to fetch schedules: ${scheduleRes.status}`);
+                    }
+                    const scheduleData = await scheduleRes.json();
+                    const aSchedules = scheduleData.value || [];
+                    const today = new Date();
+
+                    aSchedules.forEach(schedule => {
+                        const basePriceCode = schedule.basePrice?.code;
+                        const condition = filteredConditions.find(c => c.code === basePriceCode);
+                        const baseAmount = condition ? Number(condition.amount) : 0;
+                        const amount = (baseAmount * schedule.percentage) / 100;
+                        const interval = this._getFrequencyIntervalPPS(schedule.frequency?.description);
+
+                        if (schedule.conditionType?.description === "Maintenance") {
+                            for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
+                                const monthsToAdd = schedule.dueInMonth + i * interval;
+                                const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
+                                simulationSchedule.push({
+                                    installment: "",
+                                    conditionType: schedule.conditionType?.description || "Maintenance",
+                                    dueDate: dueDate.toISOString().split('T')[0],
+                                    amount: 0,
+                                    maintenance: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100
+                                });
+                            }
+                        } else {
+                            let conditionType = schedule.conditionType?.description || "Installment";
+                            if (conditionType === "Down payment") conditionType = "Down Payment";
+
+                            for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
+                                const monthsToAdd = schedule.dueInMonth + i * interval;
+                                const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
+                                simulationSchedule.push({
+                                    installment: conditionType,
+                                    conditionType: conditionType,
+                                    dueDate: dueDate.toISOString().split('T')[0],
+                                    amount: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100,
+                                    maintenance: 0
+                                });
+                            }
+                        }
+                    });
+                }
+
+                // Sort and set to conditions
+                simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+                oModel.setProperty("/conditions", simulationSchedule.map(s => ({
+                    ID: this._generateUUID(),
+                    installment: s.installment,
+                    conditionType: s.conditionType,
+                    dueDate: s.dueDate,
+                    amount: s.amount,
+                    maintenance: s.maintenance
+                })));
+                oModel.setProperty("/selectedSimulationFinalPrice", finalPrice);
+                oModel.setProperty("/paymentPlan_paymentPlanId", matchingPlan?.paymentPlanId || "");  // Now safe, matchingPlan is in scope
+
+            } catch (err) {
+                console.error("Simulation error:", err);  // Debug log
+                MessageBox.error("Simulation failed: " + (err.message || err));
+            }
         },
         _resolveSimulationByYears: async function (iYears) {
             const oModel = this.getView().getModel("local");
@@ -465,6 +690,79 @@ sap.ui.define([
             });
             oModel.refresh();
         },
+        onCustomerCodeChange: function (oEvent) {
+            const oSelect = oEvent.getSource();
+            const sSelectedCode = oSelect.getSelectedKey();
+            console.log("onCustomerCodeChange triggered"); // <-- Add this
+
+            //const sCode = oSelect.getSelectedKey();
+            console.log("Selected Customer Code:", sSelectedCode); // <-- Add this
+
+            if (!sSelectedCode) {
+                console.log("No code selected");
+                return;
+            }
+            if (!sSelectedCode) {
+                return;
+            }
+
+            // 1. Get the lookup data from the "partnersList" model
+            const oPartnersModel = this.getView().getModel("partnersList");
+            const aPartners = oPartnersModel.getData(); // array of partners
+
+            // 2. Find the selected partner
+            const oSelectedPartner = aPartners.find(partner =>
+                partner.customerCode === sSelectedCode
+            );
+
+            if (!oSelectedPartner) {
+                console.warn("No partner found for code:", sSelectedCode);
+                return;
+            }
+
+            // 3. Get the binding context of the current row (from "local" model)
+            const oContext = oSelect.getBindingContext("local");
+            const sRowPath = oContext.getPath(); // e.g. "/partners/2"
+
+            // 4. Update the fields in the same row using the "local" model
+            const oLocalModel = this.getView().getModel("local");
+
+            oLocalModel.setProperty(sRowPath + "/customerName", oSelectedPartner.customerName || "");
+            oLocalModel.setProperty(sRowPath + "/customerAddress", oSelectedPartner.customerAddress || "");
+
+            // Format date properly for DatePicker (yyyy-MM-dd)
+            let sValidFrom = "";
+            if (oSelectedPartner.validFrom) {
+                const oDate = new Date(oSelectedPartner.validFrom);
+                sValidFrom = oDate.getFullYear() + "-" +
+                    String(oDate.getMonth() + 1).padStart(2, '0') + "-" +
+                    String(oDate.getDate()).padStart(2, '0');
+            }
+            oLocalModel.setProperty(sRowPath + "/validFrom", sValidFrom);
+        },
+        // onCustomerCodeChange: function (oEvent) {
+        //     const sCode = oEvent.getSource().getSelectedKey();
+        //     if (!sCode) return;
+
+        //     // Get the named model that holds the lookup data
+        //     const oLookupModel = this.getView().getModel("partnersList");
+        //     const aPartners = oLookupModel.getData();  // assuming data is the array directly
+        //     // Or: oLookupModel.getProperty("/") if needed
+
+        //     const oPartner = aPartners.find(p => p.customerCode === sCode);
+        //     if (!oPartner) return;
+
+        //     // Get the row context from the "local" model
+        //     const oContext = oEvent.getSource().getBindingContext("local");
+        //     const sPath = oContext.getPath();  // e.g. "/partners/0"
+
+        //     // Update the same row in the "local" model
+        //     const oLocalModel = this.getView().getModel("local");
+        //     oLocalModel.setProperty(sPath + "/customerName", oPartner.customerName);
+        //     oLocalModel.setProperty(sPath + "/customerAddress", oPartner.customerAddress);
+        //     oLocalModel.setProperty(sPath + "/validFrom", oPartner.validFrom);  // format as needed, e.g. to "YYYY-MM-DD"
+        // },
+
         onDeletePartnerRow: function (oEvent) {
             const oContext = oEvent.getSource().getBindingContext("local");
             const sPath = oContext.getPath();

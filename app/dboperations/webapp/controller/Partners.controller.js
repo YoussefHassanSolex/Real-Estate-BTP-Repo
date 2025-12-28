@@ -9,9 +9,9 @@ sap.ui.define([
     "sap/m/DatePicker",
     "sap/m/TextArea",
     "sap/ui/model/json/JSONModel",
-        "sap/m/MessageToast",
+    "sap/m/MessageToast",
 
-], function (Controller, MessageBox, Dialog, Input, Button, Label, ComboBox, DatePicker, TextArea, JSONModel,MessageToast) {
+], function (Controller, MessageBox, Dialog, Input, Button, Label, ComboBox, DatePicker, TextArea, JSONModel, MessageToast) {
     "use strict";
 
     return Controller.extend("dboperations.controller.Partners", {
@@ -33,6 +33,7 @@ sap.ui.define([
             }
 
             const oModel = new JSONModel({
+                ID: oPartner.ID,
                 customerCode: oPartner.customerCode || "",
                 customerName: oPartner.customerName || "",
                 customerAddress: oPartner.customerAddress || "",
@@ -62,11 +63,14 @@ sap.ui.define([
             }
 
             try {
-                const payload = { 
-                    customerCode: oData.customerCode, 
+                const payload = {
+                    //ID:oData.ID,
+                    customerCode: oData.customerCode,
                     customerName: oData.customerName,
-                    customerAddress:oData.customerAddress,
-                    validFrom:oData.validFrom
+                    customerAddress: oData.customerAddress,
+                    validFrom: oData.validFrom
+                        ? new Date(oData.validFrom).toISOString().split("T")[0]
+                        : null
                 };
                 const method = oData.isEdit ? "PUT" : "POST";
                 const url = oData.isEdit
