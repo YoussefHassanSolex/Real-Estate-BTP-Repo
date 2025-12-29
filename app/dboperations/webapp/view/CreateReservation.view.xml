@@ -6,11 +6,11 @@
     xmlns:l="sap.ui.layout"
     xmlns:f="sap.f"
 >
-   <Page
-    id="_IDGenPage"
+    <Page
+        id="_IDGenPage"
         title="{local>/title}"
-    showHeader="true"
->
+        showHeader="true"
+    >
         <content>
             <VBox
                 id="_IDGenVBox3"
@@ -33,6 +33,14 @@
                         value="{local>/companyCodeId}"
                         editable="false"
                     />
+                     <Label
+                        id="_IDGenLabel31"
+                        text="Description"
+                    />
+                    <Input
+                        id="_IDGenInput22"
+                        value="{local>/description}"
+                    />
 
                     <Label
                         id="_IDGenLabel25"
@@ -52,6 +60,133 @@
                         id="_IDGenInput19"
                         value="{local>/eoiId}"
                     />
+                     <Label
+                        id="_IDGenLabel39"
+                        text="Unit ID"
+                    />
+
+                    <Input
+                        id="_IDGenInput29"
+                        value="{local>/unit_unitId}"
+                        editable="false"
+                    />
+                    <Label
+                        id="_IDGenLabel30"
+                        text="Unit Status"
+                    />
+                    <Input
+                        id="_IDGenInput21"
+                        value="{local>/status}"
+                        editable="false"
+                    />
+                     <Label
+                        id="_IDGenLabel44"
+                        text="Unit Type"
+                    />
+                    <Input
+                        id="_IDGenInput32"
+                        value="{local>/unitType}"
+                        editable="false"
+                    />
+                     <Label
+                        id="_IDGenLabel40"
+                        text="BUA"
+                    />
+                    <Input
+                        id="_IDGenInput30"
+                        value="{local>/bua} m2"
+                        editable="false"
+                    />
+                     <Label
+                        id="_IDGenLabel33"
+                        text="Phase"
+                    />
+                    <Input
+                        id="_IDGenInput23"
+                        value="{local>/phase}"
+                        editable="false"
+                    />
+                         <Label
+                        id="_IDGenLabel37"
+                        text="Project ID"
+                    />
+                    <Input
+                        id="_IDGenInput27"
+                        value="{local>/project_projectId}"
+                        editable="false"
+                    />
+                     <Label
+                        id="_IDGenLabel38"
+                        text="Building ID"
+                    />
+                    <Input
+                        id="_IDGenInput28"
+                        value="{local>/building_buildingId}"
+                        editable="false"
+                    />
+                    <Label
+                        id="_IDGenLabel35"
+                        text="Currency"
+                    />
+                    <Input
+                        id="_IDGenInput25"
+                        value="{local>/currency}"
+                        editable="false"
+                    />
+                     <Label
+                        id="_IDGenLabel41"
+                        text="Reservation Type"
+                    />
+                    <Input
+                        id="_IDGenInput24"
+                        value="{local>/reservationType}"
+                        editable="false"
+                    />
+                    <Label
+                        id="_IDGenLabel46"
+                        text="Reservation Status"
+                    />
+                    <Select
+                        id="_IDGenSelect1"
+                        width="100%"
+                        selectedKey="{local>/reservationStatus}"
+                    >
+                        <core:Item
+                            id="_IDGenItem8"
+                            key="Open"
+                            text="Open"
+                        />
+                        <core:Item
+                            id="_IDGenItem9"
+                            key="Approved"
+                            text="Approved"
+                        />
+                        <core:Item
+                            id="_IDGenItem10"
+                            key="Paid"
+                            text="Paid"
+                        />
+                        <core:Item
+                            id="_IDGenItem11"
+                            key="Closed"
+                            text="Closed"
+                        />
+                        <core:Item
+                            id="_IDGenItem12"
+                            key="Canceled"
+                            text="Canceled"
+                        />
+                    </Select>
+                    <Label
+                        id="_IDGenLabel32"
+                        text="Valid From"
+                    />
+                    <DatePicker
+                        id="_IDGenDatePicker2"
+                        value="{local>/validFrom}"
+                        displayFormat="yyyy-MM-dd"
+                        valueFormat="yyyy-MM-dd"
+                    />
                     <!-- Sales Type -->
                     <Label
                         id="_IDGenLabel53"
@@ -62,7 +197,6 @@
                         width="100%"
                         selectedKey="{local>/salesType}"
                     >
-                
                         <core:Item
                             id="_IDGenItem3"
                             key="New sale"
@@ -84,106 +218,7 @@
                             text="Reallocate"
                         />
                     </Select>
-                    <Label
-                        id="_IDGenLabel41"
-                        text="Reservation Type"
-                    />
-                    <Input
-                        id="_IDGenInput24"
-                        value="{local>/reservationType}"
-                        editable="false"
-                    />
-                     <Label id="_IDGenLabel46"
-                        text="Reservation Status"
-                    />
-                    <Select id="_IDGenSelect1"
-                        width="100%"
-                        selectedKey="{local>/reservationStatus}"
-                    >
-                
-                        <core:Item id="_IDGenItem8"
-                            key="Open"
-                            text="Open"
-                        />
-                        <core:Item id="_IDGenItem9"
-                            key="Approved"
-                            text="Approved"
-                        />
-                        <core:Item id="_IDGenItem10"
-                            key="Paid"
-                            text="Paid"
-                        />
-                        <core:Item id="_IDGenItem11"
-                            key="Closed"
-                            text="Closed"
-                        />
-                        <core:Item id="_IDGenItem12" 
-                            key="Canceled"
-                            text="Canceled"
-                        />
-                    </Select>
-                    <Label
-                        id="_IDGenLabel31"
-                        text="Description"
-                    />
-                    <Input
-                        id="_IDGenInput22"
-                        value="{local>/description}"
-                    />
-
-                    <Label
-                        id="_IDGenLabel32"
-                        text="Valid From"
-                    />
-                    <DatePicker
-                        id="_IDGenDatePicker2"
-                        value="{local>/validFrom}"
-                        displayFormat="yyyy-MM-dd"
-                        valueFormat="yyyy-MM-dd"
-                    />
-
-                    <Label
-                        id="_IDGenLabel30"
-                        text="Unit Status"
-                    />
-                    <Input
-                        id="_IDGenInput21"
-                        value="{local>/status}"
-                        editable="false"
-                    />
-                    <!-- <Select
-                        id="_IDGenSelect1"
-                        selectedKey="{local>/status}"
-                        width="100%"
-                    >
-                        <core:Item
-                            id="_IDGenItem17"
-                            key=""
-                            text=""
-                        />
-
-                        <core:Item
-                            id="_IDGenItem8"
-                            key="Open"
-                            text="Open"
-                        />
-                        <core:Item
-                            id="_IDGenItem9"
-                            key="Canceled"
-                            text="Canceled"
-                        />
-                        <core:Item
-                            id="_IDGenItem10"
-                            key="Terminated"
-                            text="Terminated"
-                        />
-                        <core:Item
-                            id="_IDGenItem11"
-                            key="Closed"
-                            text="Closed"
-                        />
-                    </Select> -->
-
+                    
                     <Label
                         id="_IDGenLabel34"
                         text="Customer Type"
@@ -193,7 +228,6 @@
                         selectedKey="{local>/customerType}"
                         width="100%"
                     >
-
                         <core:Item
                             id="_IDGenItem24"
                             key="Local"
@@ -206,123 +240,73 @@
                         />
                     </Select>
 
-                    <Label
-                        id="_IDGenLabel35"
-                        text="Currency"
-                    />
-                    <Input
-                        id="_IDGenInput25"
-                        value="{local>/currency}"
-                        editable="false"
-                    />
+                    
 
                     <Label
                         id="_IDGenLabel36"
                         text="After Sales"
                     />
-                     <Select id="_IDGenSelect3"
+                    <Select
+                        id="_IDGenSelect3"
                         selectedKey="{local>/afterSales}"
                         width="100%"
                     >
-                       
-
-                        <core:Item id="_IDGenItem14"
+                        <core:Item
+                            id="_IDGenItem14"
                             key="Cancel"
                             text="Cancel"
                         />
-                        <core:Item id="_IDGenItem15"
+                        <core:Item
+                            id="_IDGenItem15"
                             key="Terminate"
                             text="Terminate"
                         />
-                        <core:Item id="_IDGenItem16"
+                        <core:Item
+                            id="_IDGenItem16"
                             key="Downgrade"
                             text="Downgrade"
                         />
-                        <core:Item id="_IDGenItem17"
+                        <core:Item
+                            id="_IDGenItem17"
                             key="Upgrade"
                             text="Upgrade"
                         />
-                         <core:Item id="_IDGenItem18" 
+                        <core:Item
+                            id="_IDGenItem18"
                             key="Reallocate"
                             text="Reallocate"
                         />
                     </Select>
-                   
+
                     <!-- Unit Details -->
-                    <Label
-                        id="_IDGenLabel37"
-                        text="Project ID"
-                    />
-                    <Input
-                        id="_IDGenInput27"
-                        value="{local>/project_projectId}"
-                        editable="false"
-                    />
+               
 
-                    <Label
-                        id="_IDGenLabel38"
-                        text="Building ID"
-                    />
-                    <Input
-                        id="_IDGenInput28"
-                        value="{local>/building_buildingId}"
-                        editable="false"
-                    />
+                   
 
-                    <Label
-                        id="_IDGenLabel39"
-                        text="Unit ID"
-                    />
-                    <Input
-                        id="_IDGenInput29"
-                        value="{local>/unit_unitId}"
-                        editable="false"
-                    />
-                    <Label
-                        id="_IDGenLabel44"
-                        text="Unit Type"
-                    />
-                    <Input
-                        id="_IDGenInput32"
-                        value="{local>/unitType}"
-                        editable="false"
-                    />
-                    <Label
-                        id="_IDGenLabel40"
-                        text="BUA"
-                    />
-                    <Input
-                        id="_IDGenInput30"
-                        value="{local>/bua} m2"
-                        editable="false"
-                    />
+                   
+                   
+                   
 
                     <!-- Phase -->
-                    <Label
-                        id="_IDGenLabel33"
-                        text="Phase"
-                    />
-                    <Input
-                        id="_IDGenInput23"
-                        value="{local>/phase}"
-                        editable="false"
-                    />
-                 
+                   
 
-                    <Label id="_IDGenLabel42" text="Price Plan Years" />
-<Select
-    id="_IDGenSelect2"
-    width="100%"
-    selectedKey="{local>/selectedPricePlanYears}"
-    change=".onPricePlanYearsChange"
-    
-    items="{path: 'local>/availableYears'}" 
->
-    <core:Item id="_IDGenItem7"
-        key="{local>year}"
-        text="{local>text}"
-    />
-</Select>
+                    <Label
+                        id="_IDGenLabel42"
+                        text="Price Plan Years"
+                    />
+                    <Select
+                        id="_IDGenSelect2"
+                        width="100%"
+                        selectedKey="{local>/selectedPricePlanYears}"
+                        change=".onPricePlanYearsChange"
+                        items="{path: 'local>/availableYears'}"
+                    >
+                        <core:Item
+                            id="_IDGenItem7"
+                            key="{local>year}"
+                            text="{local>text}"
+                        />
+                    </Select>
 
                     <!-- Payment Plan -->
                     <Label
@@ -344,8 +328,6 @@
                         value="{local>/selectedSimulationFinalPrice}"
                         editable="false"
                     />
-
-                   
                 </l:Grid>
                 <!-- Payments Table -->
                 <Title
@@ -558,62 +540,81 @@
                     />
                 </Toolbar>
 
-             <Table
-    id="partnersTable"
-    items="{path: 'local>/partners'}"
-    inset="false">
+                <Table
+                    id="partnersTable"
+                    items="{path: 'local>/partners'}"
+                    inset="false"
+                >
+                    <columns>
+                        <Column id="_IDGenColumn96">
+                            <Text
+                                id="_IDGenText158"
+                                text="Customer Code"
+                            />
+                        </Column>
+                        <Column id="_IDGenColumn97">
+                            <Text
+                                id="_IDGenText159"
+                                text="Customer Name"
+                            />
+                        </Column>
+                        <Column id="_IDGenColumn98">
+                            <Text
+                                id="_IDGenText160"
+                                text="Customer Address"
+                            />
+                        </Column>
+                        <Column id="_IDGenColumn99">
+                            <Text
+                                id="_IDGenText161"
+                                text="Valid From"
+                            />
+                        </Column>
+                    </columns>
 
-    <columns>
-        <Column id="_IDGenColumn96">
-            <Text id="_IDGenText158" text="Customer Code" />
-        </Column>
-        <Column id="_IDGenColumn97">
-            <Text id="_IDGenText159" text="Customer Name" />
-        </Column>
-        <Column id="_IDGenColumn98">
-            <Text id="_IDGenText160" text="Customer Address" />
-        </Column>
-        <Column id="_IDGenColumn99">
-            <Text id="_IDGenText161" text="Valid From" />
-        </Column>
-    </columns>
-
-    <items>
-        <ColumnListItem id="_IDGenColumnListItem9">
-            <cells>
-
-                <!-- Customer Code dropdown -->
-                <Select id="customerMenu"
-                    selectedKey="{local>customerCode}"
-                    change=".onCustomerCodeChange"
-                    items="{
+                    <items>
+                        <ColumnListItem id="_IDGenColumnListItem9">
+                            <cells>
+                                <!-- Customer Code dropdown -->
+                                <Select
+                                    id="customerMenu"
+                                    selectedKey="{local>customerCode}"
+                                    change=".onCustomerCodeChange"
+                                    items="{
                         path: 'partnersList>/'
-                    }">
-                    <core:Item id="_IDGenItem13"
-                        key="{partnersList>customerCode}"
-                        text="{partnersList>customerCode}" />
-                </Select>
+                    }"
+                                >
+                                    <core:Item
+                                        id="_IDGenItem13"
+                                        key="{partnersList>customerCode}"
+                                        text="{partnersList>customerCode}"
+                                    />
+                                </Select>
 
-                <!-- Auto-filled fields -->
-                <Input id="_IDGenInput39"
-                    value="{local>customerName}"
-                    editable="false" />
+                                <!-- Auto-filled fields -->
+                                <Input
+                                    id="_IDGenInput39"
+                                    value="{local>customerName}"
+                                    editable="false"
+                                />
 
-                <Input id="_IDGenInput40"
-                    value="{local>customerAddress}"
-                    editable="false" />
+                                <Input
+                                    id="_IDGenInput40"
+                                    value="{local>customerAddress}"
+                                    editable="false"
+                                />
 
-                <DatePicker id="_IDGenDatePicker5"
-                    value="{local>validFrom}"
-                    editable="false"
-                    displayFormat="yyyy-MM-dd"
-                    valueFormat="yyyy-MM-dd" />
-
-            </cells>
-        </ColumnListItem>
-    </items>
-</Table>
-
+                                <DatePicker
+                                    id="_IDGenDatePicker5"
+                                    value="{local>validFrom}"
+                                    editable="false"
+                                    displayFormat="yyyy-MM-dd"
+                                    valueFormat="yyyy-MM-dd"
+                                />
+                            </cells>
+                        </ColumnListItem>
+                    </items>
+                </Table>
 
                 <!-- Conditions Table (Updated to match simulation output) -->
                 <Title

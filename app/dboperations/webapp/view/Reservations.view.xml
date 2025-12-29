@@ -15,16 +15,16 @@
                         <Column id="_IDGenColumn75"><Text id="_IDGenText126" text="Status" /></Column>
                         <Column id="_IDGenColumn106"><Text id="_IDGenText140" text="Customer Type" /></Column>
                         <Column id="_IDGenColumn107"><Text id="_IDGenText141" text="Currency" /></Column>
-                        <Column id="_IDGenColumn108"><Text id="_IDGenText142" text="After Sales" /></Column>
+                        <!-- <Column id="_IDGenColumn108"><Text id="_IDGenText142" text="After Sales" /></Column> -->
                         <Column id="_IDGenColumn71"><Text id="_IDGenText122" text="Project" /></Column>
                         <Column id="_IDGenColumn109"><Text id="_IDGenText166" text="Project ID" /></Column>
-                        <Column id="_IDGenColumn72"><Text id="_IDGenText123" text="Building" /></Column>
-                        <Column id="_IDGenColumn110"><Text id="_IDGenText167" text="Building ID" /></Column>
+                        <!-- <Column id="_IDGenColumn72"><Text id="_IDGenText123" text="Building" /></Column>
+                        <Column id="_IDGenColumn110"><Text id="_IDGenText167" text="Building ID" /></Column> -->
                         <Column id="_IDGenColumn73"><Text id="_IDGenText124" text="Unit" /></Column>
                         <Column id="_IDGenColumn111"><Text id="_IDGenText168" text="Unit ID" /></Column>
                         <Column id="_IDGenColumn112"><Text id="_IDGenText169" text="Unit Type" /></Column>
                         <Column id="_IDGenColumn113"><Text id="_IDGenText170" text="BUA" /></Column>
-                        <Column id="_IDGenColumn114"><Text id="_IDGenText171" text="Phase" /></Column>
+                        <!-- <Column id="_IDGenColumn114"><Text id="_IDGenText171" text="Phase" /></Column> -->
                         <Column id="_IDGenColumn115"><Text id="_IDGenText172" text="Price Plan Years" /></Column>
                         <Column id="_IDGenColumn116"><Text id="_IDGenText173" text="Payment Plan ID" /></Column>
                         <Column id="_IDGenColumn117"><Text id="_IDGenText174" text="Unit Price" /></Column>
@@ -34,7 +34,7 @@
                         <Column id="_IDGenColumn121"><Text id="_IDGenText178" text="Cancellation Date" /></Column>
                         <Column id="_IDGenColumn122"><Text id="_IDGenText179" text="Cancellation Status" /></Column>
                         <Column id="_IDGenColumn123"><Text id="_IDGenText180" text="Rejection Reason" /></Column>
-                        <Column id="_IDGenColumn124"><Text id="_IDGenText181" text="Cancellation Fees" /></Column>
+                        <!-- <Column id="_IDGenColumn124"><Text id="_IDGenText181" text="Cancellation Fees" /></Column> -->
                         <Column id="_IDGenColumn76"><Text id="_IDGenText127" text="Actions" /></Column>
                     </columns>
                     <items>
@@ -51,16 +51,16 @@
                                 <Text id="_IDGenText134" text="{status}" />
                                 <Text id="_IDGenText187" text="{customerType}" />
                                 <Text id="_IDGenText188" text="{currency}" />
-                                <Text id="_IDGenText189" text="{afterSales}" />
+                                <!-- <Text id="_IDGenText189" text="{afterSales}" /> -->
                                 <Text id="_IDGenText130" text="{project/projectDescription}" />
                                 <Text id="_IDGenText190" text="{project_projectId}" />
-                                <Text id="_IDGenText131" text="{building/buildingDescription}" />
-                                <Text id="_IDGenText191" text="{building_buildingId}" />
+                                <!-- <Text id="_IDGenText131" text="{building/buildingDescription}" />
+                                <Text id="_IDGenText191" text="{building_buildingId}" /> -->
                                 <Text id="_IDGenText132" text="{unit/unitDescription}" />
                                 <Text id="_IDGenText192" text="{unit_unitId}" />
                                 <Text id="_IDGenText193" text="{unitType}" />
                                 <Text id="_IDGenText194" text="{bua}" />
-                                <Text id="_IDGenText195" text="{phase}" />
+                                <!-- <Text id="_IDGenText195" text="{phase}" /> -->
                                 <Text id="_IDGenText196" text="{pricePlanYears}" />
                                 <Text id="_IDGenText197" text="{paymentPlan_paymentPlanId}" />
                                 <Text id="_IDGenText198" text="{unitPrice}" />
@@ -70,7 +70,7 @@
                                 <Text id="_IDGenText202" text="{cancellationDate}" />
                                 <Text id="_IDGenText203" text="{cancellationStatus}" />
                                 <Text id="_IDGenText204" text="{rejectionReason}" />
-                                <Text id="_IDGenText205" text="{cancellationFees}" />
+                                <!-- <Text id="_IDGenText205" text="{cancellationFees}" /> -->
                                 <HBox id="_IDGenHBox5">
                                     <Button id="_IDGenButton17" icon="sap-icon://information" tooltip="Details" press="onDetails" />
                                     <Button id="_IDGenButton20" icon="sap-icon://edit" tooltip="Edit" press="onEditReservation" />

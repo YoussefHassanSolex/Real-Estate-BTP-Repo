@@ -24,6 +24,9 @@
                 id="_IDGenPanel"
                 backgroundDesign="Transparent"
                 class="sapUiSmallMargin"
+                expandable="true"
+                headerText="Availability"
+                expanded="false"
             >
                 <!-- Adjust spans for responsive layout -->
                 <l:Grid
@@ -36,7 +39,7 @@
                     <!-- Company -->
                     <Label
                         id="_IDGenLabel20"
-                        text="Company Code:" 
+                        text="Company Code:"
                         labelFor="companyCodeFilter"
                         class="TinyPadding"
                     />
@@ -68,8 +71,7 @@
                         id="projectIdFilter"
                         width="100%"
                         selectedKey="{view>/selectedProjectId}"
-                                    forceSelection="false"
-
+                        forceSelection="false"
                         items="{
                             path: 'projectsList>/',
                             templateShareable: false
@@ -92,8 +94,7 @@
                         id="unitTypeFilter"
                         width="100%"
                         selectedKey="{view>/selectedUnitType}"
-                                    forceSelection="false"
-
+                        forceSelection="false"
                         items="{
                             path: 'view>/UnitType',
                             templateShareable: false
@@ -158,7 +159,6 @@
                         placeholder="e.g. 5yrs"
                     />
 
-
                     <!-- From (Measurement) -->
                     <Label
                         id="_IDGenLabel26"
@@ -184,8 +184,6 @@
                         type="Number"
                         placeholder="Max value"
                     />
-
-                  
                 </l:Grid>
 
                 <!-- Filter Actions -->
@@ -473,7 +471,7 @@
                                     text="Create Reservation"
                                     icon="sap-icon://add-document"
                                     press="onCreateReservation"
-                                     visible="{= ${unitStatusDescription} === 'Open' }"
+                                    visible="{= ${unitStatusDescription} === 'Open' }"
                                 />
                             </cells>
                         </ColumnListItem>
