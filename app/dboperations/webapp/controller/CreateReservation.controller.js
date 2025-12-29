@@ -633,7 +633,8 @@ sap.ui.define([
             const oModel = this.getView().getModel("local");
             const oData = oModel.getData();
             const bIsEdit = oData.mode === "edit";
-
+  // Show loading indicator
+            this.getView().setBusy(true);
             // For edit mode, use existing reservationId; for create, generate new one
             const reservationId = bIsEdit
                 ? oData.reservationId
@@ -778,6 +779,9 @@ sap.ui.define([
             } catch (err) {
                 console.error("Save error:", err);
                 MessageBox.error(err.message);
+            } finally {
+                // Hide loading indicator
+                this.getView().setBusy(false);
             }
         },
         _resetReservationForm: function () {
