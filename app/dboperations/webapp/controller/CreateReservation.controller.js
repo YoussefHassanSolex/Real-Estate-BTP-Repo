@@ -157,7 +157,33 @@ sap.ui.define([
             });
 
             this.getView().setModel(oModel, "local");
-
+// Populate partner details in edit mode
+            if (bIsEdit) {
+                const aPartners = oModel.getProperty("/partners") || [];
+                const oPartnersListModel = this.getView().getModel("partnersList");
+                if (oPartnersListModel) {
+                    const aPartnersList = oPartnersListModel.getData();
+                    aPartners.forEach((partner) => {
+                        if (partner.customerCode) {
+                            const oPartnerData = aPartnersList.find(p => p.customerCode === partner.customerCode);
+                            if (oPartnerData) {
+                                partner.customerName = oPartnerData.customerName || "";
+                                partner.customerAddress = oPartnerData.customerAddress || "";
+                                if (oPartnerData.validFrom) {
+                                    const oDate = new Date(oPartnerData.validFrom);
+                                    partner.validFrom = oDate.getFullYear() + "-" +
+                                        String(oDate.getMonth() + 1).padStart(2, '0') + "-" +
+                                        String(oDate.getDate()).padStart(2, '0');
+                                } else {
+                                    partner.validFrom = "";
+                                }
+                            }
+                        }
+                    });
+                    oModel.setProperty("/partners", aPartners);
+                    oModel.refresh();
+                }
+            }
             // Populate available years after model is set and plans are loaded (if unitConditions exist)
             if (oReservation.project_projectId) {
                 this._populateAvailableYears(oReservation.project_projectId);
