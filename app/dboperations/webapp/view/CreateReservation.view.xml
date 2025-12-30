@@ -622,10 +622,23 @@
                     level="H3"
                 />
                 <Toolbar id="_IDGenToolbarConditions">
+                           <Switch
+                        id="_IDGenSwitchImportExport"
+                        state="{local>/enableImportExport}"
+                        customTextOn=""
+                        customTextOff=""
+                        visible="{local>/isEditMode}"
+                    />
+                    <Label
+                        id="_IDGenLabelImportExport"
+                        text=""
+                        visible="{local>/isEditMode}"
+                    />
                     <Button
                         id="_IDGenButtonExport"
                         text="Export"
                         icon="sap-icon://download"
+                        enabled="{local>/enableImportExport}"
                         press="onExportConditions"
                         visible="{local>/isEditMode}"
                     />
@@ -633,6 +646,7 @@
                         id="_IDGenButtonImport"
                         text="Import"
                         icon="sap-icon://upload"
+                        enabled="{local>/enableImportExport}"
                         press="onImportConditions"
                         visible="{local>/isEditMode}"
                     />
@@ -681,19 +695,20 @@
                                     value="{local>dueDate}"
                                     displayFormat="yyyy-MM-dd"
                                     valueFormat="yyyy-MM-dd"
-                                    editable="{local>/isEditMode}"
+                                        editable="{= ${local>conditionType} !== 'Maintenance' &amp;&amp; ${local>/isEditMode} }"
+                                    change=".onDueDateChange"
                                 />
                                 <Input
                                     id="_IDGenInputAmount"
                                     value="{local>amount}"
                                     type="Number"
-                                    editable="{local>/isEditMode}"
+                                    editable="{= ${local>conditionType} !== 'Maintenance' &amp;&amp; ${local>/isEditMode} }"
                                 />
                                 <Input
                                     id="_IDGenInputMaintenance"
                                     value="{local>maintenance}"
                                     type="Number"
-                                    editable="{local>/isEditMode}"
+                                    editable="false"
                                 />
                             </cells>
                         </ColumnListItem>

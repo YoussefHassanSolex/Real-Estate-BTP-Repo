@@ -364,7 +364,37 @@ sap.ui.define([
             this._oDetailsDialog.setModel(oDialogModel);
             this._oDetailsDialog.open();
         },
+_mergeConditionsByDueDate: function (aConditions) {
+    const mByDate = {};
 
+    (aConditions || []).forEach(c => {
+        const sDate = c.dueDate;
+
+        if (!mByDate[sDate]) {
+            mByDate[sDate] = {
+                ID: c.ID || this._generateUUID(),
+                installment: c.installment || "Installment",
+                conditionType: c.conditionType,
+                dueDate: sDate,
+                amount: 0,
+                maintenance: 0
+            };
+        }
+
+        if (c.amount && c.amount > 0) {
+            mByDate[sDate].amount += Number(c.amount);
+            mByDate[sDate].installment = c.installment || "Installment";
+        }
+
+        if (c.maintenance && c.maintenance > 0) {
+            mByDate[sDate].maintenance += Number(c.maintenance);
+        }
+    });
+
+    return Object.values(mByDate)
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+}
+,
         // UPDATED: onEditReservation - Navigate to CreateReservation in edit mode
         onEditReservation: function (oEvent) {
             var oData = oEvent.getSource().getBindingContext().getObject();

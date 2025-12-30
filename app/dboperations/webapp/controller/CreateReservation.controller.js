@@ -113,6 +113,7 @@ sap.ui.define([
                 selectedSimulationFinalPrice: oReservation.unitPrice || 0,
 
                 mode: oReservation.mode || "create",
+                maintenanceEditable: !bIsEdit, // Disable maintenance editing in edit mode
                 isEditMode: bIsEdit,
                 title: bIsEdit ? `Edit Reservation - ${oReservation.description || ''}` : "Create Reservation",
                 reservationId: bIsEdit ? oReservation.reservationId : "",
@@ -150,6 +151,7 @@ sap.ui.define([
                 unitConditions: oReservation.unitConditions,
                 selectedPricePlanYears: "",
                 selectedSimulationId: "",
+                enableImportExport: false, // Switch to enable/disable import/export buttons
                 // result
                 conditions: bIsEdit ? oReservation.conditions || [] : [],
                 partners: bIsEdit ? oReservation.partners || [] : [],
@@ -977,6 +979,41 @@ sap.ui.define([
             const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             oRouter.navTo("Units"); // Navigate back
         },
+         onDueDateChange: function (oEvent) {
+            const oDatePicker = oEvent.getSource();
+            const sDueDate = oDatePicker.getValue();
+            const oModel = this.getView().getModel("local");
+            const iPricePlanYears = oModel.getProperty("/selectedPricePlanYears");
+            const sValidFrom = oModel.getProperty("/validFrom");
+
+            if (!sDueDate || !iPricePlanYears || !sValidFrom) {
+                return; // No validation if date, years, or valid from not set
+            }
+
+            const oDueDate = new Date(sDueDate);
+            const oValidFrom = new Date(sValidFrom);
+            const iDueYear = oDueDate.getFullYear();
+            const iStartYear = oValidFrom.getFullYear();
+            const iEndYear = Math.min(iStartYear + parseInt(iPricePlanYears), 2030);
+
+            if (iDueYear < iStartYear || iDueYear > iEndYear) {
+                MessageBox.error(`Due date year must be between ${iStartYear} and ${iEndYear} based on the valid from date and price plan years.`);
+                // Reset the date picker to empty or previous value
+                oDatePicker.setValue("");
+                return;
+            }
+        },
+         onCancelReservation: function () {
+            const oModel = this.getView().getModel("local");
+            const bIsEdit = oModel.getProperty("/isEditMode");
+            this.getView().getModel("local").setData({}); // Clear form
+            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            if (bIsEdit) {
+                oRouter.navTo("Reservations"); // Navigate back to reservations in edit mode
+            } else {
+                oRouter.navTo("Units"); // Navigate back to units in create mode
+            }
+        },
         _saveSimulationToUnit: async function (oData) {
             const simulationId = this._generateUUID();
             const schedule = oData.conditions.map((c) => ({
@@ -1016,7 +1053,7 @@ sap.ui.define([
                 console.error("Error saving simulation:", err);
             }
         },
-        // Updated: Export conditions to XLSX (with XLSX check)
+         // Updated: Export conditions to XLSX (with XLSX check)
         onExportConditions: function () {
             if (typeof XLSX === "undefined") {
                 MessageBox.error("XLSX library is not loaded. Please refresh the page and try again.");
@@ -1079,17 +1116,37 @@ sap.ui.define([
 
                             // Validate and map data
                             let newTotalAmount = 0;
+                            const iPricePlanYears = oModel.getProperty("/selectedPricePlanYears");
+                            const sValidFrom = oModel.getProperty("/validFrom");
                             const aUpdatedConditions = aOriginalConditions.map((original, index) => {
                                 const imported = jsonData[index];
                                 if (!imported) return original;  // If no row in Excel, keep original
 
-                                const dueDate = imported["Due Date"];
+                                let dueDate = imported["Due Date"];
                                 const amount = Number(imported.Amount) || 0;
-                                const maintenance = Number(imported.Maintenance) || original.maintenance;
+                                const maintenance = original.maintenance; // Maintenance cannot be edited with import
 
-                                // Validate due date
+                                // Convert Excel serial date if it's a number
+                                if (typeof dueDate === 'number') {
+                                    dueDate = this.excelSerialToDate(dueDate);
+                                }
+
+                                // Validate due date format
                                 if (dueDate && isNaN(new Date(dueDate).getTime())) {
                                     throw new Error(`Invalid due date in row ${index + 1}`);
+                                }
+
+                                // Validate due date range
+                                if (dueDate && iPricePlanYears && sValidFrom) {
+                                    const oDueDate = new Date(dueDate);
+                                    const oValidFrom = new Date(sValidFrom);
+                                    const iDueYear = oDueDate.getFullYear();
+                                    const iStartYear = oValidFrom.getFullYear();
+                                    const iEndYear = Math.min(iStartYear + parseInt(iPricePlanYears), 2030);
+
+                                    if (iDueYear < iStartYear || iDueYear > iEndYear) {
+                                        throw new Error(`Due date year in row ${index + 1} must be between ${iStartYear} and ${iEndYear} based on the valid from date and price plan years.`);
+                                    }
                                 }
 
                                 newTotalAmount += amount;
@@ -1144,6 +1201,16 @@ sap.ui.define([
 
             oImportDialog.open();
         },
+        excelSerialToDate: function (serial) {
+            // Excel serial date starts from 1900-01-01 as day 1
+            // JavaScript Date starts from 1970-01-01
+            const excelEpoch = new Date(1900, 0, 1); // January 1, 1900
+            const daysSinceEpoch = serial - 1; // Subtract 1 because Excel considers 1900-01-01 as day 1
+            const millisecondsPerDay = 24 * 60 * 60 * 1000;
+            const date = new Date(excelEpoch.getTime() + daysSinceEpoch * millisecondsPerDay);
 
+            // Format to YYYY-MM-DD
+            return this.formatDateToYMD(date);
+        },
     });
 });
