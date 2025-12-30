@@ -5,7 +5,7 @@ sap.ui.define([
     "sap/ui/model/json/JSONModel",
     "sap/m/SelectDialog",
     "sap/m/StandardListItem",
-], (Controller, MessageBox, MessageToast, JSONModel) => {
+], (Controller, MessageBox, MessageToast, JSONModel, SelectDialog, StandardListItem) => {
     "use strict";
     return Controller.extend("dboperations.controller.CreateReservation", {
         onInit: function () {
@@ -157,7 +157,7 @@ sap.ui.define([
             });
 
             this.getView().setModel(oModel, "local");
-// Populate partner details in edit mode
+            // Populate partner details in edit mode
             if (bIsEdit) {
                 const aPartners = oModel.getProperty("/partners") || [];
                 const oPartnersListModel = this.getView().getModel("partnersList");
@@ -482,18 +482,22 @@ sap.ui.define([
                 }
 
                 // Sort and set to conditions
-                simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-                oModel.setProperty(
-                    "/conditions",
-                    simulationSchedule.map((s) => ({
-                        ID: this._generateUUID(),
-                        installment: s.installment,
-                        conditionType: s.conditionType,
-                        dueDate: s.dueDate,
-                        amount: s.amount,
-                        maintenance: s.maintenance,
-                    }))
-                );
+                // simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+                // oModel.setProperty(
+                //     "/conditions",
+                //     simulationSchedule.map((s) => ({
+                //         ID: this._generateUUID(),
+                //         installment: s.installment,
+                //         conditionType: s.conditionType,
+                //         dueDate: s.dueDate,
+                //         amount: s.amount,
+                //         maintenance: s.maintenance,
+                //     }))
+                // );
+                const mergedConditions = this._mergeConditionsByDueDate(simulationSchedule);
+
+                oModel.setProperty("/conditions", mergedConditions);
+
                 oModel.setProperty("/selectedSimulationFinalPrice", finalPrice);
                 oModel.setProperty(
                     "/paymentPlan_paymentPlanId",
@@ -548,6 +552,38 @@ sap.ui.define([
 
             oModel.setProperty("/conditions", aConditions);
         },
+        _mergeConditionsByDueDate: function (aConditions) {
+            const mByDate = {};
+
+            aConditions.forEach(c => {
+                const sDate = c.dueDate;
+
+                if (!mByDate[sDate]) {
+                    mByDate[sDate] = {
+                        ID: this._generateUUID(),
+                        installment: c.installment || "Installment",
+                        conditionType: c.conditionType,
+                        dueDate: sDate,
+                        amount: 0,
+                        maintenance: 0
+                    };
+                }
+
+                if (c.amount && c.amount > 0) {
+                    mByDate[sDate].amount += c.amount;
+                    mByDate[sDate].installment = c.installment || "Installment";
+                    mByDate[sDate].conditionType = c.conditionType;
+                }
+
+                if (c.maintenance && c.maintenance > 0) {
+                    mByDate[sDate].maintenance += c.maintenance;
+                }
+            });
+
+            return Object.values(mByDate)
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+        }
+        ,
         _resolveSimulationByYears: async function (iYears) {
             const oModel = this.getView().getModel("local");
             const aCond = oModel.getProperty("/unitConditions") || [];
@@ -633,7 +669,7 @@ sap.ui.define([
             const oModel = this.getView().getModel("local");
             const oData = oModel.getData();
             const bIsEdit = oData.mode === "edit";
-  // Show loading indicator
+            // Show loading indicator
             this.getView().setBusy(true);
             // For edit mode, use existing reservationId; for create, generate new one
             const reservationId = bIsEdit
@@ -979,6 +1015,134 @@ sap.ui.define([
             } catch (err) {
                 console.error("Error saving simulation:", err);
             }
+        },
+        // Updated: Export conditions to XLSX (with XLSX check)
+        onExportConditions: function () {
+            if (typeof XLSX === "undefined") {
+                MessageBox.error("XLSX library is not loaded. Please refresh the page and try again.");
+                return;
+            }
+
+            const oModel = this.getView().getModel("local");
+            const aConditions = oModel.getProperty("/conditions") || [];
+            if (aConditions.length === 0) {
+                MessageToast.show("No conditions to export.");
+                return;
+            }
+
+            // Prepare data for XLSX
+            const aExportData = aConditions.map(condition => ({
+                Installment: condition.installment || "",
+                "Due Date": condition.dueDate || "",
+                Amount: condition.amount || 0,
+                Maintenance: condition.maintenance || 0
+            }));
+
+            // Create XLSX workbook and sheet
+            const ws = XLSX.utils.json_to_sheet(aExportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Conditions");
+
+            // Download as XLSX
+            XLSX.writeFile(wb, "Conditions.xlsx");
+            MessageToast.show("Conditions exported as XLSX.");
+        },
+
+        // Updated: Import conditions from XLSX (with XLSX check)
+        onImportConditions: function () {
+            if (typeof XLSX === "undefined") {
+                MessageBox.error("XLSX library is not loaded. Please refresh the page and try again.");
+                return;
+            }
+
+            const oModel = this.getView().getModel("local");
+            const aOriginalConditions = oModel.getProperty("/conditions") || [];
+            const originalTotalAmount = aOriginalConditions.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+
+            // Create file uploader (restricted to .xlsx)
+            var oFileUploader = new sap.ui.unified.FileUploader({
+                width: "100%",
+                fileType: ["xlsx"],  // Only .xlsx allowed
+                sameFilenameAllowed: true,
+                change: (oEvent) => {
+                    const oFile = oEvent.getParameter("files")[0];
+                    if (!oFile) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: "array" });
+                            const sheetName = workbook.SheetNames[0];
+                            const worksheet = workbook.Sheets[sheetName];
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                            // Validate and map data
+                            let newTotalAmount = 0;
+                            const aUpdatedConditions = aOriginalConditions.map((original, index) => {
+                                const imported = jsonData[index];
+                                if (!imported) return original;  // If no row in Excel, keep original
+
+                                const dueDate = imported["Due Date"];
+                                const amount = Number(imported.Amount) || 0;
+                                const maintenance = Number(imported.Maintenance) || original.maintenance;
+
+                                // Validate due date
+                                if (dueDate && isNaN(new Date(dueDate).getTime())) {
+                                    throw new Error(`Invalid due date in row ${index + 1}`);
+                                }
+
+                                newTotalAmount += amount;
+
+                                return {
+                                    ...original,
+                                    dueDate: dueDate || original.dueDate,
+                                    amount: amount,
+                                    maintenance: maintenance
+                                };
+                            });
+
+                            // Validate total amount
+                            if (Math.abs(newTotalAmount - originalTotalAmount) > 0.01) {  // Allow small floating-point tolerance
+                                throw new Error(`Total Amount (${newTotalAmount}) does not match original total (${originalTotalAmount}). Import canceled.`);
+                            }
+
+                            // Update model
+                            oModel.setProperty("/conditions", aUpdatedConditions);
+                            oModel.refresh();
+                            MessageToast.show("Conditions imported successfully.");
+                            oImportDialog.close();  // Close dialog on success
+                        } catch (error) {
+                            MessageBox.error("Import failed: " + error.message);
+                        }
+                    };
+                    reader.readAsArrayBuffer(oFile);
+                }
+            });
+
+            // Create dialog content
+            var oDialogContent = new sap.m.VBox({ items: [oFileUploader] });
+
+            // Create and open dialog
+            var oImportDialog = new sap.m.Dialog({
+                title: "Import Conditions from XLSX",
+                contentWidth: "400px",
+                contentHeight: "auto",
+                content: [oDialogContent],
+                buttons: [
+                    new sap.m.Button({
+                        text: "Close",
+                        press: function () {
+                            oImportDialog.close();
+                        }
+                    })
+                ],
+                afterClose: function () {
+                    oImportDialog.destroy();  // Clean up
+                }
+            });
+
+            oImportDialog.open();
         },
 
     });

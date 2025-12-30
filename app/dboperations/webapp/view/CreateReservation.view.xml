@@ -616,13 +616,27 @@
                     </items>
                 </Table>
 
-                <!-- Conditions Table (Updated to match simulation output) -->
-                <Title
+                 <Title
                     id="_IDGenTitle6"
                     text="Conditions"
                     level="H3"
                 />
-                <!-- Removed Add/Delete Toolbar since conditions are auto-populated -->
+                <Toolbar id="_IDGenToolbarConditions">
+                    <Button
+                        id="_IDGenButtonExport"
+                        text="Export"
+                        icon="sap-icon://download"
+                        press="onExportConditions"
+                        visible="{local>/isEditMode}"
+                    />
+                    <Button
+                        id="_IDGenButtonImport"
+                        text="Import"
+                        icon="sap-icon://upload"
+                        press="onImportConditions"
+                        visible="{local>/isEditMode}"
+                    />
+                </Toolbar>
 
                 <Table
                     id="conditionTable"
@@ -662,17 +676,24 @@
                                     id="_IDGenTextInstallment"
                                     text="{local>installment}"
                                 />
-                                <Text
-                                    id="_IDGenTextDueDate"
-                                    text="{local>dueDate}"
+                                <DatePicker
+                                    id="_IDGenDatePickerCondition"
+                                    value="{local>dueDate}"
+                                    displayFormat="yyyy-MM-dd"
+                                    valueFormat="yyyy-MM-dd"
+                                    editable="{local>/isEditMode}"
                                 />
-                                <Text
-                                    id="_IDGenTextAmount"
-                                    text="{local>amount}"
+                                <Input
+                                    id="_IDGenInputAmount"
+                                    value="{local>amount}"
+                                    type="Number"
+                                    editable="{local>/isEditMode}"
                                 />
-                                <Text
-                                    id="_IDGenTextMaintenance"
-                                    text="{local>maintenance}"
+                                <Input
+                                    id="_IDGenInputMaintenance"
+                                    value="{local>maintenance}"
+                                    type="Number"
+                                    editable="{local>/isEditMode}"
                                 />
                             </cells>
                         </ColumnListItem>
