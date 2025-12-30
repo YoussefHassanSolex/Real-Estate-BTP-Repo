@@ -34,7 +34,7 @@
     </Page>
 
     <!-- Add/Edit Dialog -->
-    <Dialog id="basePriceDialog" title="Add/Edit Base Price" stretchOnPhone="true">
+    <Dialog id="basePriceDialog" title="Add/Edit Base Price">
         <content>
             <VBox id="_IDGenVBoxBP1" class="sapUiSmallMargin">
                 <Label id="_IDGenLabelBP1" text="Code"/>

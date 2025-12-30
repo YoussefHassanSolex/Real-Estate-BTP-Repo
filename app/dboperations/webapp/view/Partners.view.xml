@@ -40,7 +40,7 @@
     </Page>
 
     <!-- Add/Edit Dialog -->
-    <Dialog id="PartnerDialog" title="Add/Edit Partner" stretchOnPhone="true">
+    <Dialog id="PartnerDialog" title="Add/Edit Partner">
         <content>
             <VBox id="_IDGenVBox2" >
                 <Label id="_IDGenLabel48"  text="Customer Code"/>

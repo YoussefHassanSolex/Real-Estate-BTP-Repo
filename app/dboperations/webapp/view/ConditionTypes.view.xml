@@ -34,7 +34,7 @@
     </Page>
 
     <!-- Add/Edit Dialog -->
-    <Dialog id="conditionTypeDialog" title="Add/Edit Condition Type" stretchOnPhone="true">
+    <Dialog id="conditionTypeDialog" title="Add/Edit Condition Type">
         <content>
             <VBox id="_IDGenVBox1" class="sapUiSmallMargin">
                 <Label id="_IDGenLabel1" text="Code"/>

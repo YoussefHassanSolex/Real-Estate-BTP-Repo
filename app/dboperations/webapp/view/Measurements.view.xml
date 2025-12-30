@@ -32,7 +32,7 @@
             </Table>
         </content>
 
-        <Dialog id="measurementDialog" title="Add/Edit Measurement" stretchOnPhone="true">
+        <Dialog id="measurementDialog" title="Add/Edit Measurement">
             <VBox id="_IDGenVBox4" class="sapUiSmallMargin">
                 <Label id="_IDGenLabel47" text="Code"/>
                 <Input id="_IDGenInput36" value="{local>/code}" editable="{= !${local>/isEdit}}" placeholder="Enter Code"/>

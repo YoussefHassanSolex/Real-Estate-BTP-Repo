@@ -34,7 +34,7 @@
     </Page>
 
     <!-- Add/Edit Dialog -->
-    <Dialog id="frequencyDialog" title="Add/Edit Frequency" stretchOnPhone="true">
+    <Dialog id="frequencyDialog" title="Add/Edit Frequency">
         <content>
             <VBox id="_IDGenVBoxFR1" class="sapUiSmallMargin">
                 <Label id="_IDGenLabelFR1" text="Code"/>

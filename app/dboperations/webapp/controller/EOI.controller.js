@@ -182,7 +182,6 @@ sap.ui.define([
                 ? `/odata/v4/real-estate/EOI(eoiId='${encodeURIComponent(eoiId)}')`
                 : "/odata/v4/real-estate/EOI";
 
-            console.log("EOI Save →", method, url, payload);
 
             fetch(url, {
                 method,

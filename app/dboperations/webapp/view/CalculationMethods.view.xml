@@ -34,7 +34,7 @@
     </Page>
 
     <!-- Add/Edit Dialog -->
-    <Dialog id="calculationMethodDialog" title="Add/Edit Calculation Method" stretchOnPhone="true">
+    <Dialog id="calculationMethodDialog" title="Add/Edit Calculation Method">
         <content>
             <VBox id="_IDGenVBoxCM1" class="sapUiSmallMargin">
                 <Label id="_IDGenLabelCM1" text="Code"/>

@@ -17,7 +17,7 @@
             />
         </headerContent>
 
-        <VBox class="sapUiSizeCompact sapUiSmallMargin">
+        <VBox id="_IDGenVBox6" class="sapUiSizeCompact sapUiSmallMargin">
             <Table
                 id="eoiTable"
                 items="{ path: '/EOI' }"
@@ -25,60 +25,60 @@
                 selectionChange="onSelectEOI"
             >
                 <columns>
-                    <Column>
-                        <Text text="EOI ID" />
+                    <Column id="_IDGenColumn72">
+                        <Text id="_IDGenText123" text="EOI ID" />
                     </Column>
-                    <Column>
-                        <Text text="EOI Type" />
+                    <Column id="_IDGenColumn108">
+                        <Text id="_IDGenText131" text="EOI Type" />
                     </Column>
-                    <Column>
-                        <Text text="Status" />
+                    <Column id="_IDGenColumn110">
+                        <Text id="_IDGenText142" text="Status" />
                     </Column>
-                    <Column>
-                        <Text text="Date" />
+                    <Column id="_IDGenColumn114">
+                        <Text id="_IDGenText167" text="Date" />
                     </Column>
-                    <Column>
-                        <Text text="Project ID" />
+                    <Column id="_IDGenColumn124">
+                        <Text id="_IDGenText171" text="Project ID" />
                     </Column>
-                    <Column>
-                        <Text text="Total Value" />
+                    <Column id="_IDGenColumn131">
+                        <Text id="_IDGenText181" text="Total Value" />
                     </Column>
-                    <Column>
-                        <Text text="Collected Amount" />
+                    <Column id="_IDGenColumn132">
+                        <Text id="_IDGenText189" text="Collected Amount" />
                     </Column>
-                    <Column>
-                        <Text text="Remaining Amount" />
+                    <Column id="_IDGenColumn133">
+                        <Text id="_IDGenText191" text="Remaining Amount" />
                     </Column>
-                    <Column>
-                        <Text text="Actions" />
+                    <Column id="_IDGenColumn134">
+                        <Text id="_IDGenText195" text="Actions" />
                     </Column>
                 </columns>
                 <items>
-                    <ColumnListItem>
+                    <ColumnListItem id="_IDGenColumnListItem13">
                         <cells>
-                            <Text text="{eoiId}" />
-                            <Text text="{eoiType}" />
-                            <Text text="{status}" />
-                            <Text text="{date}" />
-                            <Text text="{projectId}" />
-                            <Text text="{totalEoiValue}" />
-                            <Text text="{collectedAmount}" />
-                            <Text text="{remainingAmount}" />
-                            <HBox>
-                                <Button
+                            <Text id="_IDGenText205" text="{eoiId}" />
+                            <Text id="_IDGenText218" text="{eoiType}" />
+                            <Text id="_IDGenText219" text="{status}" />
+                            <Text id="_IDGenText220" text="{date}" />
+                            <Text id="_IDGenText221" text="{projectId}" />
+                            <Text id="_IDGenText222" text="{totalEoiValue}" />
+                            <Text id="_IDGenText223" text="{collectedAmount}" />
+                            <Text id="_IDGenText224" text="{remainingAmount}" />
+                            <HBox id="_IDGenHBox8">
+                                <Button id="_IDGenButton31"
                                     icon="sap-icon://information"
                                     press="onDetails"
                                 />
-                                <Button
+                                <Button id="_IDGenButton43"
                                     icon="sap-icon://edit"
                                     press="onEditEOI"
                                 />
-                                <Button
+                                <Button id="_IDGenButton44"
                                     icon="sap-icon://sys-add"
                                     tooltip="Add Reservation"
                                     press="onAddReservationFromEOI"
                                 />
-                                <Button
+                                <Button id="_IDGenButton45"
                                     icon="sap-icon://delete"
                                     type="Reject"
                                     press="onDelete"

@@ -71,11 +71,9 @@ sap.ui.define([
                     return response.json();
                 })
                 .then(data => {
-                    console.log("Fetched company codes data:", data);
                     var oModel = new sap.ui.model.json.JSONModel();
                     oModel.setData({ companyCodesList: data.value });
                     this.getView().setModel(oModel, "companyCodes");
-                    console.log("Company codes model set:", this.getView().getModel("companyCodes").getData());
                 })
                 .catch(err => {
                     console.error("Error fetching company codes", err);

@@ -42,7 +42,6 @@ sap.ui.define([
                     return response.json();
                 })
                 .then(data => {
-                    console.log("Fetched reservations data:", data);
                     if (data.value) {
                         oModel.setData({ Reservations: data.value });
                         this.getView().byId("reservationsTable").setModel(oModel);
@@ -407,7 +406,6 @@ _mergeConditionsByDueDate: function (aConditions) {
                     return response.json();
                 })
                 .then(data => {
-                    console.log("Fetched reservation for edit:", data);
                     // FIXED: Syntax error (was !==  &&)
                     if (data.paymentPlan && data.paymentPlan.planYears !== undefined && data.paymentPlan.planYears !== null && data.paymentPlan.planYears !== 0) {
                         data.pricePlanYears = data.paymentPlan.planYears;

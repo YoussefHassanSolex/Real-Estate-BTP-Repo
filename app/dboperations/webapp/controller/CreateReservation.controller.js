@@ -33,7 +33,6 @@ sap.ui.define([
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "partnersList");
-                    console.log("Partners", data.value);
                 })
                 .catch(err => console.error("Failed to load Partners list:", err));
         },
@@ -49,10 +48,7 @@ sap.ui.define([
                 }
                 const plans = await plansRes.json();
                 this._oPaymentPlansModel.setData(plans.value || []);
-                console.log(
-                    "Payment plans loaded:",
-                    this._oPaymentPlansModel.getData()
-                ); // Debug log
+              
             } catch (err) {
                 console.error("Failed to load payment plans for reservation:", err);
                 MessageBox.error("Unable to load payment plans. Please try again.");
@@ -79,7 +75,6 @@ sap.ui.define([
                 uniqueYears.map((year) => ({ year: year, text: `${year} Years` }))
             );
             oModel.refresh();
-            console.log("Available years populated:", uniqueYears); // Debug log
         },
 
         _loadPartners: async function () {
@@ -87,7 +82,6 @@ sap.ui.define([
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "partnersList");
-                    console.log("Partners", data.value);
 
                 })
                 .catch(err => console.error("Failed to load Partners list:", err));
@@ -100,7 +94,6 @@ sap.ui.define([
                 return;
             }
             var oReservation = JSON.parse(decodeURIComponent(sData));
-            console.log("Decoded reservation:", oReservation);
 
             // Load payment plans first (await to ensure data is available)
             await this._loadPaymentPlansForReservation();
@@ -197,7 +190,6 @@ sap.ui.define([
                     const unitRes = await fetch(`/odata/v4/real-estate/Units(unitId='${oReservation.unit_unitId}')?$expand=simulations`);
                     if (unitRes.ok) {
                         const unit = await unitRes.json();
-                        console.log("Loaded simulations for edit:", unit.simulations);
                         let aConditions = unit.unitConditions || [];
                         // Ensure the current pricePlanYears is in the simulations for the Select
                         if (oReservation.pricePlanYears !== undefined && oReservation.pricePlanYears !== null && !aConditions.some(cond => cond.pricePlanYears === String(oReservation.pricePlanYears))) {
@@ -219,7 +211,6 @@ sap.ui.define([
                         oModel.setProperty("/simulations", uniqueSimulations);
                         oModel.refresh();
                         this.getView().byId("_IDGenSelect2").updateItems();
-                        console.log("Setting selectedPricePlanYears to:", oReservation.pricePlanYears);
                         oModel.setProperty("/selectedPricePlanYears", String(oReservation.pricePlanYears));
                         this.getView().byId("_IDGenSelect2").invalidate();
                         setTimeout(() => {
@@ -234,7 +225,6 @@ sap.ui.define([
                 }
             } else if (oReservation.unitConditions?.length) {
                 const iDefaultYears = oReservation.unitConditions[0].pricePlanYears;
-                console.log("Setting selectedPricePlanYears to default:", iDefaultYears);
                 oModel.setProperty("/selectedPricePlanYears", iDefaultYears);
                 oModel.updateBindings(true);
                 await this._resolveSimulationByYears(Number(iDefaultYears));
@@ -243,14 +233,12 @@ sap.ui.define([
             // For edit mode, ensure conditions have installment as conditionType
             if (bIsEdit) {
                 const aConditions = oModel.getProperty("/conditions") || [];
-                console.log("Conditions before installment fix:", aConditions);
                 aConditions.forEach((condition, index) => {
                     condition.installment =
                         condition.conditionType === "Maintenance"
                             ? ""
                             : condition.conditionType || "Installment";
                 });
-                console.log("Conditions after installment fix:", aConditions);
                 oModel.setProperty("/conditions", aConditions);
 
                 // FIX: Calculate unitPrice from conditions if it's 0
@@ -260,7 +248,6 @@ sap.ui.define([
                         (sum, c) => sum + (Number(c.amount) || 0),
                         0
                     );
-                    console.log("Calculated unitPrice from conditions:", total); // Debug log
                     oModel.setProperty("/unitPrice", total);
                 }
             }
@@ -383,7 +370,6 @@ sap.ui.define([
                 } else {
                     // Find matching plan
                     const aPlans = this._oPaymentPlansModel.getData();
-                    console.log("Plans data:", aPlans); // Debug log
                     matchingPlan = aPlans.find(
                         (p) =>
                             p.planYears === pricePlanYears &&
@@ -392,12 +378,7 @@ sap.ui.define([
                                 (ap) => ap.project?.projectId === projectId
                             )
                     );
-                    console.log(
-                        "Matching plan for years",
-                        pricePlanYears,
-                        ":",
-                        matchingPlan
-                    ); // Debug log
+              
 
                     if (!matchingPlan) {
                         throw new Error(
@@ -406,7 +387,6 @@ sap.ui.define([
                     }
 
                     // ADDED: Extra check and log to ensure matchingPlan is defined
-                    console.log("About to fetch with matchingPlan:", matchingPlan); // Debug log
                     if (!matchingPlan || !matchingPlan.paymentPlanId) {
                         throw new Error(
                             "Matching plan is invalid or missing paymentPlanId."
@@ -507,10 +487,7 @@ sap.ui.define([
                 ); // Safe access
                 oModel.setProperty("/unitPrice", finalPrice);
                 oModel.refresh(); // Force model refresh
-                console.log(
-                    "Simulation completed: conditions set, unitPrice updated to",
-                    finalPrice
-                ); // Debug log
+              
             } catch (err) {
                 console.error("Simulation error:", err); // Debug log
                 MessageBox.error("Simulation failed: " + (err.message || err));
@@ -593,7 +570,6 @@ sap.ui.define([
             const oSelectedSim = aCond.find(
                 (cond) => Number(cond.pricePlanYears) === iYears
             );
-            console.log("Unit cond ", oSelectedSim);
 
             if (!oSelectedSim) {
                 // For edit mode, don't clear conditions if no sim found; keep existing pre-loaded conditions
@@ -614,14 +590,7 @@ sap.ui.define([
                 "/paymentPlan_paymentPlanId",
                 oSelectedSim.paymentPlan_paymentPlanId
             );
-            console.log(
-                "Years:",
-                iYears,
-                "Condition",
-                oSelectedSim.ID,
-                "final Price",
-                oSelectedSim.finalPrice
-            );
+         
             await this._loadConditionsFromSimulation(oSelectedSim.simulationId);
         },
         _getFrequencyIntervalPPS: function (frequencyDesc) {
@@ -671,6 +640,20 @@ sap.ui.define([
             const oModel = this.getView().getModel("local");
             const oData = oModel.getData();
             const bIsEdit = oData.mode === "edit";
+            
+            // Validate that condition amounts equal unit price in edit mode
+            if (bIsEdit) {
+                const totalConditionAmount = oData.conditions.reduce(
+                    (sum, c) => sum + (Number(c.amount) || 0),
+                    0
+                );
+                const unitPrice = Number(oData.unitPrice) || 0;
+
+                if (Math.abs(totalConditionAmount - unitPrice) > 0.01) { // Allow small floating-point tolerance
+                    MessageBox.error(`The total amount of conditions (${totalConditionAmount.toFixed(2)}) must equal the unit price (${unitPrice.toFixed(2)}). Please adjust the condition amounts.`);
+                    return;
+                }
+            }
             // Show loading indicator
             this.getView().setBusy(true);
             // For edit mode, use existing reservationId; for create, generate new one
@@ -690,7 +673,6 @@ sap.ui.define([
                 reservation_reservationId: reservationId,
             }));
 
-            console.log("Conditions before save:", transformedConditions);
 
             // Fixed: Transform partners to match ReservationPartners entity
             const transformedPartners = oData.partners.map((p) => ({

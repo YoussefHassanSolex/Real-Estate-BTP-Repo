@@ -99,7 +99,6 @@ sap.ui.define([
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "units");
-                    console.log("Units loaded:", data);
 
                     // If there is a ComboBox (legacy) refresh bindings safely
                     const oComboBox = this.getView().byId("unitIdSelect");
@@ -164,7 +163,6 @@ sap.ui.define([
             const oUnitsModel = this.getView().getModel("units");
             const aUnits = oUnitsModel ? oUnitsModel.getData() : [];
             const oSelectedUnit = (aUnits || []).find(u => u.unitId === selectedUnitId);
-            console.log("Selected unit:", oSelectedUnit);
 
             if (oSelectedUnit) {
                 const projectId = oSelectedUnit.project?.projectId || oSelectedUnit.projectId;
@@ -180,7 +178,6 @@ sap.ui.define([
                         const conditionsRes = await fetch(`/odata/v4/real-estate/Conditions?$filter=unit_unitId eq '${selectedUnitId}'`);
                         const conditions = await conditionsRes.json();
                         const aConditions = conditions.value || [];
-                        console.log("Conditions for unit:", aConditions);
 
                         const finalPrice = (aConditions || []).reduce((sum, c) => {
                             const amt = Number(c.amount) || 0;
@@ -188,7 +185,6 @@ sap.ui.define([
                         }, 0);
 
                         oLocalModel.setProperty("/finalPrice", finalPrice);
-                        console.log("Final Price set to:", finalPrice);
                     } catch (err) {
                         console.error("Failed to calculate final price:", err);
                     }

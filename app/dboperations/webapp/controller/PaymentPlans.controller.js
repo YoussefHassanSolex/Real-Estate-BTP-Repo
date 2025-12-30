@@ -33,7 +33,6 @@ sap.ui.define([
                         return acc;
                     }, []);
                     this.getView().setModel(new JSONModel(uniqueCompanyCodes), "companyCodesList");
-                    console.log(uniqueCompanyCodes);
                 })
                 .catch(err => console.error("Failed to load Company Codes list:", err));
         },
@@ -130,12 +129,7 @@ onOpenCompanyCodeVHD: function (oEvent) {
                 });
 
                 this.getView().setModel(oDropdowns, "dropdowns");
-                console.log("✅ Dropdown data loaded", oDropdowns.getData());
-                console.log("RAW ConditionTypes:", ct);
-                console.log("RAW BasePrices:", bp);
-                console.log("RAW CalcMethods:", cm);
-                console.log("RAW Frequencies:", fr);
-                console.log("RAW Projects:", pr);
+              
 
             } catch (err) {
                 console.error("❌ Overall error loading dropdown data:", err);
@@ -405,9 +399,7 @@ onSavePlan: async function () {
             ? `/odata/v4/real-estate/PaymentPlans(paymentPlanId='${oData.paymentPlanId}')`
             : `/odata/v4/real-estate/PaymentPlans`;
 
-        // Debug logs
-        console.log("Schedules payload:", schedules);
-        console.log("Assigned projects payload:", assignedProjects);
+  
 
         // Validation: Total percentage must be 100 (exclude Maintenance)
         const totalPercentage = (oData.schedules || []).reduce((sum, s) => {

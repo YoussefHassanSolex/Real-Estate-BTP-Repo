@@ -74,7 +74,6 @@ sap.ui.define([
                     // 🔹 Post-process units to extract BUA & Original Price
                     const enrichedUnits = data.value.map(unit => {
                         // Extract BUA (from measurements where code = 'BUA')
-                        console.log("Measurements for unit", unit.unitId, unit.measurements);
 
                         let buaMeasurement = unit.measurements?.find(m =>
                             m.code && m.code.trim().toUpperCase() === "BUA"
@@ -96,8 +95,7 @@ sap.ui.define([
                         // Extract Original Price (from first condition or based on some rule)
                         let firstCondition = unit.conditions?.[0];
                         let originalPrice = firstCondition ? firstCondition.amount : null;
-                        console.log("Units", data.value);
-                        console.log("BUA", bua);
+                      
 
                         return { ...unit, bua, originalPrice, uom, measurementCode };
                     });
@@ -118,9 +116,7 @@ sap.ui.define([
                             unitType.push(u.unitTypeDescription)
                         }
                     });
-                    console.log("united status", uniqueStatuses);
-                    console.log("unitIDS", unitId);
-                    console.log("UnitTypes", unitType);
+                  
 
 
 
@@ -146,7 +142,6 @@ sap.ui.define([
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "paymentPlansFilter");
-                    console.log("Payment Plans loaded for filtering:", data.value);
                 })
                 .catch(err => console.error("Failed to load Payment Plans for filter:", err));
         },
@@ -165,7 +160,6 @@ sap.ui.define([
                         return acc;
                     }, []);
                     this.getView().setModel(new JSONModel(uniqueMeasurements), "measurementsList");
-                    console.log("MeasList (deduplicated)", uniqueMeasurements);
                 })
                 .catch(err => console.error("Failed to load Measurements list:", err));
         },
@@ -187,7 +181,6 @@ sap.ui.define([
                     }, []);
 
                     this.getView().setModel(new JSONModel(uniqueConditions), "conditionsList");
-                    console.log("CondList (deduplicated)", uniqueConditions);
                 })
                 .catch(err => console.error("Failed to load Conditions list:", err));
         },
@@ -207,7 +200,6 @@ sap.ui.define([
                         return acc;
                     }, []);
                     this.getView().setModel(new JSONModel(uniqueCompanyCodes), "companyCodesList");
-                    console.log(uniqueCompanyCodes);
 
                 })
                 .catch(err => console.error("Failed to load Company Codes list:", err));
@@ -231,7 +223,6 @@ sap.ui.define([
                         return acc;
                     }, []);
                     this.getView().setModel(new JSONModel(projectIds), "projectsList");
-                    console.log("projectsList", data.value);
                 })
 
                 .catch(err => console.error("Failed to load Projects list:", err));
@@ -1528,7 +1519,6 @@ sap.ui.define([
             var oSelectedCompany = oCompanyCodesList.find(function (item) {
                 return item.companyCodeId === sSelectedKey;
             });
-            console.log(oSelectedCompany.companyCodeDescription);
 
             if (oSelectedCompany) {
                 // Set the description in the dialog model
@@ -1689,7 +1679,6 @@ sap.ui.define([
         },
         onCreateReservation: function (oEvent) {
             var oUnit = oEvent.getSource().getBindingContext().getObject();
-            console.log("Unit selected:", oUnit);
             var oReservationData = {
                 bua: oUnit.measurements?.find(m => m.code?.trim() === "BUA")?.quantity || 0,
                 companyCodeId: oUnit.companyCodeId,
@@ -1721,7 +1710,6 @@ sap.ui.define([
 
             };
 
-            console.log("Reservation payload:", oReservationData);
 
             var sData = encodeURIComponent(JSON.stringify(oReservationData));
             sap.ui.core.UIComponent.getRouterFor(this).navTo("CreateReservation", {
@@ -1852,7 +1840,6 @@ sap.ui.define([
         onOpenPricePlanValueHelpPPS: function () {
             const oView = this._oSimulationDialog;
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
-            console.log("Opening Price Plan Value Help for projectId:", projectId);  // Debug log
 
             if (!this._oPricePlanValueHelpPPS) {
                 this._oPricePlanValueHelpPPS = new SelectDialog({
@@ -1881,7 +1868,6 @@ sap.ui.define([
                             const paymentPlanId = oPlan.paymentPlanId;
                             const description = oPlan.description || "";
 
-                            console.log("Selected plan:", oPlan);  // Debug log
 
                             // Set the Input display value (for Input, use setValue)
                             sap.ui.getCore().byId("pricePlanInputPPS").setValue(`${planYears} Years`);
@@ -1900,13 +1886,11 @@ sap.ui.define([
             // Filter items by current project
             const oPlansModel = this._oSimulationDialog.getModel("paymentPlans");
             const aPlans = oPlansModel ? oPlansModel.getData() : [];
-            console.log("All payment plans:", aPlans);  // Debug log
 
             const filteredPlans = aPlans.filter(p =>
                 Array.isArray(p.assignedProjects) &&
                 p.assignedProjects.some(ap => ap.project?.projectId === projectId)
             );
-            console.log("Filtered plans for project:", filteredPlans);  // Debug log
 
             if (filteredPlans.length === 0) {
                 sap.m.MessageBox.warning("No payment plans available for the selected project.");
