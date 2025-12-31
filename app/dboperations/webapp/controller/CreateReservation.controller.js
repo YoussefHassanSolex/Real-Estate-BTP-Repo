@@ -251,6 +251,14 @@ sap.ui.define([
                     oModel.setProperty("/unitPrice", total);
                 }
             }
+            if (bIsEdit) {
+    const aConditions = oModel.getProperty("/conditions") || [];
+    aConditions.forEach((condition, index) => {
+        condition.installment = condition.conditionType === "Maintenance" ? "" : condition.conditionType || "Installment";
+        condition.previousDueDate = condition.dueDate; // Add this
+    });
+    oModel.setProperty("/conditions", aConditions);
+}
         },
         onOpenPricePlanValueHelpReservation: function () {
             const projectId = this.getView()
@@ -476,8 +484,9 @@ sap.ui.define([
                 //         maintenance: s.maintenance,
                 //     }))
                 // );
-                const mergedConditions = this._mergeConditionsByDueDate(simulationSchedule);
-
+const mergedConditions = this._mergeConditionsByDueDate(simulationSchedule);
+mergedConditions.forEach(c => c.previousDueDate = c.dueDate);
+oModel.setProperty("/conditions", mergedConditions);
                 oModel.setProperty("/conditions", mergedConditions);
 
                 oModel.setProperty("/selectedSimulationFinalPrice", finalPrice);
@@ -516,20 +525,20 @@ sap.ui.define([
             const oModel = this.getView().getModel("local");
             const bIsEdit = oModel.getProperty("/isEditMode");
 
-            const aConditions = (simulation.schedule || [])
-                .filter((s) => s.conditionType !== "Total")
-                .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-                .map((s, index) => ({
-                    ID: this._generateUUID(),
-                    installment:
-                        s.conditionType === "Maintenance" ? "" : s.conditionType,
-                    conditionType: s.conditionType,
-                    dueDate: s.dueDate,
-                    amount: s.amount,
-                    maintenance: s.maintenance,
-                }));
+        const aConditions = (simulation.schedule || [])
+    .filter((s) => s.conditionType !== "Total")
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .map((s, index) => ({
+        ID: this._generateUUID(),
+        installment: s.conditionType === "Maintenance" ? "" : s.conditionType,
+        conditionType: s.conditionType,
+        dueDate: s.dueDate,
+        amount: s.amount,
+        maintenance: s.maintenance,
+        previousDueDate: s.dueDate, // Add this
+    }));
+oModel.setProperty("/conditions", aConditions);
 
-            oModel.setProperty("/conditions", aConditions);
         },
         _mergeConditionsByDueDate: function (aConditions) {
             const mByDate = {};
@@ -1073,7 +1082,7 @@ sap.ui.define([
                 MessageBox.error("XLSX library is not loaded. Please refresh the page and try again.");
                 return;
             }
-
+debugger
             const oModel = this.getView().getModel("local");
             const aOriginalConditions = oModel.getProperty("/conditions") || [];
             const originalTotalAmount = aOriginalConditions.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
@@ -1086,7 +1095,7 @@ sap.ui.define([
                 change: (oEvent) => {
                     const oFile = oEvent.getParameter("files")[0];
                     if (!oFile) return;
-
+debugger
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         try {
@@ -1161,7 +1170,7 @@ sap.ui.define([
 
             // Create dialog content
             var oDialogContent = new sap.m.VBox({ items: [oFileUploader] });
-
+debugger
             // Create and open dialog
             var oImportDialog = new sap.m.Dialog({
                 title: "Import Conditions from XLSX",
@@ -1194,5 +1203,54 @@ sap.ui.define([
             // Format to YYYY-MM-DD
             return this.formatDateToYMD(date);
         },
+   onDueDateChange: function (oEvent) {
+    const oDatePicker = oEvent.getSource();
+    const sDueDate = oDatePicker.getValue();
+    const oModel = this.getView().getModel("local");
+    const iPricePlanYears = oModel.getProperty("/selectedPricePlanYears");
+    const sValidFrom = oModel.getProperty("/validFrom");
+
+    if (!sDueDate || !iPricePlanYears || !sValidFrom) {
+        return; // No validation if date, years, or valid from not set
+    }
+
+    const oDueDate = new Date(sDueDate);
+    const oValidFrom = new Date(sValidFrom);
+    const iDueYear = oDueDate.getFullYear();
+    const iStartYear = oValidFrom.getFullYear();
+    const iEndYear = Math.min(iStartYear + parseInt(iPricePlanYears), 2030);
+
+    if (iDueYear < iStartYear || iDueYear > iEndYear) {
+        MessageBox.error(`Due date year must be between ${iStartYear} and ${iEndYear} based on the valid from date and price plan years.`);
+        // Reset the date picker to the previous value
+        const oContext = oDatePicker.getBindingContext("local");
+        const sPath = oContext.getPath();
+        const previousDueDate = oModel.getProperty(sPath + "/previousDueDate");
+        oDatePicker.setValue(previousDueDate || "");
+        return;
+    }
+
+    // Get the index of the changed condition
+    const oContext = oDatePicker.getBindingContext("local");
+    const sPath = oContext.getPath();
+    const iIndex = parseInt(sPath.split("/").pop());
+    const aConditions = oModel.getProperty("/conditions");
+
+    // Set the new due date for the changed condition
+    aConditions[iIndex].dueDate = sDueDate;
+    aConditions[iIndex].previousDueDate = sDueDate;
+
+    // Shift all subsequent due dates by one month each
+    for (let i = iIndex + 1; i < aConditions.length; i++) {
+        const previousDueDate = new Date(aConditions[i - 1].dueDate);
+        const newDueDate = new Date(previousDueDate);
+        newDueDate.setMonth(newDueDate.getMonth() + 1); // Add one month
+        aConditions[i].dueDate = this.formatDateToYMD(newDueDate);
+        aConditions[i].previousDueDate = aConditions[i].dueDate; // Update previousDueDate
+    }
+
+    oModel.refresh();
+},
+
     });
 });

@@ -170,14 +170,29 @@ sap.ui.define([
 
         // Added: Company code change handler (from Units)
         onCompanyCodeChange: function (oEvent) {
-            var oComboBox = oEvent.getSource();
-            var oSelectedItem = oComboBox.getSelectedItem();
-            var sDescription = oSelectedItem ? oSelectedItem.getText().split(" - ")[1] || "" : "";
-            var oContext = oComboBox.getBindingContext();
-            if (oContext) {
-                oContext.setProperty("companyCodeDescription", sDescription);
+            const oComboBox = oEvent.getSource();
+            const oSelectedItem = oComboBox.getSelectedItem();
+
+            if (!oSelectedItem) {
+                return;
             }
-        },
+
+            const oCtx = oSelectedItem.getBindingContext("companyCodesList");
+            if (!oCtx) {
+                return;
+            }
+
+            const oSelectedCompany = oCtx.getObject();
+
+            const oDialogModel = this._oAddBuildingDialog.getModel();
+
+            oDialogModel.setProperty("/companyCodeId", oSelectedCompany.companyCodeId);
+            oDialogModel.setProperty(
+                "/companyCodeDescription",
+                oSelectedCompany.companyCodeDescription
+            );
+        }
+        ,
 
         // Added: Project change handler (from Units)
         onProjectChange: function (oEvent) {
@@ -339,361 +354,361 @@ sap.ui.define([
             });
         },
 
-      // Updated: Enhanced to match Units' full dialog with fixes for Company Code Description and Building ID
-onNavigateToAddUnit: function (oEvent) {
-    const oContext = oEvent.getSource().getBindingContext();
-    const oBuildingData = oContext.getObject();
+        // Updated: Enhanced to match Units' full dialog with fixes for Company Code Description and Building ID
+        onNavigateToAddUnit: function (oEvent) {
+            const oContext = oEvent.getSource().getBindingContext();
+            const oBuildingData = oContext.getObject();
 
-    const oData = {
-        unitDescription: "",
-        companyCodeId: oBuildingData.companyCodeId || "",
-        companyCodeDescription: oBuildingData.companyCodeDescription || "",
-        projectId: oBuildingData.projectId,
-        projectDescription: oBuildingData.projectDescription,
-        buildingId: oBuildingData.buildingId,
-        buildingDescription: oBuildingData.buildingDescription,
-        unitTypeDescription: "",
-        usageTypeDescription: "",
-        unitStatusDescription: "",
-        floorDescription: "",
-        zone: "",
-        salesPhase: "",
-        finishingSpexDescription: "",
-        profitCenter: oBuildingData.profitCenter || "",
-        functionalArea: oBuildingData.functionalArea || "",
-        unitDeliveryDate: "",
-        supplementaryText: "",
-        measurements: [],
-        conditions: [],
-        filteredBuildings: []  // Added: Initialize empty array for filtered buildings
-    };
+            const oData = {
+                unitDescription: "",
+                companyCodeId: oBuildingData.companyCodeId || "",
+                companyCodeDescription: oBuildingData.companyCodeDescription || "",
+                projectId: oBuildingData.projectId,
+                projectDescription: oBuildingData.projectDescription,
+                buildingId: oBuildingData.buildingId,
+                buildingDescription: oBuildingData.buildingDescription,
+                unitTypeDescription: "",
+                usageTypeDescription: "",
+                unitStatusDescription: "",
+                floorDescription: "",
+                zone: "",
+                salesPhase: "",
+                finishingSpexDescription: "",
+                profitCenter: oBuildingData.profitCenter || "",
+                functionalArea: oBuildingData.functionalArea || "",
+                unitDeliveryDate: "",
+                supplementaryText: "",
+                measurements: [],
+                conditions: [],
+                filteredBuildings: []  // Added: Initialize empty array for filtered buildings
+            };
 
-    const oModel = new sap.ui.model.json.JSONModel(oData);
-    if (this._oAddDialog) {
-        this._oAddDialog.destroy();
-        this._oAddDialog = null;
-    }
+            const oModel = new sap.ui.model.json.JSONModel(oData);
+            if (this._oAddDialog) {
+                this._oAddDialog.destroy();
+                this._oAddDialog = null;
+            }
 
-    this._oAddDialog = new sap.m.Dialog({
-        title: "Add Unit for " + oData.buildingDescription,
-        contentWidth: "80%",
-        resizable: true,
-        draggable: true,
-        content: new sap.m.VBox({
-            items: [
-                new sap.m.Label({ text: "Unit Description", required: true }),
-                new sap.m.Input("unitDescInput", { value: "{/unitDescription}", tooltip: "Up to 60 characters" }),
-
-                new sap.m.Label({ text: "Company Code ID", required: true }),
-                new ComboBox("companyCodeIdInput", {
-                    selectedKey: "{/companyCodeId}",
-                    change: this.onCompanyCodeChange.bind(this),
-                    items: { path: "companyCodesList>/", template: new Item({ key: "{companyCodesList>companyCodeId}", text: "{companyCodesList>companyCodeId} - {companyCodesList>companyCodeDescription}" }) },
-                    tooltip: "Must be 4 characters"
-                }),
-
-                new sap.m.Label({ text: "Company Code Description", required: true }),
-                new sap.m.Input("companyCodeDescInput", { value: "{/companyCodeDescription}", tooltip: "Up to 60 characters" }),  // Fixed: Bound to dialog model
-
-                new sap.m.Label({ text: "Project ID", required: true }),
-                new ComboBox("projectIdInput", {
-                    selectedKey: "{/projectId}",
-                    change: this.onProjectChange.bind(this),
-                    editable: false,
-                    items: { path: "projectsList>/", template: new Item({ key: "{projectsList>projectId}", text: "{projectsList>projectId} - {projectsList>projectDescription}" }) },
-                    tooltip: "Must be 8 characters"
-                }),
-
-                new sap.m.Label({ text: "Project Description", required: true }),
-                new sap.m.Input("projectDescInput", { value: "{/projectDescription}", editable: false }),
-
-                new sap.m.Label({ text: "Building ID", required: true }),
-                new ComboBox("buildingIdInput", {
-                    selectedKey: "{/buildingId}",
-                    change: this.onBuildingChange.bind(this),
-                    editable: false,
-                    items: { path: "/filteredBuildings", template: new Item({ key: "{buildingId}", text: "{buildingId} - {buildingDescription}" }) }
-                }),
-
-                new sap.m.Label({ text: "Building Description", required: true }),
-                new sap.m.Input("buildingDescInput", { value: "{/buildingDescription}", editable: false }),
-
-                new sap.m.Label({ text: "Usage Type", required: true }),
-                new sap.m.Select("usageTypeDescInput", {
-                    selectedKey: "{/usageTypeDescription}",
-                    change: this.onAddDialogUsageTypeChange.bind(this),
+            this._oAddDialog = new sap.m.Dialog({
+                title: "Add Unit for " + oData.buildingDescription,
+                contentWidth: "80%",
+                resizable: true,
+                draggable: true,
+                content: new sap.m.VBox({
                     items: [
-                        new sap.ui.core.Item({ key: "", text: "" }),
-                        new sap.ui.core.Item({ key: "Residential", text: "Residential" }),
-                        new sap.ui.core.Item({ key: "Commercial", text: "Commercial" }),
-                        new sap.ui.core.Item({ key: "Admin", text: "Admin" })
-                    ]
-                }),
+                        new sap.m.Label({ text: "Unit Description", required: true }),
+                        new sap.m.Input("unitDescInput", { value: "{/unitDescription}", tooltip: "Up to 60 characters" }),
 
-                new sap.m.Label({ text: "Unit Type", required: true }),
-                new sap.m.Select("unitTypeDescInput", { selectedKey: "{/unitTypeDescription}", enabled: false }),
+                        new sap.m.Label({ text: "Company Code ID", required: true }),
+                        new ComboBox("companyCodeIdInput", {
+                            selectedKey: "{/companyCodeId}",
+                            change: this.onCompanyCodeChange.bind(this),
+                            items: { path: "companyCodesList>/", template: new Item({ key: "{companyCodesList>companyCodeId}", text: "{companyCodesList>companyCodeId} - {companyCodesList>companyCodeDescription}" }) },
+                            tooltip: "Must be 4 characters"
+                        }),
 
-                new sap.m.Label({ text: "Unit Status", required: true }),
-                new sap.m.Select("unitStatusDescInput", {
-                    selectedKey: "{/unitStatusDescription}",
-                    items: [
-                        new sap.ui.core.Item({ key: "", text: "" }),
-                        new sap.ui.core.Item({ key: "Open", text: "Open" }),
-                        new sap.ui.core.Item({ key: "Closed", text: "Closed" }),
-                        new sap.ui.core.Item({ key: "Cancelled", text: "Cancelled" }),
-                        new sap.ui.core.Item({ key: "Terminated", text: "Terminated" })
-                    ]
-                }),
+                        new sap.m.Label({ text: "Company Code Description", required: true }),
+                        new sap.m.Input("companyCodeDescInput", { value: "{/companyCodeDescription}", tooltip: "Up to 60 characters" }),
 
-                new sap.m.Label({ text: "Floor Description", required: true }),
-                new sap.m.Input("floorDescInput", { value: "{/floorDescription}" }),
+                        new sap.m.Label({ text: "Project ID", required: true }),
+                        new ComboBox("projectIdInput", {
+                            selectedKey: "{/projectId}",
+                            change: this.onProjectChange.bind(this),
+                            editable: false,
+                            items: { path: "projectsList>/", template: new Item({ key: "{projectsList>projectId}", text: "{projectsList>projectId} - {projectsList>projectDescription}" }) },
+                            tooltip: "Must be 8 characters"
+                        }),
 
-                new sap.m.Label({ text: "Zone", required: true }),
-                new sap.m.Input("zoneInput", { value: "{/zone}" }),
+                        new sap.m.Label({ text: "Project Description", required: true }),
+                        new sap.m.Input("projectDescInput", { value: "{/projectDescription}", editable: false }),
 
-                new sap.m.Label({ text: "Sales Phase", required: true }),
-                new sap.m.Select("salesPhaseInput", {
-                    selectedKey: "{/salesPhase}",
-                    items: [
-                        new sap.ui.core.Item({ key: "", text: "" }),
-                        new sap.ui.core.Item({ key: "1", text: "1" }),
-                        new sap.ui.core.Item({ key: "2", text: "2" }),
-                        new sap.ui.core.Item({ key: "3", text: "3" }),
-                        new sap.ui.core.Item({ key: "4", text: "4" })
-                    ]
-                }),
+                        new sap.m.Label({ text: "Building ID", required: true }),
+                        new ComboBox("buildingIdInput", {
+                            selectedKey: "{/buildingId}",
+                            change: this.onBuildingChange.bind(this),
+                            editable: false,
+                            items: { path: "/filteredBuildings", template: new Item({ key: "{buildingId}", text: "{buildingId} - {buildingDescription}" }) }
+                        }),
 
-                new sap.m.Label({ text: "Finishing Spex Description", required: true }),
-                new sap.m.Input("finishingSpexDescInput", { value: "{/finishingSpexDescription}" }),
+                        new sap.m.Label({ text: "Building Description", required: true }),
+                        new sap.m.Input("buildingDescInput", { value: "{/buildingDescription}", editable: false }),
 
-                new sap.m.Label({ text: "Profit Center" }),
-                new sap.m.Text({ text: "{/profitCenter}" }),
-
-                new sap.m.Label({ text: "Functional Area" }),
-                new sap.m.Text({ text: "{/functionalArea}" }),
-
-                new sap.m.Label({ text: "Delivery Date", required: true }),
-                new sap.m.DatePicker("unitDeliveryDateInput", {
-                    value: "{/unitDeliveryDate}",
-                    displayFormat: "long",
-                    valueFormat: "yyyy-MM-dd",
-                    placeholder: "Select a date"
-                }),
-
-                new sap.m.Label({ text: "Supplementary Text" }),
-                new sap.m.Input("supplementaryTextInput", { value: "{/supplementaryText}" }),
-
-                new sap.m.Title({ text: "Measurements", level: "H3" }),
-                new sap.m.Button({ text: "Add Measurement", press: this.onAddMeasurementRow.bind(this) }),
-                new sap.m.Button({ text: "Delete Measurement", press: this.onDeleteMeasurementRow.bind(this) }),
-                new sap.m.Table({
-                    id: "addMeasurementsTable",
-                    items: "{/measurements}",
-                    columns: [
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Code" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Description" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Quantity" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "UOM" }) })
-                    ],
-                    items: {
-                        path: "/measurements",
-                        template: new sap.m.ColumnListItem({
-                            cells: [
-                                new ComboBox({
-                                    selectedKey: "{code}",
-                                    change: this.onMeasurementCodeChange.bind(this),
-                                    items: { path: "measurementsList>/", template: new Item({ key: "{measurementsList>code}", text: "{measurementsList>code} - {measurementsList>description}" }) }
-                                }),
-                                new Text({ text: "{description}" }),
-                                new Input({ value: "{quantity}", type: "Number" }),
-                                new Input({ value: "{uom}" })
+                        new sap.m.Label({ text: "Usage Type", required: true }),
+                        new sap.m.Select("usageTypeDescInput", {
+                            selectedKey: "{/usageTypeDescription}",
+                            change: this.onAddDialogUsageTypeChange.bind(this),
+                            items: [
+                                new sap.ui.core.Item({ key: "", text: "" }),
+                                new sap.ui.core.Item({ key: "Residential", text: "Residential" }),
+                                new sap.ui.core.Item({ key: "Commercial", text: "Commercial" }),
+                                new sap.ui.core.Item({ key: "Admin", text: "Admin" })
                             ]
+                        }),
+
+                        new sap.m.Label({ text: "Unit Type", required: true }),
+                        new sap.m.Select("unitTypeDescInput", { selectedKey: "{/unitTypeDescription}", enabled: false }),
+
+                        new sap.m.Label({ text: "Unit Status", required: true }),
+                        new sap.m.Select("unitStatusDescInput", {
+                            selectedKey: "{/unitStatusDescription}",
+                            items: [
+                                new sap.ui.core.Item({ key: "", text: "" }),
+                                new sap.ui.core.Item({ key: "Open", text: "Open" }),
+                                new sap.ui.core.Item({ key: "Closed", text: "Closed" }),
+                                new sap.ui.core.Item({ key: "Cancelled", text: "Cancelled" }),
+                                new sap.ui.core.Item({ key: "Terminated", text: "Terminated" })
+                            ]
+                        }),
+
+                        new sap.m.Label({ text: "Floor Description", required: true }),
+                        new sap.m.Input("floorDescInput", { value: "{/floorDescription}" }),
+
+                        new sap.m.Label({ text: "Zone", required: true }),
+                        new sap.m.Input("zoneInput", { value: "{/zone}" }),
+
+                        new sap.m.Label({ text: "Sales Phase", required: true }),
+                        new sap.m.Select("salesPhaseInput", {
+                            selectedKey: "{/salesPhase}",
+                            items: [
+                                new sap.ui.core.Item({ key: "", text: "" }),
+                                new sap.ui.core.Item({ key: "1", text: "1" }),
+                                new sap.ui.core.Item({ key: "2", text: "2" }),
+                                new sap.ui.core.Item({ key: "3", text: "3" }),
+                                new sap.ui.core.Item({ key: "4", text: "4" })
+                            ]
+                        }),
+
+                        new sap.m.Label({ text: "Finishing Spex Description", required: true }),
+                        new sap.m.Input("finishingSpexDescInput", { value: "{/finishingSpexDescription}" }),
+
+                        new sap.m.Label({ text: "Profit Center" }),
+                        new sap.m.Text({ text: "{/profitCenter}" }),
+
+                        new sap.m.Label({ text: "Functional Area" }),
+                        new sap.m.Text({ text: "{/functionalArea}" }),
+
+                        new sap.m.Label({ text: "Delivery Date", required: true }),
+                        new sap.m.DatePicker("unitDeliveryDateInput", {
+                            value: "{/unitDeliveryDate}",
+                            displayFormat: "long",
+                            valueFormat: "yyyy-MM-dd",
+                            placeholder: "Select a date"
+                        }),
+
+                        new sap.m.Label({ text: "Supplementary Text" }),
+                        new sap.m.Input("supplementaryTextInput", { value: "{/supplementaryText}" }),
+
+                        new sap.m.Title({ text: "Measurements", level: "H3" }),
+                        new sap.m.Button({ text: "Add Measurement", press: this.onAddMeasurementRow.bind(this) }),
+                        new sap.m.Button({ text: "Delete Measurement", press: this.onDeleteMeasurementRow.bind(this) }),
+                        new sap.m.Table({
+                            id: "addMeasurementsTable",
+                            items: "{/measurements}",
+                            columns: [
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Code" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Description" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Quantity" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "UOM" }) })
+                            ],
+                            items: {
+                                path: "/measurements",
+                                template: new sap.m.ColumnListItem({
+                                    cells: [
+                                        new ComboBox({
+                                            selectedKey: "{code}",
+                                            change: this.onMeasurementCodeChange.bind(this),
+                                            items: { path: "measurementsList>/", template: new Item({ key: "{measurementsList>code}", text: "{measurementsList>code} - {measurementsList>description}" }) }
+                                        }),
+                                        new Text({ text: "{description}" }),
+                                        new Input({ value: "{quantity}", type: "Number" }),
+                                        new Input({ value: "{uom}" })
+                                    ]
+                                })
+                            }
+                        }),
+
+                        new sap.m.Title({ text: "Conditions", level: "H3" }),
+                        new sap.m.Button({ text: "Add Condition", press: this.onAddConditionRow.bind(this) }),
+                        new sap.m.Button({ text: "Delete Condition", press: this.onDeleteConditionRow.bind(this) }),
+                        new sap.m.Table({
+                            id: "addConditionsTable",
+                            items: "{/conditions}",
+                            columns: [
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Code" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Description" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
+                                new sap.m.Column({ header: new sap.m.Label({ text: "Number of Years" }) })
+                            ],
+                            items: {
+                                path: "/conditions",
+                                template: new sap.m.ColumnListItem({
+                                    cells: [
+                                        new ComboBox({
+                                            selectedKey: "{code}",
+                                            change: this.onConditionCodeChange.bind(this),
+                                            items: { path: "conditionsList>/", template: new Item({ key: "{conditionsList>code}", text: "{conditionsList>code} - {conditionsList>description}" }) }
+                                        }),
+                                        new Text({ text: "{description}" }),
+                                        new Input({ value: "{amount}", type: "Number" }),
+                                        new Input({ value: "{currency}" }),
+                                        new Input({ value: "{numberOfYears}", type: "Number" })
+                                    ]
+                                })
+                            }
                         })
-                    }
+                    ]
                 }),
 
-                new sap.m.Title({ text: "Conditions", level: "H3" }),
-                new sap.m.Button({ text: "Add Condition", press: this.onAddConditionRow.bind(this) }),
-                new sap.m.Button({ text: "Delete Condition", press: this.onDeleteConditionRow.bind(this) }),
-                new sap.m.Table({
-                    id: "addConditionsTable",
-                    items: "{/conditions}",
-                    columns: [
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Code" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Description" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Amount" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Currency" }) }),
-                        new sap.m.Column({ header: new sap.m.Label({ text: "Number of Years" }) })
-                    ],
-                    items: {
-                        path: "/conditions",
-                        template: new sap.m.ColumnListItem({
-                            cells: [
-                                new ComboBox({
-                                    selectedKey: "{code}",
-                                    change: this.onConditionCodeChange.bind(this),
-                                    items: { path: "conditionsList>/", template: new Item({ key: "{conditionsList>code}", text: "{conditionsList>code} - {conditionsList>description}" }) }
-                                }),
-                                new Text({ text: "{description}" }),
-                                new Input({ value: "{amount}", type: "Number" }),
-                                new Input({ value: "{currency}" }),
-                                new Input({ value: "{numberOfYears}", type: "Number" })
-                            ]
+                beginButton: new sap.m.Button({
+                    text: "Save",
+                    type: "Emphasized",
+                    press: function () {
+                        var oData = this._oAddDialog.getModel().getData();
+
+                        var aRequiredFields = [
+                            { id: "usageTypeDescInput", name: "Usage Type" },
+                            { id: "unitTypeDescInput", name: "Unit Type" }
+                        ];
+
+                        var bValid = true;
+                        aRequiredFields.forEach(function (field) {
+                            var oControl = sap.ui.getCore().byId(field.id);
+                            if (oControl) {
+                                if (oControl.isA("sap.m.Select") || oControl.isA("sap.m.ComboBox")) {
+                                    var vValue = oControl.getSelectedKey();
+                                } else if (oControl.getValue) {
+                                    vValue = oControl.getValue();
+                                }
+
+                                if (!vValue) {
+                                    oControl.setValueState("Error");
+                                    oControl.setValueStateText(field.name + " is required");
+                                    bValid = false;
+                                } else {
+                                    oControl.setValueState("None");
+                                }
+                            }
+                        });
+
+                        if (!bValid) {
+                            sap.m.MessageBox.error("Please fill all required fields before saving.");
+                            return;
+                        }
+
+                        this._unitIdCounter = (this._unitIdCounter || 0) + 1;
+                        const generatedUnitId = "U" + ("000" + this._unitIdCounter).slice(-4);
+                        localStorage.setItem("unitIdCounter", this._unitIdCounter);
+
+                        const payload = {
+                            unitId: generatedUnitId,
+                            unitDescription: oData.unitDescription,
+                            companyCodeId: oData.companyCodeId,
+                            companyCodeDescription: oData.companyCodeDescription,
+                            projectId: oData.projectId,
+                            projectDescription: oData.projectDescription,
+                            buildingId: oData.buildingId,
+                            buildingDescription: oData.buildingDescription,
+                            unitTypeDescription: oData.unitTypeDescription,
+                            usageTypeDescription: oData.usageTypeDescription,
+                            unitStatusDescription: oData.unitStatusDescription,
+                            floorDescription: oData.floorDescription,
+                            zone: oData.zone,
+                            salesPhase: oData.salesPhase,
+                            finishingSpexDescription: oData.finishingSpexDescription,
+                            unitDeliveryDate: oData.unitDeliveryDate || null,
+                            supplementaryText: oData.supplementaryText,
+                            profitCenter: oData.profitCenter || 0,
+                            functionalArea: oData.functionalArea || 0,
+                            measurements: oData.measurements,
+                            conditions: oData.conditions
+                        };
+
+                        if (payload.measurements.length === 0) {
+                            delete payload.measurements;
+                        }
+                        if (payload.conditions.length === 0) {
+                            delete payload.conditions;
+                        }
+
+                        fetch("/odata/v4/real-estate/Units", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload)
                         })
-                    }
-                })
-            ]
-        }),
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error("Failed to create unit");
+                                }
+                                return response.json();
+                            })
+                            .then(() => {
+                                sap.m.MessageToast.show("Unit created!");
+                                this._loadBuildings();
+                                this._resetAddDialogFields();
+                                this._oAddDialog.close();
+                            })
+                            .catch(err => {
+                                sap.m.MessageBox.error("Error: " + err.message);
+                            });
+                    }.bind(this)
+                }),
 
-        beginButton: new sap.m.Button({
-            text: "Save",
-            type: "Emphasized",
-            press: function () {
-                var oData = this._oAddDialog.getModel().getData();
-
-                var aRequiredFields = [
-                    { id: "usageTypeDescInput", name: "Usage Type" },
-                    { id: "unitTypeDescInput", name: "Unit Type" }
-                ];
-
-                var bValid = true;
-                aRequiredFields.forEach(function (field) {
-                    var oControl = sap.ui.getCore().byId(field.id);
-                    if (oControl) {
-                        if (oControl.isA("sap.m.Select") || oControl.isA("sap.m.ComboBox")) {
-                            var vValue = oControl.getSelectedKey();
-                        } else if (oControl.getValue) {
-                            vValue = oControl.getValue();
-                        }
-
-                        if (!vValue) {
-                            oControl.setValueState("Error");
-                            oControl.setValueStateText(field.name + " is required");
-                            bValid = false;
-                        } else {
-                            oControl.setValueState("None");
-                        }
-                    }
-                });
-
-                if (!bValid) {
-                    sap.m.MessageBox.error("Please fill all required fields before saving.");
-                    return;
-                }
-
-                this._unitIdCounter = (this._unitIdCounter || 0) + 1;
-                const generatedUnitId = "U" + ("000" + this._unitIdCounter).slice(-4);
-                localStorage.setItem("unitIdCounter", this._unitIdCounter);
-
-                const payload = {
-                    unitId: generatedUnitId,
-                    unitDescription: oData.unitDescription,
-                    companyCodeId: oData.companyCodeId,
-                    companyCodeDescription: oData.companyCodeDescription,
-                    projectId: oData.projectId,
-                    projectDescription: oData.projectDescription,
-                    buildingId: oData.buildingId,
-                    buildingDescription: oData.buildingDescription,
-                    unitTypeDescription: oData.unitTypeDescription,
-                    usageTypeDescription: oData.usageTypeDescription,
-                    unitStatusDescription: oData.unitStatusDescription,
-                    floorDescription: oData.floorDescription,
-                    zone: oData.zone,
-                    salesPhase: oData.salesPhase,
-                    finishingSpexDescription: oData.finishingSpexDescription,
-                    unitDeliveryDate: oData.unitDeliveryDate || null,
-                    supplementaryText: oData.supplementaryText,
-                    profitCenter: oData.profitCenter || 0,
-                    functionalArea: oData.functionalArea || 0,
-                    measurements: oData.measurements,
-                    conditions: oData.conditions
-                };
-
-                if (payload.measurements.length === 0) {
-                    delete payload.measurements;
-                }
-                if (payload.conditions.length === 0) {
-                    delete payload.conditions;
-                }
-
-                fetch("/odata/v4/real-estate/Units", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                })
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error("Failed to create unit");
-                        }
-                        return response.json();
-                    })
-                    .then(() => {
-                        sap.m.MessageToast.show("Unit created!");
-                        this._loadBuildings();
+                endButton: new sap.m.Button({
+                    text: "Cancel",
+                    press: function () {
                         this._resetAddDialogFields();
                         this._oAddDialog.close();
-                    })
-                    .catch(err => {
-                        sap.m.MessageBox.error("Error: " + err.message);
-                    });
-            }.bind(this)
-        }),
+                    }.bind(this)
+                })
+            });
 
-        endButton: new sap.m.Button({
-            text: "Cancel",
-            press: function () {
-                this._resetAddDialogFields();
-                this._oAddDialog.close();
-            }.bind(this)
-        })
-    });
+            this._oAddDialog.setModel(oModel);
+            this.getView().addDependent(this._oAddDialog);
 
-    this._oAddDialog.setModel(oModel);
-    this.getView().addDependent(this._oAddDialog);
+            // Added: Populate filtered buildings based on the pre-filled project
+            this._updateFilteredBuildings(oData.projectId, oModel);
 
-    // Added: Populate filtered buildings based on the pre-filled project
-    this._updateFilteredBuildings(oData.projectId, oModel);
+            this._oAddDialog.open();
+        },
+        // Added: Reset dialog fields (from Units) - Updated to include filteredBuildings
+        _resetAddDialogFields: function () {
+            var oModel = this._oAddDialog.getModel();
+            oModel.setData({
+                unitDescription: "",
+                companyCodeId: "",
+                companyCodeDescription: "",
+                projectId: "",
+                projectDescription: "",
+                buildingId: "",
+                buildingDescription: "",
+                unitTypeDescription: "",
+                usageTypeDescription: "",
+                unitStatusDescription: "",
+                floorDescription: "",
+                zone: "",
+                salesPhase: "",
+                finishingSpexDescription: "",
+                profitCenter: "",
+                functionalArea: "",
+                unitDeliveryDate: "",
+                supplementaryText: "",
+                measurements: [],
+                conditions: [],
+                filteredBuildings: []  // Added: Clear filtered buildings
+            });
 
-    this._oAddDialog.open();
-},
-// Added: Reset dialog fields (from Units) - Updated to include filteredBuildings
-_resetAddDialogFields: function () {
-    var oModel = this._oAddDialog.getModel();
-    oModel.setData({
-        unitDescription: "",
-        companyCodeId: "",
-        companyCodeDescription: "",
-        projectId: "",
-        projectDescription: "",
-        buildingId: "",
-        buildingDescription: "",
-        unitTypeDescription: "",
-        usageTypeDescription: "",
-        unitStatusDescription: "",
-        floorDescription: "",
-        zone: "",
-        salesPhase: "",
-        finishingSpexDescription: "",
-        profitCenter: "",
-        functionalArea: "",
-        unitDeliveryDate: "",
-        supplementaryText: "",
-        measurements: [],
-        conditions: [],
-        filteredBuildings: []  // Added: Clear filtered buildings
-    });
-
-    [
-        "unitDescInput", "companyCodeIdInput", "companyCodeDescInput",
-        "projectIdInput", "projectDescInput", "buildingIdInput", "buildingDescInput",
-        "unitTypeDescInput", "usageTypeDescInput", "unitStatusDescInput", "floorDescInput",
-        "zoneInput", "salesPhaseInput", "finishingSpexDescInput",
-        "unitDeliveryDateInput", "supplementaryTextInput"
-    ].forEach(function (id) {
-        var oControl = sap.ui.getCore().byId(id);
-        if (oControl) oControl.setValueState("None");
-    });
-},
+            [
+                "unitDescInput", "companyCodeIdInput", "companyCodeDescInput",
+                "projectIdInput", "projectDescInput", "buildingIdInput", "buildingDescInput",
+                "unitTypeDescInput", "usageTypeDescInput", "unitStatusDescInput", "floorDescInput",
+                "zoneInput", "salesPhaseInput", "finishingSpexDescInput",
+                "unitDeliveryDateInput", "supplementaryTextInput"
+            ].forEach(function (id) {
+                var oControl = sap.ui.getCore().byId(id);
+                if (oControl) oControl.setValueState("None");
+            });
+        },
 
         onAddBuilding: function () {
             if (this._oAddBuildingDialog) {
@@ -734,18 +749,47 @@ _resetAddDialogFields: function () {
 
                         new sap.m.Label({ text: "Building Old Code" }),
                         new sap.m.Input({ value: "{/buildingOldCode}" }),
+                        new sap.m.Label({ text: "Project ID", required: true }),
+                        new ComboBox("projectIdInput", {
+                            selectedKey: "{/projectId}",
+                            change: this.onProjectChange.bind(this),  // Auto-populates profitCenter/functionalArea
+                            items: {
+                                path: "projectsList>/",
+                                template: new Item({
+                                    key: "{projectsList>projectId}",
+                                    text: "{projectsList>projectId} - {projectsList>projectDescription}"
+                                })
+                            },
+                            tooltip: "Must be 8 characters"
+                        }),
 
-                        new sap.m.Label({ text: "Project ID" }),
-                        new sap.m.Input({ value: "{/projectId}", required: true }),
+                        new sap.m.Label({ text: "Project Description", required: true }),
+                        new sap.m.Input("projectDescInput", {
+                            value: "{/projectDescription}",
+                            tooltip: "Up to 60 characters"
+                        }),
 
-                        new sap.m.Label({ text: "Project Description" }),
-                        new sap.m.Input({ value: "{/projectDescription}", required: true }),
+                        new sap.m.Label({ text: "Company Code ID", required: true }),
+                        new ComboBox("companyCodeIdInput", {
+                            selectedKey: "{/companyCodeId}",
+                            change: this.onCompanyCodeChange.bind(this),
+                            items: {
+                                path: "companyCodesList>/",
+                                template: new Item({
+                                    key: "{companyCodesList>companyCodeId}",
+                                    text: "{companyCodesList>companyCodeId} - {companyCodesList>companyCodeDescription}"
 
-                        new sap.m.Label({ text: "Company Code" }),
-                        new sap.m.Input({ value: "{/companyCodeId}", required: true }),
+                                })
+                            },
+                            tooltip: "Must be 4 characters"
+                        }),
 
-                        new sap.m.Label({ text: "Company Code Description" }),
-                        new sap.m.Input({ value: "{/companyCodeDescription}", required: true }),
+                        new sap.m.Label({ text: "Company Code Description", required: true }),
+                        new sap.m.Input("companyCodeDescInput", {
+                            value: "{/companyCodeDescription}",  // FIXED: Changed from "{companyCodesList>companyCodeDescription}" to bind to dialog model
+                            tooltip: "Up to 60 characters"
+                        }),
+
 
                         new sap.m.Label({ text: "Valid From" }),
                         new sap.m.DatePicker({ value: "{/validFrom}", required: true }),
