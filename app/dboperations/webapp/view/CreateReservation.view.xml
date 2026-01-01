@@ -701,13 +701,13 @@
                                 <Input
                                     id="_IDGenInputAmount"
                                     value="{local>amount}"
-                                    type="Number"
+                                    type="Text"
                                     editable="{= ${local>conditionType} !== 'Maintenance' &amp;&amp; ${local>/isEditMode} }"
                                 />
                                 <Input
                                     id="_IDGenInputMaintenance"
                                     value="{local>maintenance}"
-                                    type="Number"
+                                    type="Text"
                                     editable="false"
                                 />
                             </cells>

@@ -162,8 +162,8 @@ sap.ui.define([
                     ID: this._generateUUID(),
                     installment: sInstallmentType,
                     dueDate: oSim.dueDate || "",
-                    amount: oSim.amount || 0,
-                    maintenance: oSim.maintenance || 0
+                    amount: typeof oSim.amount === 'number' ? (oSim.amount || 0).toLocaleString('en-US') : (typeof oSim.amount === 'string' && !oSim.amount.includes(',') ? parseFloat((oSim.amount || '0').replace(/,/g, '')) : (oSim.amount || 0)).toLocaleString('en-US'),
+                    maintenance: typeof oSim.maintenance === 'number' ? (oSim.maintenance || 0).toLocaleString('en-US') : (typeof oSim.maintenance === 'string' && !oSim.maintenance.includes(',') ? parseFloat((oSim.maintenance || '0').replace(/,/g, '')) : (oSim.maintenance || 0)).toLocaleString('en-US')
                 });
                 iTotalAmount += oSim.amount || 0;
             }.bind(this));
@@ -195,8 +195,8 @@ sap.ui.define([
                     installment: s.conditionType,
                     conditionType: s.conditionType,
                     dueDate: s.dueDate,
-                    amount: s.amount,
-                    maintenance: s.maintenance
+                    amount: typeof s.amount === 'number' ? s.amount.toLocaleString('en-US') : (typeof s.amount === 'string' && !s.amount.includes(',') ? parseFloat(s.amount.replace(/,/g, '')) : s.amount).toLocaleString('en-US'),
+                    maintenance: typeof s.maintenance === 'number' ? s.maintenance.toLocaleString('en-US') : (typeof s.maintenance === 'string' && !s.maintenance.includes(',') ? parseFloat(s.maintenance.replace(/,/g, '')) : s.maintenance).toLocaleString('en-US')
                 }));
 
             oDialogModel.setProperty("/conditions", aConditions);
@@ -208,6 +208,25 @@ sap.ui.define([
             if (oData.conditions) {
                 oData.conditions.forEach(condition => {
                     condition.installment = condition.conditionType === "Maintenance" ? "" : (condition.conditionType || "Installment");
+                    // Format numbers with comma separators - handle both numbers and strings
+                    if (typeof condition.amount === 'number') {
+                        condition.amount = condition.amount.toLocaleString('en-US');
+                    } else if (typeof condition.amount === 'string' && !condition.amount.includes(',')) {
+                        // If it's a string but doesn't contain commas, try to parse and format
+                        const numValue = parseFloat(condition.amount.replace(/,/g, ''));
+                        if (!isNaN(numValue)) {
+                            condition.amount = numValue.toLocaleString('en-US');
+                        }
+                    }
+                    if (typeof condition.maintenance === 'number') {
+                        condition.maintenance = condition.maintenance.toLocaleString('en-US');
+                    } else if (typeof condition.maintenance === 'string' && !condition.maintenance.includes(',')) {
+                        // If it's a string but doesn't contain commas, try to parse and format
+                        const numValue = parseFloat(condition.maintenance.replace(/,/g, ''));
+                        if (!isNaN(numValue)) {
+                            condition.maintenance = numValue.toLocaleString('en-US');
+                        }
+                    }
                 });
             }
             var oDialogModel = new JSONModel(oData);

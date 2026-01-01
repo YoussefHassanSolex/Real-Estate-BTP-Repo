@@ -28,6 +28,16 @@ sap.ui.define([
 
             return `${year}-${month}-${day}`;
         },
+        _parseFormattedNumber: function (sValue) {
+            if (typeof sValue === 'number') {
+                return sValue;
+            }
+            if (typeof sValue === 'string') {
+                // Remove commas and parse
+                return Number(sValue.replace(/,/g, '')) || 0;
+            }
+            return 0;
+        },
         _loadPartners: async function () {
             fetch("/odata/v4/real-estate/ReservationPartners")
                 .then(res => res.json())
@@ -216,7 +226,8 @@ sap.ui.define([
                         setTimeout(() => {
                             this.getView().byId("_IDGenSelect2").setSelectedKey(String(oReservation.pricePlanYears));
                         }, 0);
-                        this._resolveSimulationByYears(Number(oReservation.pricePlanYears));
+                        // Don't load conditions from simulation in edit mode - keep existing DB conditions
+                        // this._resolveSimulationByYears(Number(oReservation.pricePlanYears));
                     } else {
                         console.error("Failed to load simulations for edit, status:", unitRes.status);
                     }
@@ -238,6 +249,23 @@ sap.ui.define([
                         condition.conditionType === "Maintenance"
                             ? ""
                             : condition.conditionType || "Installment";
+                    // Format numbers with comma separators - handle both numbers and strings
+                    if (typeof condition.amount === 'number') {
+                        condition.amount = condition.amount.toLocaleString('en-US');
+                    } else if (typeof condition.amount === 'string' && !condition.amount.includes(',')) {
+                        const numValue = parseFloat(condition.amount.replace(/,/g, ''));
+                        if (!isNaN(numValue)) {
+                            condition.amount = numValue.toLocaleString('en-US');
+                        }
+                    }
+                    if (typeof condition.maintenance === 'number') {
+                        condition.maintenance = condition.maintenance.toLocaleString('en-US');
+                    } else if (typeof condition.maintenance === 'string' && !condition.maintenance.includes(',')) {
+                        const numValue = parseFloat(condition.maintenance.replace(/,/g, ''));
+                        if (!isNaN(numValue)) {
+                            condition.maintenance = numValue.toLocaleString('en-US');
+                        }
+                    }
                 });
                 oModel.setProperty("/conditions", aConditions);
 
@@ -245,7 +273,7 @@ sap.ui.define([
                 const currentUnitPrice = oModel.getProperty("/unitPrice") || 0;
                 if (currentUnitPrice === 0 && aConditions.length > 0) {
                     const total = aConditions.reduce(
-                        (sum, c) => sum + (Number(c.amount) || 0),
+                        (sum, c) => sum + (this._parseFormattedNumber(c.amount) || 0),
                         0
                     );
                     oModel.setProperty("/unitPrice", total);
@@ -256,6 +284,23 @@ sap.ui.define([
     aConditions.forEach((condition, index) => {
         condition.installment = condition.conditionType === "Maintenance" ? "" : condition.conditionType || "Installment";
         condition.previousDueDate = condition.dueDate; // Add this
+        // Format numbers with comma separators - handle both numbers and strings
+        if (typeof condition.amount === 'number') {
+            condition.amount = condition.amount.toLocaleString('en-US');
+        } else if (typeof condition.amount === 'string' && !condition.amount.includes(',')) {
+            const numValue = parseFloat(condition.amount.replace(/,/g, ''));
+            if (!isNaN(numValue)) {
+                condition.amount = numValue.toLocaleString('en-US');
+            }
+        }
+        if (typeof condition.maintenance === 'number') {
+            condition.maintenance = condition.maintenance.toLocaleString('en-US');
+        } else if (typeof condition.maintenance === 'string' && !condition.maintenance.includes(',')) {
+            const numValue = parseFloat(condition.maintenance.replace(/,/g, ''));
+            if (!isNaN(numValue)) {
+                condition.maintenance = numValue.toLocaleString('en-US');
+            }
+        }
     });
     oModel.setProperty("/conditions", aConditions);
 }
@@ -419,7 +464,7 @@ sap.ui.define([
                         const condition = filteredConditions.find(
                             (c) => c.code === basePriceCode
                         );
-                        const baseAmount = condition ? Number(condition.amount) : 0;
+                        const baseAmount = condition ? this._parseFormattedNumber(condition.amount) : 0;
                         const amount = (baseAmount * schedule.percentage) / 100;
                         const interval = this._getFrequencyIntervalPPS(
                             schedule.frequency?.description
@@ -485,7 +530,26 @@ sap.ui.define([
                 //     }))
                 // );
 const mergedConditions = this._mergeConditionsByDueDate(simulationSchedule);
-mergedConditions.forEach(c => c.previousDueDate = c.dueDate);
+mergedConditions.forEach(c => {
+    c.previousDueDate = c.dueDate;
+    // Format numbers with comma separators - handle both numbers and strings
+    if (typeof c.amount === 'number') {
+        c.amount = c.amount.toLocaleString('en-US');
+    } else if (typeof c.amount === 'string' && !c.amount.includes(',')) {
+        const numValue = parseFloat(c.amount.replace(/,/g, ''));
+        if (!isNaN(numValue)) {
+            c.amount = numValue.toLocaleString('en-US');
+        }
+    }
+    if (typeof c.maintenance === 'number') {
+        c.maintenance = c.maintenance.toLocaleString('en-US');
+    } else if (typeof c.maintenance === 'string' && !c.maintenance.includes(',')) {
+        const numValue = parseFloat(c.maintenance.replace(/,/g, ''));
+        if (!isNaN(numValue)) {
+            c.maintenance = c.maintenance.toLocaleString('en-US');
+        }
+    }
+});
 oModel.setProperty("/conditions", mergedConditions);
                 oModel.setProperty("/conditions", mergedConditions);
 
@@ -533,8 +597,8 @@ oModel.setProperty("/conditions", mergedConditions);
         installment: s.conditionType === "Maintenance" ? "" : s.conditionType,
         conditionType: s.conditionType,
         dueDate: s.dueDate,
-        amount: s.amount,
-        maintenance: s.maintenance,
+        amount: typeof s.amount === 'number' ? s.amount.toLocaleString('en-US') : (typeof s.amount === 'string' && !s.amount.includes(',') ? parseFloat(s.amount.replace(/,/g, '')) : s.amount).toLocaleString('en-US'),
+        maintenance: typeof s.maintenance === 'number' ? s.maintenance.toLocaleString('en-US') : (typeof s.maintenance === 'string' && !s.maintenance.includes(',') ? parseFloat(s.maintenance.replace(/,/g, '')) : s.maintenance).toLocaleString('en-US'),
         previousDueDate: s.dueDate, // Add this
     }));
 oModel.setProperty("/conditions", aConditions);
@@ -653,7 +717,7 @@ oModel.setProperty("/conditions", aConditions);
             // Validate that condition amounts equal unit price in edit mode
             if (bIsEdit) {
                 const totalConditionAmount = oData.conditions.reduce(
-                    (sum, c) => sum + (Number(c.amount) || 0),
+                    (sum, c) => sum + (this._parseFormattedNumber(c.amount) || 0),
                     0
                 );
                 const unitPrice = Number(oData.unitPrice) || 0;
@@ -677,8 +741,8 @@ oModel.setProperty("/conditions", aConditions);
                 dueDate: c.dueDate
                     ? new Date(c.dueDate).toISOString().split("T")[0]
                     : null,
-                amount: c.amount ?? 0,
-                maintenance: c.maintenance ?? 0,
+                amount: this._parseFormattedNumber(c.amount) ?? 0,
+                maintenance: this._parseFormattedNumber(c.maintenance) ?? 0,
                 reservation_reservationId: reservationId,
             }));
 
@@ -747,7 +811,7 @@ oModel.setProperty("/conditions", aConditions);
                 unitType: oData.unitType,
                 phase: oData.phase || "",
                 paymentPlan_paymentPlanId: oData.paymentPlan_paymentPlanId || "",
-                unitPrice: oData.unitPrice || 0,
+                unitPrice: this._parseFormattedNumber(oData.unitPrice) || 0,
                 planCurrency: oData.planCurrency || "",
                 requestType: oData.requestType || "",
                 reason: oData.reason || "",
@@ -1011,15 +1075,15 @@ oModel.setProperty("/conditions", aConditions);
                 ID: this._generateUUID(),
                 conditionType: c.conditionType || c.installment,
                 dueDate: c.dueDate,
-                amount: c.amount,
-                maintenance: c.maintenance,
+                amount: this._parseFormattedNumber(c.amount),
+                maintenance: this._parseFormattedNumber(c.maintenance),
                 simulation_simulationId: simulationId,
             }));
 
             const simulationPayload = {
                 simulationId: simulationId,
                 pricePlanYears: oData.pricePlanYears,
-                finalPrice: oData.selectedSimulationFinalPrice || 0,
+                finalPrice: this._parseFormattedNumber(oData.selectedSimulationFinalPrice) || 0,
                 paymentPlan_paymentPlanId: oData.paymentPlan_paymentPlanId,
                 unit_unitId: oData.unit_unitId,
                 schedule: schedule,
@@ -1085,7 +1149,7 @@ oModel.setProperty("/conditions", aConditions);
 debugger
             const oModel = this.getView().getModel("local");
             const aOriginalConditions = oModel.getProperty("/conditions") || [];
-            const originalTotalAmount = aOriginalConditions.reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+            const originalTotalAmount = aOriginalConditions.reduce((sum, c) => sum + (this._parseFormattedNumber(c.amount) || 0), 0);
 
             // Create file uploader (restricted to .xlsx)
             var oFileUploader = new sap.ui.unified.FileUploader({
@@ -1156,7 +1220,35 @@ debugger
                             }
 
                             // Update model
-                            oModel.setProperty("/conditions", aUpdatedConditions);
+                            const formattedConditions = aUpdatedConditions.map(c => {
+                                let formattedAmount = c.amount;
+                                let formattedMaintenance = c.maintenance;
+                                
+                                if (typeof c.amount === 'number') {
+                                    formattedAmount = c.amount.toLocaleString('en-US');
+                                } else if (typeof c.amount === 'string' && !c.amount.includes(',')) {
+                                    const numValue = parseFloat(c.amount.replace(/,/g, ''));
+                                    if (!isNaN(numValue)) {
+                                        formattedAmount = numValue.toLocaleString('en-US');
+                                    }
+                                }
+                                
+                                if (typeof c.maintenance === 'number') {
+                                    formattedMaintenance = c.maintenance.toLocaleString('en-US');
+                                } else if (typeof c.maintenance === 'string' && !c.maintenance.includes(',')) {
+                                    const numValue = parseFloat(c.maintenance.replace(/,/g, ''));
+                                    if (!isNaN(numValue)) {
+                                        formattedMaintenance = numValue.toLocaleString('en-US');
+                                    }
+                                }
+                                
+                                return {
+                                    ...c,
+                                    amount: formattedAmount,
+                                    maintenance: formattedMaintenance
+                                };
+                            });
+                            oModel.setProperty("/conditions", formattedConditions);
                             oModel.refresh();
                             MessageToast.show("Conditions imported successfully.");
                             oImportDialog.close();  // Close dialog on success
