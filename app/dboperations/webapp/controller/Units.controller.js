@@ -73,8 +73,14 @@ sap.ui.define([
                 .then(data => {
                     // 🔹 Post-process units to extract BUA & Original Price
                     const enrichedUnits = data.value.map(unit => {
-                        // Extract BUA (from measurements where code = 'BUA')
+                        // Helper function to format numbers safely
+                        var formatNumber = function(value) {
+                            if (value === null || value === undefined || value === '') return '';
+                            var numValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, ''));
+                            return isNaN(numValue) ? String(value) : numValue.toLocaleString('en-US');
+                        };
 
+                        // Extract BUA (from measurements where code = 'BUA')
                         let buaMeasurement = unit.measurements?.find(m =>
                             m.code && m.code.trim().toUpperCase() === "BUA"
                         );
@@ -83,21 +89,33 @@ sap.ui.define([
                         let uom = buaMeasurement ? buaMeasurement.uom : null;
                         let measurementCode = buaMeasurement ? buaMeasurement.code : null;
 
-
-                        /* 
-                        
-                            let bua = buaMeasurement ? buaMeasurement.quantity : null;
-                            let uom = buaMeasurement ? buaMeasurement.uom : null;
-                            let measurementCode = buaMeasurement ? buaMeasurement.code : null;
-                        
-                            let firstCondition = unit.conditions?.[0];
-                            let originalPrice = firstCondition ? firstCondition.amount : null;*/
                         // Extract Original Price (from first condition or based on some rule)
                         let firstCondition = unit.conditions?.[0];
                         let originalPrice = firstCondition ? firstCondition.amount : null;
 
+                        // Format measurements and conditions arrays
+                        let formattedMeasurements = unit.measurements ? unit.measurements.map(m => ({
+                            ...m,
+                            quantity: formatNumber(m.quantity)
+                        })) : [];
 
-                        return { ...unit, bua, originalPrice, uom, measurementCode };
+                        let formattedConditions = unit.conditions ? unit.conditions.map(c => ({
+                            ...c,
+                            amount: formatNumber(c.amount),
+                            numberOfYears: formatNumber(c.numberOfYears)
+                        })) : [];
+
+                        return { 
+                            ...unit, 
+                            bua: formatNumber(bua), 
+                            originalPrice: formatNumber(originalPrice),
+                            profitCenter: formatNumber(unit.profitCenter),
+                            functionalArea: formatNumber(unit.functionalArea),
+                            uom, 
+                            measurementCode,
+                            measurements: formattedMeasurements,
+                            conditions: formattedConditions
+                        };
                     });
 
                     oModel.setData({ Units: enrichedUnits });
@@ -789,6 +807,7 @@ sap.ui.define([
             }
 
             var oData = oBindingContext.getObject();
+            
             var oDialogModel = new sap.ui.model.json.JSONModel({
                 unitId: oData.unitId,
                 unitDescription: oData.unitDescription,
@@ -1119,7 +1138,10 @@ sap.ui.define([
             if (!oBindingContext) return;
 
             var oData = oBindingContext.getObject();
-            var oDialogModel = new sap.ui.model.json.JSONModel(Object.assign({}, oData, { filteredBuildings: [] }));
+            
+            var oDialogModel = new sap.ui.model.json.JSONModel(Object.assign({}, oData, { 
+                filteredBuildings: []
+            }));
 
             // Pre-filter buildings for initial project
             this._updateFilteredBuildings(oData.projectId, oDialogModel);
@@ -1315,7 +1337,7 @@ sap.ui.define([
                                                 }
                                             }),
                                             new Text({ text: "{description}" }),
-                                            new Input({ value: "{quantity}", type: "Number" }),
+                                            new Input({ value: "{quantity}", type: "Text" }),
                                             new Input({ value: "{uom}" })
                                         ]
                                     })
@@ -1369,9 +1391,9 @@ sap.ui.define([
                                                 }
                                             }),
                                             new Text({ text: "{description}" }),
-                                            new Input({ value: "{amount}", type: "Number" }),
+                                            new Input({ value: "{amount}", type: "Text" }),
                                             new Input({ value: "{currency}" }),
-                                            new Input({ value: "{numberOfYears}", type: "Number" })  // NEW: Editable input for numberOfYears
+                                            new Input({ value: "{numberOfYears}", type: "Text" })  // NEW: Editable input for numberOfYears
 
                                         ]
                                     })
@@ -1443,6 +1465,30 @@ sap.ui.define([
                                 return;
                             }
 
+                            // Helper function to parse formatted numbers back to numeric values
+                            var parseFormattedNumber = function(value) {
+                                if (typeof value === 'number') return value;
+                                if (typeof value === 'string') {
+                                    // Remove commas and parse as float
+                                    var cleaned = value.replace(/,/g, '');
+                                    var parsed = parseFloat(cleaned);
+                                    return isNaN(parsed) ? 0 : parsed;
+                                }
+                                return 0;
+                            };
+
+                            // Parse formatted numbers in measurements and conditions
+                            var parsedMeasurements = oUpdatedData.measurements ? oUpdatedData.measurements.map(m => ({
+                                ...m,
+                                quantity: parseFormattedNumber(m.quantity)
+                            })) : [];
+
+                            var parsedConditions = oUpdatedData.conditions ? oUpdatedData.conditions.map(c => ({
+                                ...c,
+                                amount: parseFormattedNumber(c.amount),
+                                numberOfYears: parseFormattedNumber(c.numberOfYears)
+                            })) : [];
+
                             // Revert to original PATCH logic with defaults
                             const payload = {
                                 unitId: oUpdatedData.unitId,
@@ -1462,10 +1508,10 @@ sap.ui.define([
                                 finishingSpexDescription: oUpdatedData.finishingSpexDescription,
                                 unitDeliveryDate: oUpdatedData.unitDeliveryDate || null,
                                 supplementaryText: oUpdatedData.supplementaryText,
-                                profitCenter: oUpdatedData.profitCenter || 0,
-                                functionalArea: oUpdatedData.functionalArea || 0,
-                                measurements: oUpdatedData.measurements,
-                                conditions: oUpdatedData.conditions
+                                profitCenter: parseFormattedNumber(oUpdatedData.profitCenter) || 0,
+                                functionalArea: parseFormattedNumber(oUpdatedData.functionalArea) || 0,
+                                measurements: parsedMeasurements,
+                                conditions: parsedConditions
                             };
 
                             // Fix for the error: Remove empty compositions from payload
@@ -1943,6 +1989,13 @@ sap.ui.define([
                     .then(data => {
                         // Post-process units to extract BUA, Garden Area, & Original Price
                         const enrichedUnits = data.value.map(unit => {
+                            // Helper function to format numbers safely
+                            var formatNumber = function(value) {
+                                if (value === null || value === undefined || value === '') return '';
+                                var numValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, ''));
+                                return isNaN(numValue) ? String(value) : numValue.toLocaleString('en-US');
+                            };
+
                             // Extract BUA (from measurements where code = 'BUA' – trim to handle tabs)
                             let buaMeasurement = unit.measurements?.find(m => m.code?.toUpperCase().trim() === "BUA");
                             let bua = buaMeasurement ? buaMeasurement.quantity : null;
@@ -1957,7 +2010,30 @@ sap.ui.define([
                             let firstCondition = unit.conditions?.[0];
                             let originalPrice = firstCondition ? firstCondition.amount : null;
 
-                            return { ...unit, bua, originalPrice, uom, gardenArea, gardenUom };
+                            // Format measurements and conditions arrays
+                            let formattedMeasurements = unit.measurements ? unit.measurements.map(m => ({
+                                ...m,
+                                quantity: formatNumber(m.quantity)
+                            })) : [];
+
+                            let formattedConditions = unit.conditions ? unit.conditions.map(c => ({
+                                ...c,
+                                amount: formatNumber(c.amount),
+                                numberOfYears: formatNumber(c.numberOfYears)
+                            })) : [];
+
+                            return { 
+                                ...unit, 
+                                bua: formatNumber(bua), 
+                                originalPrice: formatNumber(originalPrice),
+                                profitCenter: formatNumber(unit.profitCenter),
+                                functionalArea: formatNumber(unit.functionalArea),
+                                uom, 
+                                gardenArea: formatNumber(gardenArea), 
+                                gardenUom,
+                                measurements: formattedMeasurements,
+                                conditions: formattedConditions
+                            };
                         });
 
                         oModel.setData({ Units: enrichedUnits });
