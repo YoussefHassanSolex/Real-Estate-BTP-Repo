@@ -95,7 +95,7 @@ sap.ui.define([
                         // Extract Original Price (from first condition or based on some rule)
                         let firstCondition = unit.conditions?.[0];
                         let originalPrice = firstCondition ? firstCondition.amount : null;
-                      
+
 
                         return { ...unit, bua, originalPrice, uom, measurementCode };
                     });
@@ -116,7 +116,7 @@ sap.ui.define([
                             unitType.push(u.unitTypeDescription)
                         }
                     });
-                  
+
 
 
 
@@ -1242,7 +1242,7 @@ sap.ui.define([
                                     new sap.ui.core.Item({ key: "4", text: "4" })
                                 ]
                             }),
-                              new sap.m.Label({ text: "Finishing Spex Description", required: true }),
+                            new sap.m.Label({ text: "Finishing Spex Description", required: true }),
                             new sap.m.Select("editFinishingSpexDescInput", {
                                 selectedKey: "{/finishingSpexDescription}",
                                 items: [
@@ -1252,7 +1252,7 @@ sap.ui.define([
                                     new sap.ui.core.Item({ key: "Fully Finished", text: "Fully Finished" }),
                                 ]
                             }),
-                           
+
                             new sap.m.Label({ text: "Profit Center", required: true }),
                             new sap.m.Input("editProfitCenterInput", { value: "{/profitCenter}" }),
 
@@ -1267,7 +1267,7 @@ sap.ui.define([
                                 placeholder: "Select a date"
                             }),
 
-                            new sap.m.Label({ text: "Supplementary Text"}),
+                            new sap.m.Label({ text: "Supplementary Text" }),
                             new sap.m.Input("editSupplementaryTextInput", { value: "{/supplementaryText}" }),
 
                             // Adjusted Measurements section with better button layout (icons and HBox)
@@ -1692,11 +1692,11 @@ sap.ui.define([
                 unitType: oUnit.unitTypeDescription,
                 currency: oUnit.conditions?.find(m => m.currency)?.currency,
                 // Map Conditions to get the Price Plan Years of unit
-                 unitConditions: (oUnit.conditions || []).map(cond => ({
+                unitConditions: (oUnit.conditions || []).map(cond => ({
                     conditionId: cond.ID,
                     pricePlanYears: cond.code,
                     finalPrice: cond.amount,
-                    
+
                 })),
 
                 simulations: (oUnit.simulations || []).map(sim => ({
@@ -2362,6 +2362,8 @@ sap.ui.define([
                         }
                     });
                 }
+                // Merge conditions by due date (similar to CreateReservation)
+                simulationSchedule = this._mergeConditionsByDueDate(simulationSchedule);
 
                 // Sort the schedule by dueDate (ascending, empty dueDate for Total will be handled below)
                 simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -2435,7 +2437,35 @@ sap.ui.define([
             const paddedNumber = ("00000" + this._idCounter).slice(-5);  // Pad to 5 digits
             return "PPS" + paddedNumber;
         },
+        // Helper: Merge conditions by due date (similar to CreateReservation)
+        _mergeConditionsByDueDate: function (aConditions) {
+            const mByDate = {};
 
+            aConditions.forEach(c => {
+                const sDate = c.dueDate;
+
+                if (!mByDate[sDate]) {
+                    mByDate[sDate] = {
+                        conditionType: c.conditionType,
+                        dueDate: sDate,
+                        amount: 0,
+                        maintenance: 0
+                    };
+                }
+
+                if (c.amount && c.amount > 0) {
+                    mByDate[sDate].amount += c.amount;
+                    mByDate[sDate].conditionType = c.conditionType;
+                }
+
+                if (c.maintenance && c.maintenance > 0) {
+                    mByDate[sDate].maintenance += c.maintenance;
+                }
+            });
+
+            return Object.values(mByDate)
+                .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+        },
         //#endregion
 
     });
