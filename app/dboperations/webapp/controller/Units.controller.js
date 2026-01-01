@@ -2395,8 +2395,13 @@ sap.ui.define([
                     { field: "Delivery Date", value: oLocal.getProperty("/deliveryDate") || "N/A" },
                     { field: "Maintenance", value: oLocal.getProperty("/maintenanceTotal") || "N/A" }
                 ]);
-
-                this._oSimulationDialog.getModel("simulationOutput").setData(simulationSchedule);
+                // Format numbers with comma separators for display
+                const formattedSchedule = simulationSchedule.map(item => ({
+                    ...item,
+                    amount: typeof item.amount === 'number' ? item.amount.toLocaleString('en-US') : item.amount,
+                    maintenance: typeof item.maintenance === 'number' ? item.maintenance.toLocaleString('en-US') : item.maintenance
+                }));
+                this._oSimulationDialog.getModel("simulationOutput").setData(formattedSchedule);
                 oLocal.setProperty("/headerVisible", true);  // Show header and table
 
                 const oTable = sap.ui.getCore().byId("simulationTablePPS");
