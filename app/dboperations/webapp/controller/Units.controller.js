@@ -2189,11 +2189,6 @@ sap.ui.define([
                     beforeClose: this._resetSimulationDialog.bind(this),  // Added: Reset on close
                     buttons: [
                         new sap.m.Button({
-                            text: "",
-                            type: "Accept",
-                            press: this.onSaveSimulationPPS.bind(this)
-                        }),
-                        new sap.m.Button({
                             text: "Print",
                             type: "Default",
                             press: this._printSimulation.bind(this)
@@ -2415,66 +2410,6 @@ sap.ui.define([
                 MessageBox.error("Simulation failed: " + (err.message || err));
             }
         },
-
-
-
-        // Adapted from PaymentPlanSimulations: Save simulation
-        onSaveSimulationPPS: async function () {
-            const simulationId = sap.ui.getCore().byId("simIdInput").getValue();
-            const oLocal = this._oSimulationDialog.getModel("local");
-            const unitId = oLocal ? oLocal.getProperty("/unitId") : null;
-            const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
-            const paymentPlanId = sap.ui.getCore().byId("paymentPlanIdInputPPS").getValue();  // This is set in value help
-            const pricePlanYears = parseInt(sap.ui.getCore().byId("pricePlanInputPPS").getValue());
-            const leadId = sap.ui.getCore().byId("leadIdInputPPS").getValue();
-            const finalPrice = Number(oLocal ? oLocal.getProperty("/finalPrice") : NaN);
-            const userId = "currentUser";
-            const fullSchedule = this._oSimulationDialog.getModel("simulationOutput").getData();
-
-            // Exclude the "Total" row from the save payload (it's a summary, not a real schedule item)
-            const schedule = (fullSchedule || []).filter(s => s.conditionType !== "Total");
-
-            try {
-                // Step 1: Save the simulation as a deep insert under the unit
-                const payload = {
-                    simulationId,
-                    // Removed: unitId (handled by the composition association)
-                    projectId,
-                    paymentPlan_paymentPlanId: paymentPlanId,  // Link to payment plan
-                    pricePlanYears,
-                    leadId,
-                    finalPrice,
-                    userId,
-                    schedule: schedule.map(s => ({
-                        conditionType: s.conditionType,
-                        dueDate: s.dueDate,
-                        amount: s.amount,
-                        maintenance: s.maintenance
-                    }))
-                };
-
-                const res = await fetch(`/odata/v4/real-estate/Units('${unitId}')/simulations`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!res.ok) {
-                    const errorData = await res.json();
-                    const errorMessage = errorData.error?.message || "Unknown error";
-                    throw new Error(errorMessage);
-                }
-
-                // Removed: Step 2 (no longer needed, as savedSimulationId is removed and multiple simulations are allowed)
-
-                MessageToast.show("Simulation saved successfully!");
-                this._oSimulationDialog.close();  // Close dialog after save
-            } catch (err) {
-                MessageBox.error("Error: " + (err.message || err));
-            }
-        },
-
-
 
         // Helper: Map frequency description to months per installment
         _getFrequencyIntervalPPS: function (frequencyDesc) {
