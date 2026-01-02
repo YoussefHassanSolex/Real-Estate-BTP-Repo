@@ -74,7 +74,7 @@ sap.ui.define([
                     // 🔹 Post-process units to extract BUA & Original Price
                     const enrichedUnits = data.value.map(unit => {
                         // Helper function to format numbers safely
-                        var formatNumber = function(value) {
+                        var formatNumber = function (value) {
                             if (value === null || value === undefined || value === '') return '';
                             var numValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, ''));
                             return isNaN(numValue) ? String(value) : numValue.toLocaleString('en-US');
@@ -105,13 +105,13 @@ sap.ui.define([
                             numberOfYears: formatNumber(c.numberOfYears)
                         })) : [];
 
-                        return { 
-                            ...unit, 
-                            bua: formatNumber(bua), 
+                        return {
+                            ...unit,
+                            bua: formatNumber(bua),
                             originalPrice: formatNumber(originalPrice),
                             profitCenter: formatNumber(unit.profitCenter),
                             functionalArea: formatNumber(unit.functionalArea),
-                            uom, 
+                            uom,
                             measurementCode,
                             measurements: formattedMeasurements,
                             conditions: formattedConditions
@@ -807,7 +807,7 @@ sap.ui.define([
             }
 
             var oData = oBindingContext.getObject();
-            
+
             var oDialogModel = new sap.ui.model.json.JSONModel({
                 unitId: oData.unitId,
                 unitDescription: oData.unitDescription,
@@ -1138,8 +1138,8 @@ sap.ui.define([
             if (!oBindingContext) return;
 
             var oData = oBindingContext.getObject();
-            
-            var oDialogModel = new sap.ui.model.json.JSONModel(Object.assign({}, oData, { 
+
+            var oDialogModel = new sap.ui.model.json.JSONModel(Object.assign({}, oData, {
                 filteredBuildings: []
             }));
 
@@ -1466,7 +1466,7 @@ sap.ui.define([
                             }
 
                             // Helper function to parse formatted numbers back to numeric values
-                            var parseFormattedNumber = function(value) {
+                            var parseFormattedNumber = function (value) {
                                 if (typeof value === 'number') return value;
                                 if (typeof value === 'string') {
                                     // Remove commas and parse as float
@@ -1990,7 +1990,7 @@ sap.ui.define([
                         // Post-process units to extract BUA, Garden Area, & Original Price
                         const enrichedUnits = data.value.map(unit => {
                             // Helper function to format numbers safely
-                            var formatNumber = function(value) {
+                            var formatNumber = function (value) {
                                 if (value === null || value === undefined || value === '') return '';
                                 var numValue = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, ''));
                                 return isNaN(numValue) ? String(value) : numValue.toLocaleString('en-US');
@@ -2022,14 +2022,14 @@ sap.ui.define([
                                 numberOfYears: formatNumber(c.numberOfYears)
                             })) : [];
 
-                            return { 
-                                ...unit, 
-                                bua: formatNumber(bua), 
+                            return {
+                                ...unit,
+                                bua: formatNumber(bua),
                                 originalPrice: formatNumber(originalPrice),
                                 profitCenter: formatNumber(unit.profitCenter),
                                 functionalArea: formatNumber(unit.functionalArea),
-                                uom, 
-                                gardenArea: formatNumber(gardenArea), 
+                                uom,
+                                gardenArea: formatNumber(gardenArea),
                                 gardenUom,
                                 measurements: formattedMeasurements,
                                 conditions: formattedConditions
@@ -2364,7 +2364,7 @@ sap.ui.define([
                 // Calculate and set finalPrice using only filtered conditions (e.g., Cash for 0 years)
                 const finalPrice = filteredConditions.reduce((sum, c) => sum + Number(c.amount || 0), 0);
                 oLocal.setProperty("/finalPrice", finalPrice);
-                oLocal.setProperty("/unitPrice", finalPrice.toLocaleString('de-DE') + " EGP");  // Format like example
+                oLocal.setProperty("/unitPrice", finalPrice.toLocaleString('en-US') + " EGP");  // Format like example
                 oLocal.setProperty("/pricePlan", pricePlanYears + "YP");  // e.g., "5YP"
                 oLocal.setProperty("/clientName", leadId || "N/A");  // Placeholder; fetch from lead if needed
 
@@ -2447,9 +2447,9 @@ sap.ui.define([
                 // Calculate totals and add Total row (after sorting, so Total is last)
                 const totalAmount = simulationSchedule.reduce((sum, item) => sum + Number(item.amount || 0), 0);
                 const totalMaintenance = simulationSchedule.reduce((sum, item) => sum + Number(item.maintenance || 0), 0);
-                oLocal.setProperty("/totalAmount", totalAmount.toLocaleString('de-DE') + " EGP");
-                oLocal.setProperty("/totalMaintenance", totalMaintenance.toLocaleString('de-DE') + " EGP");
-                oLocal.setProperty("/maintenanceTotal", totalMaintenance.toLocaleString('de-DE') + " EGP");
+                oLocal.setProperty("/totalAmount", totalAmount.toLocaleString('en-US') + " EGP");
+                oLocal.setProperty("/totalMaintenance", totalMaintenance.toLocaleString('en-US') + " EGP");
+                oLocal.setProperty("/maintenanceTotal", totalMaintenance.toLocaleString('en-US') + " EGP");
 
                 // Add Total row to schedule (always last)
                 simulationSchedule.push({
