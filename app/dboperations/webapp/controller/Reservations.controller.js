@@ -916,6 +916,38 @@ _mergeConditionsByDueDate: function (aConditions) {
         },
 
 
+        formatCreateContractVisible: function (oReservation) {
+            if (!oReservation || !oReservation.conditions || !oReservation.payments) {
+                return false;
+            }
+
+            // Calculate total down payment amount from conditions
+            const downPaymentAmount = oReservation.conditions
+                .filter(condition => condition.conditionType === "Down Payment")
+                .reduce((sum, condition) => sum + (Number(condition.amount) || 0), 0);
+
+            // Calculate total payment amounts
+            const totalPaymentAmount = oReservation.payments
+                .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+
+            // Return true if they match (within small tolerance for floating point)
+            return Math.abs(downPaymentAmount - totalPaymentAmount) < 0.01;
+        },
+
+        onCreateContract: function (oEvent) {
+            var oData = oEvent.getSource().getBindingContext().getObject();
+            sap.m.MessageBox.confirm("Create contract for reservation " + oData.reservationId + "?", {
+                onClose: function (oAction) {
+                    if (oAction === MessageBox.Action.OK) {
+                        // TODO: Implement contract creation logic
+                        // This could involve calling a backend service to create the contract
+                        // For now, just show a success message
+                        sap.m.MessageToast.show("Contract creation initiated for reservation " + oData.reservationId);
+                    }
+                }.bind(this)
+            });
+        },
+
         onPrint: function () {
             var printWindow = window.open('', '_blank');
             var htmlContent = `
