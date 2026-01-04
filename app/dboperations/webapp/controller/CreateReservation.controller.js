@@ -609,9 +609,10 @@ oModel.setProperty("/conditions", aConditions);
 
             aConditions.forEach(c => {
                 const sDate = c.dueDate;
+                const key = sDate + '-' + c.conditionType;
 
-                if (!mByDate[sDate]) {
-                    mByDate[sDate] = {
+                if (!mByDate[key]) {
+                    mByDate[key] = {
                         ID: this._generateUUID(),
                         installment: c.installment || "Installment",
                         conditionType: c.conditionType,
@@ -622,13 +623,12 @@ oModel.setProperty("/conditions", aConditions);
                 }
 
                 if (c.amount && c.amount > 0) {
-                    mByDate[sDate].amount += c.amount;
-                    mByDate[sDate].installment = c.installment || "Installment";
-                    mByDate[sDate].conditionType = c.conditionType;
+                    mByDate[key].amount += c.amount;
+                    mByDate[key].installment = c.installment || "Installment";
                 }
 
                 if (c.maintenance && c.maintenance > 0) {
-                    mByDate[sDate].maintenance += c.maintenance;
+                    mByDate[key].maintenance += c.maintenance;
                 }
             });
 
@@ -1049,10 +1049,9 @@ oModel.setProperty("/conditions", aConditions);
             const oValidFrom = new Date(sValidFrom);
             const iDueYear = oDueDate.getFullYear();
             const iStartYear = oValidFrom.getFullYear();
-            const iEndYear = Math.min(iStartYear + parseInt(iPricePlanYears), 2030);
 
-            if (iDueYear < iStartYear || iDueYear > iEndYear) {
-                MessageBox.error(`Due date year must be between ${iStartYear} and ${iEndYear} based on the valid from date and price plan years.`);
+            if (iDueYear < iStartYear) {
+                MessageBox.error(`Due date year must be ${iStartYear} or later based on the valid from date.`);
                 // Reset the date picker to empty or previous value
                 oDatePicker.setValue("");
                 return;
@@ -1108,7 +1107,7 @@ oModel.setProperty("/conditions", aConditions);
                 console.error("Error saving simulation:", err);
             }
         },
-         // Updated: Export conditions to XLSX (with XLSX check)
+        // Updated: Export conditions to XLSX (with XLSX check)
         onExportConditions: function () {
             if (typeof XLSX === "undefined") {
                 MessageBox.error("XLSX library is not loaded. Please refresh the page and try again.");
@@ -1124,10 +1123,10 @@ oModel.setProperty("/conditions", aConditions);
 
             // Prepare data for XLSX
             const aExportData = aConditions.map(condition => ({
-                Installment: condition.installment || "",
-                "Due Date": condition.dueDate || "",
-                Amount: condition.amount || 0,
-                Maintenance: condition.maintenance || 0
+                installment: condition.installment || "",
+                "due date": condition.dueDate || "",
+                amount: condition.amount || 0,
+                maintenance: condition.maintenance || 0
             }));
 
             // Create XLSX workbook and sheet
@@ -1173,12 +1172,13 @@ debugger
                             let newTotalAmount = 0;
                             const iPricePlanYears = oModel.getProperty("/selectedPricePlanYears");
                             const sValidFrom = oModel.getProperty("/validFrom");
+                            const unitPrice = this._parseFormattedNumber(oModel.getProperty("/unitPrice")) || 0;
                             const aUpdatedConditions = aOriginalConditions.map((original, index) => {
                                 const imported = jsonData[index];
                                 if (!imported) return original;  // If no row in Excel, keep original
 
-                                let dueDate = imported["Due Date"];
-                                const amount = Number(imported.Amount) || 0;
+                                let dueDate = imported["due date"];
+                                const amount = this._parseFormattedNumber(imported.amount) || 0;
                                 const maintenance = original.maintenance; // Maintenance cannot be edited with import
 
                                 // Convert Excel serial date if it's a number
@@ -1197,10 +1197,9 @@ debugger
                                     const oValidFrom = new Date(sValidFrom);
                                     const iDueYear = oDueDate.getFullYear();
                                     const iStartYear = oValidFrom.getFullYear();
-                                    const iEndYear = Math.min(iStartYear + parseInt(iPricePlanYears), 2030);
 
-                                    if (iDueYear < iStartYear || iDueYear > iEndYear) {
-                                        throw new Error(`Due date year in row ${index + 1} must be between ${iStartYear} and ${iEndYear} based on the valid from date and price plan years.`);
+                                    if (iDueYear < iStartYear) {
+                                        throw new Error(`Due date year in row ${index + 1} must be ${iStartYear} or later based on the valid from date.`);
                                     }
                                 }
 
@@ -1214,9 +1213,24 @@ debugger
                                 };
                             });
 
-                            // Validate total amount
-                            if (Math.abs(newTotalAmount - originalTotalAmount) > 0.01) {  // Allow small floating-point tolerance
-                                throw new Error(`Total Amount (${newTotalAmount}) does not match original total (${originalTotalAmount}). Import canceled.`);
+                            // Merge conditions for consistent validation
+                            const mergedConditions = this._mergeConditionsByDueDate(aUpdatedConditions);
+
+                            // Validate total amount matches unit price (ignoring maintenance)
+                            if (Math.abs(newTotalAmount - unitPrice) > 0.01) {  // Allow small floating-point tolerance
+                                throw new Error(`Total Amount (${newTotalAmount}) does not match unit price (${unitPrice}). Import canceled.`);
+                            }
+
+                            // Validate that all installments are equal (no installment greater than others)
+                            const installmentAmounts = mergedConditions
+                                .filter(c => c.conditionType === "Installment" && c.amount > 0)
+                                .map(c => c.amount);
+                            if (installmentAmounts.length > 1) {
+                                const firstAmount = installmentAmounts[0];
+                                const allEqual = installmentAmounts.every(amount => Math.abs(amount - firstAmount) < 0.01);
+                                if (!allEqual) {
+                                    throw new Error("All installments must be equal. No installment should be greater than others.");
+                                }
                             }
 
                             // Update model
@@ -1310,10 +1324,9 @@ debugger
     const oValidFrom = new Date(sValidFrom);
     const iDueYear = oDueDate.getFullYear();
     const iStartYear = oValidFrom.getFullYear();
-    const iEndYear = Math.min(iStartYear + parseInt(iPricePlanYears), 2030);
 
-    if (iDueYear < iStartYear || iDueYear > iEndYear) {
-        MessageBox.error(`Due date year must be between ${iStartYear} and ${iEndYear} based on the valid from date and price plan years.`);
+    if (iDueYear < iStartYear) {
+        MessageBox.error(`Due date year must be ${iStartYear} or later based on the valid from date.`);
         // Reset the date picker to the previous value
         const oContext = oDatePicker.getBindingContext("local");
         const sPath = oContext.getPath();
