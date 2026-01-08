@@ -28,16 +28,16 @@ module.exports = cds.service.impl(async function () {
       PaymentPlanSimulations,
       PaymentPlanSimulationSchedules,
       RealEstateContracts,
-      CompanyCodes
+      // CompanyCodes
     } = this.entities;
 
   /*-------------------------Company Codes-----------------------*/
   //Read
-  this.on('READ', CompanyCodes, async (req) => {
-    console.log('READ Company Codes called');
-    const db = cds.transaction(req);
-    return await db.run(req.query);
-  });
+  // this.on('READ', CompanyCodes, async (req) => {
+  //   console.log('READ Company Codes called');
+  //   const db = cds.transaction(req);
+  //   return await db.run(req.query);
+  // });
 
   /*-----------------------Buildings---------------------------*/
   // READ
@@ -1119,32 +1119,108 @@ module.exports = cds.service.impl(async function () {
 
   /////////////////////////// CONTRACTS /////////////////////////
 
-  async function fetchRealEstateContracts(limit = 10) {
-    // Hardcoded Basic Auth credentials (use env vars in production!)
-    const credentials = 'BTP_RE_CONTRACT:z834%S6f}tL&e2V(@rKN&xhz4XgLy$VAg}C9QL4[';
-    const encoded = Buffer.from(credentials, 'utf8').toString('base64');
+  const BASE_URL =
+    'https://my405604-api.s4hana.cloud.sap' +
+    '/sap/opu/odata4/sap/api_real_estate_contract' +
+    '/srvd_a2x/sap/api_recontract/0001';
 
-    const url = `https://my405604-api.s4hana.cloud.sap/sap/opu/odata4/sap/api_real_estate_contract/srvd_a2x/sap/api_recontract/0001/A_REContract?$top=${limit}`;
+  const USERNAME = 'BTP_RE_CONTRACT';
+  const PASSWORD = 'z834%S6f}tL&e2V(@rKN&xhz4XgLy$VAg}C9QL4[';
 
-    const response = await axios.get(url, {
-      headers: {
-        Authorization: `Basic ${encoded}`,
-        Accept: 'application/json'
-      }
-    });
+  const BASIC_AUTH = Buffer
+    .from(`${USERNAME}:${PASSWORD}`)
+    .toString('base64');
 
-    return response.data.value; // Return array of contracts
-  }
+  // =========================
+  // GET CONTRACTS
+  // =========================
   this.on('READ', RealEstateContracts, async (req) => {
     try {
-      const contracts = await fetchRealEstateContracts(10); // adjust limit
-      return contracts;
+      const response = await axios.get(
+        `${BASE_URL}/A_REContract?$top=10`,
+        {
+          headers: {
+            Authorization: `Basic ${BASIC_AUTH}`,
+            Accept: 'application/json'
+          }
+        }
+      );
+
+      return response.data.value;
+
     } catch (err) {
-      console.error('Failed to fetch Real Estate Contracts', err.message);
+      console.error('GET contracts failed:', err.response?.data || err.message);
       req.reject(500, 'Failed to fetch Real Estate Contracts');
     }
   });
 
+  // =========================
+  // POST CONTRACT (DYNAMIC)
+  // =========================
+  this.on('CreateREContract', async (req) => {
 
+    const {
+      CompanyCode,
+      Responsible,
+      REContractType,
+      ContractStartDate
+    } = req.data;
+
+    try {
+      //Fetch CSRF token + cookies
+      const csrfResponse = await axios.get(
+        `${BASE_URL}/A_REContract`,
+        {
+          headers: {
+            Authorization: `Basic ${BASIC_AUTH}`,
+            Accept: 'application/json',
+            'x-csrf-token': 'Fetch'
+          }
+        }
+      );
+
+      const csrfToken = csrfResponse.headers['x-csrf-token'];
+      const cookies = csrfResponse.headers['set-cookie'];
+
+      if (!csrfToken || !cookies) {
+        throw new Error('CSRF token or cookies missing');
+      }
+
+      //POST contract
+      const payload = {
+        CompanyCode,
+        Responsible,
+        REContractType,
+        ContractStartDate
+      };
+
+      const postResponse = await axios.post(
+        `${BASE_URL}/A_REContract`,
+        payload,
+        {
+          headers: {
+            Authorization: `Basic ${BASIC_AUTH}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'x-csrf-token': csrfToken,
+            Cookie: cookies.join(';')
+          }
+        }
+      );
+
+      return postResponse.data;
+
+    } catch (err) {
+      console.error(
+        'POST contract failed:',
+        err.response?.data || err.message
+      );
+
+      req.reject(
+        500,
+        err.response?.data?.error?.message || 'Contract creation failed'
+      );
+    }
+  });
 
 });
