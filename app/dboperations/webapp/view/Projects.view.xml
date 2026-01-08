@@ -27,8 +27,9 @@
             >
                 <Table
                     id="projectsTable"
-                    items="{ path: '/Projects' }"
+                    items="{projects>/Projects}"
                     width="150%"
+                    noDataText="No projects available. Please check your connection or try again later."
                 >
                     <columns>
                         <Column id="_IDGenColumn32"><Text id="_IDGenText52" text="Project ID" /></Column>

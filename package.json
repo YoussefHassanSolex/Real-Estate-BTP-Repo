@@ -45,7 +45,7 @@
         "vcap": {
           "label": "hana",
           "plan": "hdi-shared",
-          "name": "hdi-shared-realestate"
+          "name": "real-hdi"
         }
       },
       "API_RECONTRACT_0001": {

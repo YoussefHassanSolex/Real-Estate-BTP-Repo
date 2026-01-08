@@ -111,20 +111,25 @@ module.exports = cds.service.impl(async function () {
     return await db.run(req.query);   // execute the query as requested
   });
 
+
   // CREATE
   this.on('CREATE', Projects, async (req) => {
     console.log('CREATE Project called with data:', req.data);
     const db = cds.transaction(req);
     try {
-      return await db.run(
+      const result = await db.run(
         INSERT.into(Projects).entries(req.data)
       );
+      await db.commit();
+      return result;
     }
     catch (error) {
+      await db.rollback();
       console.error('Error creating Project:', error);
-      req.error(500, 'Error creating Project');
+      req.reject(500, 'Error creating Project: ' + error.message);
     }
   });
+
 
   // UPDATE
   this.on('UPDATE', Projects, async (req) => {

@@ -35,14 +35,20 @@ sap.ui.define([
                 .then(response => response.json())
                 .then(data => {
                     oModel.setData({ Projects: data.value });
-                    this.getView().byId("projectsTable").setModel(oModel);
+                    this.getView().setModel(oModel, "projects");
                 })
                 .catch(err => {
                     console.error("Error fetching projects", err);
+                    sap.m.MessageBox.error("Failed to load projects. Please check your connection and try again.");
                 });
 
-            // Load company codes list
-            this._loadCompanyCodesList();
+            // Set static company codes
+            var oCompanyCodesModel = new sap.ui.model.json.JSONModel({
+                companyCodesList: [
+                    { companyCodeId: "1000", companyCodeDescription: "SOLEX" }
+                ]
+            });
+            this.getView().setModel(oCompanyCodesModel, "companyCodes");
         },
 
         _onRouteMatched: function () {
@@ -55,31 +61,15 @@ sap.ui.define([
                 .then(response => response.json())
                 .then(data => {
                     oModel.setData({ Projects: data.value });
-                    this.getView().byId("projectsTable").setModel(oModel);
+                    this.getView().setModel(oModel, "projects");
                 })
                 .catch(err => {
                     console.error("Error fetching projects", err);
+                    sap.m.MessageBox.error("Failed to load projects. Please check your connection and try again.");
                 });
         },
 
-        _loadCompanyCodesList: function () {
-            fetch("/odata/v4/real-estate/CompanyCodes")
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error("HTTP error! status: " + response.status);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    var oModel = new sap.ui.model.json.JSONModel();
-                    oModel.setData({ companyCodesList: data.value });
-                    this.getView().setModel(oModel, "companyCodes");
-                })
-                .catch(err => {
-                    console.error("Error fetching company codes", err);
-                    sap.m.MessageBox.error("Failed to load company codes: " + err.message);
-                });
-        },
+
 
         onNavigateToAddProject: function () {
             // If dialog is not yet created, create it once
@@ -115,8 +105,7 @@ sap.ui.define([
                                 selectionChange: function (oEvent) {
                                     var oSelectedItem = oEvent.getParameter("selectedItem");
                                     if (oSelectedItem) {
-                                        var oData = oSelectedItem.getBindingContext("companyCodes").getObject();
-                                        this._oAddDialog.getModel().setProperty("/companyCodeDescription", oData.companyCodeDescription);
+                                        this._oAddDialog.getModel().setProperty("/companyCodeDescription", "SOLEX");
                                     }
                                 }.bind(this),
                                 items: {
@@ -452,7 +441,7 @@ sap.ui.define([
             var oBindingContext = oEvent.getSource().getBindingContext();
             if (oBindingContext) {
                 var sPath = oBindingContext.getPath();
-                var oModel = this.getView().byId("projectsTable").getModel();
+                var oModel = this.getView().getModel("projects");
                 var oItem = oModel.getProperty(sPath);
 
                 if (!oItem) {
@@ -516,8 +505,7 @@ sap.ui.define([
                                 selectionChange: function (oEvent) {
                                     var oSelectedItem = oEvent.getParameter("selectedItem");
                                     if (oSelectedItem) {
-                                        var oData = oSelectedItem.getBindingContext("companyCodes").getObject();
-                                        this._oEditDialog.getModel().setProperty("/companyCodeDescription", oData.companyCodeDescription);
+                                        this._oEditDialog.getModel().setProperty("/companyCodeDescription", "SOLEX");
                                     }
                                 }.bind(this),
                                 items: {
