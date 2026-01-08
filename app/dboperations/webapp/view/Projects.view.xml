@@ -27,7 +27,7 @@
             >
                 <Table
                     id="projectsTable"
-                    items="{projects>/Projects}"
+                    items="{ path: '/Projects' }"
                     width="150%"
                     noDataText="No projects available. Please check your connection or try again later."
                 >

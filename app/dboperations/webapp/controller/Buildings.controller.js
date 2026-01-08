@@ -17,13 +17,14 @@ sap.ui.define([
     "sap/m/IconTabBar",
     "sap/m/IconTabFilter",
     "sap/ui/layout/form/SimpleForm",
+    "sap/ui/layout/form/FormElement",
     "sap/m/MessageToast",
     "sap/m/ComboBox",  // Added for dropdowns
     "sap/ui/core/Item",  // Added for dropdown items
     "sap/m/Select"  // Added for selects
 ], function (
     Controller, MessageBox, Dialog, Input, Button, Label, Text, TextArea, VBox,
-    DatePicker, Table, Column, ColumnListItem, JSONModel, Title, IconTabBar, IconTabFilter, SimpleForm, MessageToast,
+    DatePicker, Table, Column, ColumnListItem, JSONModel, Title, IconTabBar, IconTabFilter, SimpleForm, FormElement, MessageToast,
     ComboBox, Item, Select
 ) {
     "use strict";
@@ -68,6 +69,9 @@ sap.ui.define([
 
             // Added: Unit ID counter for auto-generation (shared with Units)
             this._unitIdCounter = parseInt(localStorage.getItem("unitIdCounter")) || 0;
+
+            // Added: Building ID counter for auto-generation
+            this._buildingIdCounter = parseInt(localStorage.getItem("buildingIdCounter")) || 0;
         },
 
         _onRouteMatched: function () {
@@ -81,6 +85,18 @@ sap.ui.define([
                 .then(data => {
                     oModel.setData({ Buildings: data.value });
                     this.getView().byId("buildingsTable").setModel(oModel);
+
+                    // Calculate max building ID counter
+                    const buildings = data.value;
+                    let maxNum = 0;
+                    buildings.forEach(b => {
+                        if (b.buildingId && b.buildingId.startsWith('B')) {
+                            const num = parseInt(b.buildingId.substring(1));
+                            if (!isNaN(num) && num > maxNum) maxNum = num;
+                        }
+                    });
+                    this._buildingIdCounter = maxNum;
+                    localStorage.setItem("buildingIdCounter", this._buildingIdCounter);
                 })
                 .catch(err => {
                     console.error("Error fetching Buildings ", err);
@@ -142,7 +158,7 @@ sap.ui.define([
                 .then(data => {
                     const projectIds = data.value.reduce((acc, curr) => {
                         if (!acc.find(c => c.projectId === curr.projectId)) {
-                            acc.push({ projectId: curr.projectId, projectDescription: curr.projectDescription, profitCenter: curr.profitCenter, functionalArea: curr.functionalArea });
+                            acc.push({ projectId: curr.projectId, projectDescription: curr.projectDescription, profitCenter: curr.profitCenter, functionalArea: curr.functionalArea, businessArea: curr.businessArea, location: curr.location });
                         }
                         return acc;
                     }, []);
@@ -208,6 +224,8 @@ sap.ui.define([
             if (selectedProject) {
                 oModel.setProperty("/profitCenter", selectedProject.profitCenter);
                 oModel.setProperty("/functionalArea", selectedProject.functionalArea);
+                oModel.setProperty("/businessArea", selectedProject.businessArea);
+                oModel.setProperty("/location", selectedProject.location);
             }
 
             this._updateFilteredBuildings(sSelectedKey, oModel);
@@ -618,8 +636,8 @@ sap.ui.define([
                             finishingSpexDescription: oData.finishingSpexDescription,
                             unitDeliveryDate: oData.unitDeliveryDate || null,
                             supplementaryText: oData.supplementaryText,
-                            profitCenter: oData.profitCenter || 0,
-                            functionalArea: oData.functionalArea || 0,
+                            profitCenter: parseInt(oData.profitCenter) || 0,
+                            functionalArea: parseInt(oData.functionalArea) || 0,
                             measurements: oData.measurements,
                             conditions: oData.conditions
                         };
@@ -717,7 +735,6 @@ sap.ui.define([
             }
 
             var oNewBuildingModel = new sap.ui.model.json.JSONModel({
-                buildingId: "",
                 buildingDescription: "",
                 buildingOldCode: "",
                 projectId: "",
@@ -739,20 +756,17 @@ sap.ui.define([
                 contentWidth: "80%",
                 content: new sap.ui.layout.form.SimpleForm({
                     editable: true,
-                    layout: "ResponsiveGridLayout",
                     content: [
-                        new sap.m.Label({ text: "Building ID" }),
-                        new sap.m.Input({ value: "{/buildingId}", required: true }),
-
-                        new sap.m.Label({ text: "Building Description" }),
-                        new sap.m.Input({ value: "{/buildingDescription}", required: true }),
+                        new sap.m.Label({ text: "Building Description", required: true }),
+                        new sap.m.Input("buildingDescInput", { value: "{/buildingDescription}", tooltip: "Up to 60 characters" }),
 
                         new sap.m.Label({ text: "Building Old Code" }),
                         new sap.m.Input({ value: "{/buildingOldCode}" }),
+
                         new sap.m.Label({ text: "Project ID", required: true }),
                         new ComboBox("projectIdInput", {
                             selectedKey: "{/projectId}",
-                            change: this.onProjectChange.bind(this),  // Auto-populates profitCenter/functionalArea
+                            change: this.onProjectChange.bind(this),
                             items: {
                                 path: "projectsList>/",
                                 template: new Item({
@@ -763,9 +777,10 @@ sap.ui.define([
                             tooltip: "Must be 8 characters"
                         }),
 
-                        new sap.m.Label({ text: "Project Description", required: true }),
+                        new sap.m.Label({ text: "Project Description" }),
                         new sap.m.Input("projectDescInput", {
                             value: "{/projectDescription}",
+                            editable: false,
                             tooltip: "Up to 60 characters"
                         }),
 
@@ -778,36 +793,46 @@ sap.ui.define([
                                 template: new Item({
                                     key: "{companyCodesList>companyCodeId}",
                                     text: "{companyCodesList>companyCodeId} - {companyCodesList>companyCodeDescription}"
-
                                 })
                             },
                             tooltip: "Must be 4 characters"
                         }),
 
-                        new sap.m.Label({ text: "Company Code Description", required: true }),
+                        new sap.m.Label({ text: "Company Code Description" }),
                         new sap.m.Input("companyCodeDescInput", {
-                            value: "{/companyCodeDescription}",  // FIXED: Changed from "{companyCodesList>companyCodeDescription}" to bind to dialog model
+                            value: "{/companyCodeDescription}",
                             tooltip: "Up to 60 characters"
                         }),
 
+                        new sap.m.Label({ text: "Valid From", required: true }),
+                        new sap.m.DatePicker("buildingValidFromInput", {
+                            value: "{/validFrom}",
+                            displayFormat: "long",
+                            valueFormat: "yyyy-MM-dd",
+                            placeholder: "Select date",
+                            showClearIcon: true
+                        }),
 
-                        new sap.m.Label({ text: "Valid From" }),
-                        new sap.m.DatePicker({ value: "{/validFrom}", required: true }),
+                        new sap.m.Label({ text: "Valid To", required: true }),
+                        new sap.m.DatePicker("buildingValidToInput", {
+                            value: "{/validTo}",
+                            displayFormat: "long",
+                            valueFormat: "yyyy-MM-dd",
+                            placeholder: "Select date",
+                            showClearIcon: true
+                        }),
 
-                        new sap.m.Label({ text: "Valid To" }),
-                        new sap.m.DatePicker({ value: "{/validTo}" }),
+                        new sap.m.Label({ text: "Location", required: true }),
+                        new sap.m.Input("buildingLocationInput", { value: "{/location}" }),
 
-                        new sap.m.Label({ text: "Location" }),
-                        new sap.m.Input({ value: "{/location}", required: true }),
+                        new sap.m.Label({ text: "Business Area", required: true }),
+                        new sap.m.Input("businessAreaInput", { value: "{/businessArea}" }),
 
-                        new sap.m.Label({ text: "Business Area" }),
-                        new sap.m.Input({ value: "{/businessArea}", required: true }),
+                        new sap.m.Label({ text: "Profit Center", required: true }),
+                        new sap.m.Input("profitCenterInput", { value: "{/profitCenter}" }),
 
-                        new sap.m.Label({ text: "Profit Center" }),
-                        new sap.m.Input({ value: "{/profitCenter}", required: true }),
-
-                        new sap.m.Label({ text: "Functional Area" }),
-                        new sap.m.Input({ value: "{/functionalArea}", required: true })
+                        new sap.m.Label({ text: "Functional Area", required: true }),
+                        new sap.m.Input("functionalAreaInput", { value: "{/functionalArea}" })
                     ]
                 }),
                 beginButton: new sap.m.Button({
@@ -816,6 +841,9 @@ sap.ui.define([
                     press: function () {
                         var oData = that._oAddBuildingDialog.getModel().getData();
 
+                        // Get buildingDescription directly from the input to ensure it's captured
+                        var buildingDescription = sap.ui.getCore().byId("buildingDescInput").getValue();
+
                         if (oData.validFrom) {
                             oData.validFrom = new Date(oData.validFrom).toISOString().split("T")[0];
                         }
@@ -823,10 +851,37 @@ sap.ui.define([
                             oData.validTo = new Date(oData.validTo).toISOString().split("T")[0];
                         }
 
+                        // Parse integer fields to match schema
+                        oData.businessArea = parseInt(oData.businessArea) || 0;
+                        oData.profitCenter = parseInt(oData.profitCenter) || 0;
+                        oData.functionalArea = parseInt(oData.functionalArea) || 0;
+
+                        // Generate building ID
+                        that._buildingIdCounter = (that._buildingIdCounter || 0) + 1;
+                        const generatedBuildingId = "B" + ("000" + that._buildingIdCounter).slice(-3);
+                        localStorage.setItem("buildingIdCounter", that._buildingIdCounter);
+
+                        // Construct payload with only schema fields
+                        const payload = {
+                            buildingId: generatedBuildingId,
+                            buildingDescription: buildingDescription,
+                            buildingOldCode: oData.buildingOldCode,
+                            projectId: oData.projectId,
+                            projectDescription: oData.projectDescription,
+                            companyCodeId: oData.companyCodeId,
+                            companyCodeDescription: oData.companyCodeDescription,
+                            validFrom: oData.validFrom,
+                            validTo: oData.validTo,
+                            location: oData.location,
+                            businessArea: oData.businessArea,
+                            profitCenter: oData.profitCenter,
+                            functionalArea: oData.functionalArea
+                        };
+
                         fetch("/odata/v4/real-estate/Buildings", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(oData)
+                            body: JSON.stringify(payload)
                         })
                             .then(response => {
                                 if (!response.ok) {
@@ -840,7 +895,7 @@ sap.ui.define([
                                 var oTable = that.getView().byId("buildingsTable");
                                 var oModel = oTable.getModel();
                                 var aBuildings = oModel.getProperty("/Buildings") || [];
-                                aBuildings.push(newBuilding);
+                                aBuildings.push(payload);
                                 oModel.setProperty("/Buildings", aBuildings);
 
                                 that._oAddBuildingDialog.close();
@@ -901,7 +956,6 @@ sap.ui.define([
                     content: [
                         new sap.ui.layout.form.SimpleForm({
                             editable: true,
-                            layout: "ResponsiveGridLayout",
                             content: [
                                 new sap.m.Label({ text: "Building ID" }),
                                 new sap.m.Input({ value: "{/buildingId}", editable: false }),
@@ -955,7 +1009,12 @@ sap.ui.define([
                             if (oUpdated.validTo)
                                 oUpdated.validTo = new Date(oUpdated.validTo).toISOString().split("T")[0];
 
-                            fetch(`/odata/v4/real-estate/Buildings(${oUpdated.buildingId})`, {
+                            // Parse integer fields to match schema
+                            oUpdated.businessArea = parseInt(oUpdated.businessArea) || 0;
+                            oUpdated.profitCenter = parseInt(oUpdated.profitCenter) || 0;
+                            oUpdated.functionalArea = parseInt(oUpdated.functionalArea) || 0;
+
+                            fetch(`/odata/v4/real-estate/Buildings('${oUpdated.buildingId}')`, {
                                 method: "PATCH",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify(oUpdated)
@@ -1056,9 +1115,6 @@ sap.ui.define([
                                     content: [
                                         new sap.ui.layout.form.SimpleForm({
                                             editable: false,
-                                            layout: "ResponsiveGridLayout",
-                                            labelSpanL: 3,
-                                            columnsL: 2,
                                             content: [
                                                 new sap.m.Label({ text: "Building ID (8 digits)" }),
                                                 new sap.m.Text({ text: "{/BuildingId}" }),
@@ -1101,9 +1157,6 @@ sap.ui.define([
                                     content: [
                                         new sap.ui.layout.form.SimpleForm({
                                             editable: false,
-                                            layout: "ResponsiveGridLayout",
-                                            labelSpanL: 3,
-                                            columnsL: 2,
                                             content: [
                                                 new sap.m.Label({ text: "Business Area" }),
                                                 new sap.m.Text({ text: "{/businessArea}" }),
