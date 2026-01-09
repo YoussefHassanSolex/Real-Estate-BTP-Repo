@@ -27,7 +27,7 @@
             >
                 <Table
                     id="projectsTable"
-                    items="{ path: '/Projects' }"
+                    items="{projects>/Projects}"
                     width="150%"
                     noDataText="No projects available. Please check your connection or try again later."
                 >
@@ -54,17 +54,17 @@
                     <items>
                         <ColumnListItem id="_IDGenColumnListItem4">
                             <cells>
-                                <Text id="_IDGenText64" text="{projectId}" />
-                                <Text id="_IDGenText65" text="{projectDescription}" />
-                                <Text id="_IDGenText66" text="{companyCodeId}" />
-                                <Text id="_IDGenText67" text="{companyCodeDescription}" />
-                                <Text id="_IDGenText68" text="{validFrom}" />
-                                <Text id="_IDGenText69" text="{validTo}" />
-                                <Text id="_IDGenText70" text="{location}" />
-                                <Text id="_IDGenText71" text="{businessArea}" />
-                                <Text id="_IDGenText72" text="{profitCenter}" />
-                                <Text id="_IDGenText73" text="{functionalArea}" />
-                                <Text id="_IDGenText74" text="{supplementaryText}" />
+                                    <Text id="_IDGenText64" text="{projects>projectId}" />
+                                    <Text id="_IDGenText65" text="{projects>projectDescription}" />
+                                    <Text id="_IDGenText66" text="{projects>companyCodeId}" />
+                                    <Text id="_IDGenText67" text="{projects>companyCodeDescription}" />
+                                    <Text id="_IDGenText68" text="{projects>validFrom}" />
+                                    <Text id="_IDGenText69" text="{projects>validTo}" />
+                                    <Text id="_IDGenText70" text="{projects>location}" />
+                                    <Text id="_IDGenText71" text="{projects>businessArea}" />
+                                    <Text id="_IDGenText72" text="{projects>profitCenter}" />
+                                    <Text id="_IDGenText73" text="{projects>functionalArea}" />
+                                    <Text id="_IDGenText74" text="{projects>supplementaryText}" />
 
                                 <HBox id="_IDGenHBox2">
                                     <Button id="_IDGenButton13" icon="sap-icon://information" tooltip="Details" press="onDetails" />

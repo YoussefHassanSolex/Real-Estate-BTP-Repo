@@ -301,7 +301,7 @@ sap.ui.define([
 
 
         onDetails: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext();
+            var oBindingContext = oEvent.getSource().getBindingContext("projects");
             if (!oBindingContext) {
                 return;
             }
@@ -438,7 +438,7 @@ sap.ui.define([
 
 
         onDelete: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext();
+            var oBindingContext = oEvent.getSource().getBindingContext("projects");
             if (oBindingContext) {
                 var sPath = oBindingContext.getPath();
                 var oModel = this.getView().getModel("projects");
@@ -453,7 +453,7 @@ sap.ui.define([
                     title: "Confirm Deletion",
                     onClose: function (oAction) {
                         if (oAction === MessageBox.Action.OK) {
-                            fetch(`/odata/v4/real-estate/Projects(projectId='${oItem.projectId}')`, {
+                            fetch(`/odata/v4/real-estate/Projects(projectId='${encodeURIComponent(oItem.projectId)}')`, {
                                 method: "DELETE"
                             })
                                 .then(response => {
@@ -477,11 +477,12 @@ sap.ui.define([
                         }
                     }
                 });
+            } else {
+                sap.m.MessageBox.error("Could not find binding context for the selected row.");
             }
-        }
-        ,
+        },
         onEditProject: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext();
+            var oBindingContext = oEvent.getSource().getBindingContext("projects");
             if (!oBindingContext) return;
 
             var oData = oBindingContext.getObject();
@@ -649,7 +650,7 @@ sap.ui.define([
         },
 
         onAddBuilding: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext();
+            var oContext = oEvent.getSource().getBindingContext("projects");
             if (!oContext) {
                 sap.m.MessageToast.show("No project selected.");
                 return;

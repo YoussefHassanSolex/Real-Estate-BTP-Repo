@@ -157,11 +157,24 @@ module.exports = cds.service.impl(async function () {
 
   // DELETE
   this.on('DELETE', Projects, async (req) => {
-    console.log('DELETE Project called for projectId:', req.data.projectId);
     const db = cds.transaction(req);
-    return await db.run(
-      DELETE.from(Projects).where({ projectId: req.data.projectId })
-    );
+    const projectId = (req.params && req.params[0] && req.params[0].projectId) || (req.data && req.data.projectId);
+    console.log('DELETE Project called for projectId:', projectId);
+
+    if (!projectId) {
+      req.error(400, 'Missing projectId for delete');
+      return;
+    }
+
+    try {
+      const result = await db.run(
+        DELETE.from(Projects).where({ projectId })
+      );
+      return result;
+    } catch (error) {
+      console.error('Error deleting Project :', error);
+      req.error(500, 'Error deleting Project: ' + error.message);
+    }
   });
 
 

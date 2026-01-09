@@ -841,8 +841,14 @@ sap.ui.define([
                     press: function () {
                         var oData = that._oAddBuildingDialog.getModel().getData();
 
-                        // Get buildingDescription directly from the input to ensure it's captured
-                        var buildingDescription = sap.ui.getCore().byId("buildingDescInput").getValue();
+                        // Get buildingDescription from the dialog control to avoid global ID prefix issues
+                        var oDescControl = that._oAddBuildingDialog && that._oAddBuildingDialog.byId
+                            ? that._oAddBuildingDialog.byId("buildingDescInput")
+                            : null;
+                        if (!oDescControl) {
+                            oDescControl = sap.ui.getCore().byId("buildingDescInput");
+                        }
+                        var buildingDescription = (oDescControl && oDescControl.getValue && oDescControl.getValue()) || oData.buildingDescription || "";
 
                         if (oData.validFrom) {
                             oData.validFrom = new Date(oData.validFrom).toISOString().split("T")[0];
