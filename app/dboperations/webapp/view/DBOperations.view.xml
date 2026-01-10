@@ -188,7 +188,7 @@
                                     </TileContent>
                                 </GenericTile>
 
-                                <GenericTile
+                                <!-- <GenericTile
                                     id="_IDGenGenericTile9"
                                     class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout"
                                     header="Calculation Methods"
@@ -203,7 +203,7 @@
                                             src="sap-icon://measurement-document"
                                         />
                                     </TileContent>
-                                </GenericTile>
+                                </GenericTile> -->
 
                                 <GenericTile
                                     id="_IDGenGenericTile10"
