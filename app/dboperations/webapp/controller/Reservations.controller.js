@@ -191,7 +191,7 @@ sap.ui.define([
                 .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
                 .map((s, index) => ({
                     ID: this._generateUUID(),
-                    installment: s.conditionType,
+                    installment: s.conditionType === "CASH" ? "Downpayment" : "Installment",
                     conditionType: s.conditionType,
                     dueDate: s.dueDate,
                     amount: typeof s.amount === 'number' ? s.amount.toLocaleString('en-US') : (typeof s.amount === 'string' && !s.amount.includes(',') ? parseFloat(s.amount.replace(/,/g, '')) : s.amount).toLocaleString('en-US'),
@@ -208,7 +208,7 @@ sap.ui.define([
                 oData.conditions.forEach(condition => {
                     // Derive a human-readable installment label from either an existing label
                     // or from known conditionType codes. Keep fallback to the raw value.
-                    condition.installment = condition.installment || (condition.conditionType === 'ZZ01' ? 'Down Payment' : (condition.conditionType === 'ZZ03' ? 'Maintenance' : (condition.conditionType === 'Maintenance' ? '' : (condition.conditionType || 'Installment'))));
+                    condition.installment = condition.conditionType === 'ZZ01' ? 'Downpayment' : 'Installment';
 
                     // Normalize conditionType to a description for display in the details dialog
                     if (condition.conditionType === 'ZZ01') {

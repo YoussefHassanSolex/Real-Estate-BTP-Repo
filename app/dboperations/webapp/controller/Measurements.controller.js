@@ -16,7 +16,10 @@ sap.ui.define([
             fetch("/odata/v4/real-estate/Measurements")
                 .then(res => res.json())
                 .then(data => {
-                    this.getView().setModel(new JSONModel(data.value || []), "measurements");
+                    const uniqueData = data.value.filter((item, index, self) =>
+                        index === self.findIndex(t => t.code === item.code)
+                    );
+                    this.getView().setModel(new JSONModel(uniqueData), "measurements");
                 })
                 .catch(err => console.error("Failed to load Measurements:", err));
         },

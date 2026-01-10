@@ -236,10 +236,7 @@ sap.ui.define([
             if (bIsEdit) {
                 const aConditions = oModel.getProperty("/conditions") || [];
                 aConditions.forEach((condition, index) => {
-                    condition.installment =
-                        condition.conditionType === "ZZ03"
-                            ? ""
-                            : condition.conditionType || "Installment";
+                    condition.installment = condition.conditionType === "ZZ01" ? "Downpayment" : "Installment";
                     // Format numbers with comma separators - handle both numbers and strings
                     if (typeof condition.amount === 'number') {
                         condition.amount = condition.amount.toLocaleString('en-US');
@@ -557,7 +554,7 @@ oModel.setProperty("/conditions", mergedConditions);
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .map((s, index) => ({
         ID: this._generateUUID(),
-        installment: s.conditionType === "ZZ03" ? "" : s.conditionType,
+        installment: s.conditionType === "ZZ01" ? "Downpayment" : "Installment",
         conditionType: s.conditionType,
         dueDate: s.dueDate,
         amount: typeof s.amount === 'number' ? s.amount.toLocaleString('en-US') : (typeof s.amount === 'string' && !s.amount.includes(',') ? parseFloat(s.amount.replace(/,/g, '')) : s.amount).toLocaleString('en-US'),
