@@ -2401,14 +2401,13 @@ sap.ui.define([
                     const today = new Date();
 
                     aSchedules.forEach(schedule => {
-                        const basePriceCode = schedule.basePrice?.code;
-                        // Use filteredConditions for base amount
-                        const condition = filteredConditions.find(c => c.code === basePriceCode);
+                        // Use the filtered condition for base amount (already filtered by years)
+                        const condition = filteredConditions[0];
                         const baseAmount = condition ? Number(condition.amount) : 0;
                         const amount = (baseAmount * schedule.percentage) / 100;
-                        const interval = this._getFrequencyIntervalPPS(schedule.frequency?.description);
+                        const interval = this._getFrequencyIntervalPPS(schedule.frequency?.code);
 
-                        if (schedule.conditionType?.description === "Maintenance") {
+                        if (schedule.conditionType?.code === "ZZ03") {
                             for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
@@ -2421,9 +2420,20 @@ sap.ui.define([
                             }
                         } else {
                             // Fixed: Use schedule's conditionType for labeling
-                            let conditionType = schedule.conditionType?.description || "Installement";
-                            if (conditionType === "Down payment") conditionType = "Down Payment";
-                            if (conditionType === "Installment") conditionType = "Installement";
+                            let conditionType = "";
+                            switch (schedule.conditionType?.code) {
+                                case "ZZ01":
+                                    conditionType = "Down Payment";
+                                    break;
+                                case "ZZ02":
+                                    conditionType = "Installment";
+                                    break;
+                                case "ZZ03":
+                                    conditionType = "Maintenance";
+                                    break;
+                                default:
+                                    conditionType = "Installment";
+                            }
 
                             for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
@@ -2494,17 +2504,17 @@ sap.ui.define([
             }
         },
 
-        // Helper: Map frequency description to months per installment
-        _getFrequencyIntervalPPS: function (frequencyDesc) {
-            if (!frequencyDesc) return 12;  // Default to annual
-            switch (frequencyDesc.toLowerCase()) {
-                case "monthly":
+        // Helper: Map frequency code to months per installment
+        _getFrequencyIntervalPPS: function (frequencyCode) {
+            if (!frequencyCode) return 12;  // Default to annual
+            switch (frequencyCode) {
+                case "Z01":
                     return 1;
-                case "quarterly":
+                case "Z02":
                     return 3;
-                case "semi-annual":
+                case "Z03":
                     return 6;
-                case "annual":
+                case "Z04":
                     return 12;
                 default:
                     return 12;  // Default

@@ -403,7 +403,7 @@ onSavePlan: async function () {
 
         // Validation: Total percentage must be 100 (exclude Maintenance)
         const totalPercentage = (oData.schedules || []).reduce((sum, s) => {
-            if (s.conditionType?.description !== "Maintenance") {
+            if (s.conditionType?.code !== "ZZ03") {
                 return sum + (parseFloat(s.percentage) || 0);
             }
             debugger
@@ -705,34 +705,34 @@ onSavePlan: async function () {
         // 🔹 Updated: Calculate installments when years are entered (only if frequency is selected)
         onYearsChange: function (oEvent) {
             var oContext = oEvent.getSource().getBindingContext("local");
-            var frequencyDesc = oContext.getProperty("frequency/description") || "";
+            var frequencyCode = oContext.getProperty("frequency/code") || "";
 
             // Only calculate if a frequency is selected
-            if (frequencyDesc) {
+            if (frequencyCode) {
                 this._calculateInstallments(oContext);
             }
         },
 
         // 🔹 Helper to calculate numberOfInstallments based on frequency and years
         _calculateInstallments: function (oContext) {
-            var frequencyDesc = oContext.getProperty("frequency/description") || "";
+            var frequencyCode = oContext.getProperty("frequency/code") || "";
             var years = parseInt(oContext.getProperty("numberOfYears")) || 0;
             var installments = 0;
 
-            switch (frequencyDesc.toLowerCase()) {
-                case "one time":
+            switch (frequencyCode) {
+                case "Z0":
                     installments = 1;  // Always 1, regardless of years
                     break;
-                case "monthly":
+                case "Z01":
                     installments = 12 * years;
                     break;
-                case "quarterly":
+                case "Z02":
                     installments = 4 * years;
                     break;
-                case "semi-annual":
+                case "Z03":
                     installments = 2 * years;
                     break;
-                case "annual":
+                case "Z04":
                     installments = 1 * years;
                     break;
                 default:

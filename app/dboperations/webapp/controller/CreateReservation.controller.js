@@ -461,16 +461,15 @@ sap.ui.define([
 
                     aSchedules.forEach((schedule) => {
                         const basePriceCode = schedule.basePrice?.code;
-                        const condition = filteredConditions.find(
-                            (c) => c.code === basePriceCode
-                        );
+                        // Use the first filtered condition for base amount
+                        const condition = filteredConditions[0];
                         const baseAmount = condition ? this._parseFormattedNumber(condition.amount) : 0;
                         const amount = (baseAmount * schedule.percentage) / 100;
                         const interval = this._getFrequencyIntervalPPS(
-                            schedule.frequency?.description
+                            schedule.frequency?.code
                         );
 
-                        if (schedule.conditionType?.description === "Maintenance") {
+                        if (schedule.conditionType?.code === "ZZ03") {
                             for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(
@@ -478,8 +477,7 @@ sap.ui.define([
                                 );
                                 simulationSchedule.push({
                                     installment: "",
-                                    conditionType:
-                                        schedule.conditionType?.description || "Maintenance",
+                                    conditionType: "Maintenance",
                                     dueDate: dueDate.toISOString().split("T")[0],
                                     amount: 0,
                                     maintenance:
@@ -490,10 +488,20 @@ sap.ui.define([
                                 });
                             }
                         } else {
-                            let conditionType =
-                                schedule.conditionType?.description || "Installment";
-                            if (conditionType === "Down payment")
-                                conditionType = "Down Payment";
+                            let conditionType = "";
+                            switch (schedule.conditionType?.code) {
+                                case "ZZ01":
+                                    conditionType = "Down Payment";
+                                    break;
+                                case "ZZ02":
+                                    conditionType = "Installment";
+                                    break;
+                                case "ZZ03":
+                                    conditionType = "Maintenance";
+                                    break;
+                                default:
+                                    conditionType = "Installment";
+                            }
 
                             for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
@@ -609,10 +617,9 @@ oModel.setProperty("/conditions", aConditions);
 
             aConditions.forEach(c => {
                 const sDate = c.dueDate;
-                const key = sDate + '-' + c.conditionType;
 
-                if (!mByDate[key]) {
-                    mByDate[key] = {
+                if (!mByDate[sDate]) {
+                    mByDate[sDate] = {
                         ID: this._generateUUID(),
                         installment: c.installment || "Installment",
                         conditionType: c.conditionType,
@@ -623,12 +630,13 @@ oModel.setProperty("/conditions", aConditions);
                 }
 
                 if (c.amount && c.amount > 0) {
-                    mByDate[key].amount += c.amount;
-                    mByDate[key].installment = c.installment || "Installment";
+                    mByDate[sDate].amount += c.amount;
+                    mByDate[sDate].installment = c.installment || "Installment";
+                    mByDate[sDate].conditionType = c.conditionType;
                 }
 
                 if (c.maintenance && c.maintenance > 0) {
-                    mByDate[key].maintenance += c.maintenance;
+                    mByDate[sDate].maintenance += c.maintenance;
                 }
             });
 
@@ -666,16 +674,16 @@ oModel.setProperty("/conditions", aConditions);
          
             await this._loadConditionsFromSimulation(oSelectedSim.simulationId);
         },
-        _getFrequencyIntervalPPS: function (frequencyDesc) {
-            if (!frequencyDesc) return 12;
-            switch (frequencyDesc.toLowerCase()) {
-                case "monthly":
+        _getFrequencyIntervalPPS: function (frequencyCode) {
+            if (!frequencyCode) return 12;
+            switch (frequencyCode) {
+                case "Z01":
                     return 1;
-                case "quarterly":
+                case "Z02":
                     return 3;
-                case "semi-annual":
+                case "Z03":
                     return 6;
-                case "annual":
+                case "Z04":
                     return 12;
                 default:
                     return 12;

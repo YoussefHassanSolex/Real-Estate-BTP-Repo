@@ -1001,5 +1001,26 @@ onCreateContract: function (oEvent) {
             printWindow.focus();
             printWindow.print();
         },
+        
+          // Formatter for Create Contract button visibility
+        formatCreateContractVisible: function (oReservation) {
+            if (!oReservation) return false;
+
+            // Sum of amounts in payments
+            const payments = oReservation.payments || [];
+            const totalPayments = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+
+            // Sum of down payments in conditions
+            const conditions = oReservation.conditions || [];
+            const totalDownPayments = conditions.reduce((sum, c) => {
+                if (c.conditionType === 'Down Payment') {  // Using description since code not available in data
+                    return sum + (parseFloat(c.amount) || 0);
+                }
+                return sum;
+            }, 0);
+
+            // Visible if total payments equal total down payments
+            return totalPayments === totalDownPayments;
+        },
     });
 });
