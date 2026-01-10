@@ -87,15 +87,6 @@ sap.ui.define([
             oModel.refresh();
         },
 
-        _loadPartners: async function () {
-            fetch("/odata/v4/real-estate/ReservationPartners")
-                .then(res => res.json())
-                .then(data => {
-                    this.getView().setModel(new JSONModel(data.value || []), "partnersList");
-
-                })
-                .catch(err => console.error("Failed to load Partners list:", err));
-        },
         _onRouteMatched: async function (oEvent) {
             this._resetReservationForm();
 
@@ -246,7 +237,7 @@ sap.ui.define([
                 const aConditions = oModel.getProperty("/conditions") || [];
                 aConditions.forEach((condition, index) => {
                     condition.installment =
-                        condition.conditionType === "Maintenance"
+                        condition.conditionType === "ZZ03"
                             ? ""
                             : condition.conditionType || "Installment";
                     // Format numbers with comma separators - handle both numbers and strings
@@ -279,31 +270,6 @@ sap.ui.define([
                     oModel.setProperty("/unitPrice", total);
                 }
             }
-            if (bIsEdit) {
-    const aConditions = oModel.getProperty("/conditions") || [];
-    aConditions.forEach((condition, index) => {
-        condition.installment = condition.conditionType === "Maintenance" ? "" : condition.conditionType || "Installment";
-        condition.previousDueDate = condition.dueDate; // Add this
-        // Format numbers with comma separators - handle both numbers and strings
-        if (typeof condition.amount === 'number') {
-            condition.amount = condition.amount.toLocaleString('en-US');
-        } else if (typeof condition.amount === 'string' && !condition.amount.includes(',')) {
-            const numValue = parseFloat(condition.amount.replace(/,/g, ''));
-            if (!isNaN(numValue)) {
-                condition.amount = numValue.toLocaleString('en-US');
-            }
-        }
-        if (typeof condition.maintenance === 'number') {
-            condition.maintenance = condition.maintenance.toLocaleString('en-US');
-        } else if (typeof condition.maintenance === 'string' && !condition.maintenance.includes(',')) {
-            const numValue = parseFloat(condition.maintenance.replace(/,/g, ''));
-            if (!isNaN(numValue)) {
-                condition.maintenance = numValue.toLocaleString('en-US');
-            }
-        }
-    });
-    oModel.setProperty("/conditions", aConditions);
-}
         },
         onOpenPricePlanValueHelpReservation: function () {
             const projectId = this.getView()
@@ -410,60 +376,51 @@ sap.ui.define([
                 );
                 let simulationSchedule = [];
 
-                if (pricePlanYears === 0) {
-                    // Cash: Single installment
-                    const today = new Date();
-                    simulationSchedule.push({
-                        installment: "Cash Payment",
-                        conditionType: "Cash",
-                        dueDate: today.toISOString().split("T")[0],
-                        amount: Math.round(finalPrice * 100) / 100,
-                        maintenance: 0,
-                    });
-                } else {
-                    // Find matching plan
-                    const aPlans = this._oPaymentPlansModel.getData();
-                    matchingPlan = aPlans.find(
-                        (p) =>
-                            p.planYears === pricePlanYears &&
-                            Array.isArray(p.assignedProjects) &&
-                            p.assignedProjects.some(
-                                (ap) => ap.project?.projectId === projectId
-                            )
+                // Find matching plan
+                const aPlans = this._oPaymentPlansModel.getData();
+                matchingPlan = aPlans.find(
+                    (p) =>
+                        p.planYears === pricePlanYears &&
+                        Array.isArray(p.assignedProjects) &&
+                        p.assignedProjects.some(
+                            (ap) => ap.project?.projectId === projectId
+                        )
+                );
+
+                if (!matchingPlan) {
+                    throw new Error(
+                        `No payment plan found for ${pricePlanYears} years.`
                     );
-              
+                }
 
-                    if (!matchingPlan) {
-                        throw new Error(
-                            `No payment plan found for ${pricePlanYears} years.`
-                        );
-                    }
-
-                    // ADDED: Extra check and log to ensure matchingPlan is defined
-                    if (!matchingPlan || !matchingPlan.paymentPlanId) {
-                        throw new Error(
-                            "Matching plan is invalid or missing paymentPlanId."
-                        );
-                    }
-
-                    // Fetch schedules
-                    const scheduleRes = await fetch(
-                        `/odata/v4/real-estate/PaymentPlanSchedules?$filter=paymentPlan_paymentPlanId eq '${matchingPlan.paymentPlanId}'&$expand=conditionType,basePrice,frequency`
+                // ADDED: Extra check and log to ensure matchingPlan is defined
+                if (!matchingPlan || !matchingPlan.paymentPlanId) {
+                    throw new Error(
+                        "Matching plan is invalid or missing paymentPlanId."
                     );
-                    if (!scheduleRes.ok) {
-                        throw new Error(
-                            `Failed to fetch schedules: ${scheduleRes.status}`
-                        );
-                    }
-                    const scheduleData = await scheduleRes.json();
-                    const aSchedules = scheduleData.value || [];
-                    const today = new Date();
+                }
+
+                // Fetch schedules
+                const scheduleRes = await fetch(
+                    `/odata/v4/real-estate/PaymentPlanSchedules?$filter=paymentPlan_paymentPlanId eq '${matchingPlan.paymentPlanId}'&$expand=conditionType,basePrice,frequency`
+                );
+                if (!scheduleRes.ok) {
+                    throw new Error(
+                        `Failed to fetch schedules: ${scheduleRes.status}`
+                    );
+                }
+                const scheduleData = await scheduleRes.json();
+                const aSchedules = scheduleData.value || [];
+                const today = new Date();
 
                     aSchedules.forEach((schedule) => {
-                        const basePriceCode = schedule.basePrice?.code;
-                        // Use the first filtered condition for base amount
-                        const condition = filteredConditions[0];
-                        const baseAmount = condition ? this._parseFormattedNumber(condition.amount) : 0;
+                        let baseAmount = 0;
+                        if (schedule.basePrice?.code === "ZU01") {
+                            baseAmount = finalPrice;
+                        } else {
+                            const condition = filteredConditions.find(c => c.code === schedule.basePrice?.code);
+                            baseAmount = condition ? this._parseFormattedNumber(condition.amount) : 0;
+                        }
                         const amount = (baseAmount * schedule.percentage) / 100;
                         const interval = this._getFrequencyIntervalPPS(
                             schedule.frequency?.code
@@ -477,7 +434,7 @@ sap.ui.define([
                                 );
                                 simulationSchedule.push({
                                     installment: "",
-                                    conditionType: "Maintenance",
+                                    conditionType: "ZZ03",
                                     dueDate: dueDate.toISOString().split("T")[0],
                                     amount: 0,
                                     maintenance:
@@ -510,7 +467,7 @@ sap.ui.define([
                                 );
                                 simulationSchedule.push({
                                     installment: conditionType,
-                                    conditionType: conditionType,
+                                    conditionType: schedule.conditionType?.code || "ZZ02",
                                     dueDate: dueDate.toISOString().split("T")[0],
                                     amount:
                                         Math.round(
@@ -521,8 +478,7 @@ sap.ui.define([
                                 });
                             }
                         }
-                    });
-                }
+                });
 
                 // Sort and set to conditions
                 // simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
@@ -559,7 +515,6 @@ mergedConditions.forEach(c => {
     }
 });
 oModel.setProperty("/conditions", mergedConditions);
-                oModel.setProperty("/conditions", mergedConditions);
 
                 oModel.setProperty("/selectedSimulationFinalPrice", finalPrice);
                 oModel.setProperty(
@@ -602,7 +557,7 @@ oModel.setProperty("/conditions", mergedConditions);
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .map((s, index) => ({
         ID: this._generateUUID(),
-        installment: s.conditionType === "Maintenance" ? "" : s.conditionType,
+        installment: s.conditionType === "ZZ03" ? "" : s.conditionType,
         conditionType: s.conditionType,
         dueDate: s.dueDate,
         amount: typeof s.amount === 'number' ? s.amount.toLocaleString('en-US') : (typeof s.amount === 'string' && !s.amount.includes(',') ? parseFloat(s.amount.replace(/,/g, '')) : s.amount).toLocaleString('en-US'),
@@ -1036,34 +991,6 @@ oModel.setProperty("/conditions", aConditions);
             const iIndex = parseInt(sPath.split("/").pop());
             aConditions.splice(iIndex, 1);
             oModel.refresh();
-        },
-        onCancelReservation: function () {
-            this.getView().getModel("local").setData({}); // Clear form
-            const oRouter = sap.ui.core.UIComponent.getRouterFor(this);
-            oRouter.navTo("Units"); // Navigate back
-        },
-         onDueDateChange: function (oEvent) {
-            const oDatePicker = oEvent.getSource();
-            const sDueDate = oDatePicker.getValue();
-            const oModel = this.getView().getModel("local");
-            const iPricePlanYears = oModel.getProperty("/selectedPricePlanYears");
-            const sValidFrom = oModel.getProperty("/validFrom");
-
-            if (!sDueDate || !iPricePlanYears || !sValidFrom) {
-                return; // No validation if date, years, or valid from not set
-            }
-
-            const oDueDate = new Date(sDueDate);
-            const oValidFrom = new Date(sValidFrom);
-            const iDueYear = oDueDate.getFullYear();
-            const iStartYear = oValidFrom.getFullYear();
-
-            if (iDueYear < iStartYear) {
-                MessageBox.error(`Due date year must be ${iStartYear} or later based on the valid from date.`);
-                // Reset the date picker to empty or previous value
-                oDatePicker.setValue("");
-                return;
-            }
         },
          onCancelReservation: function () {
             const oModel = this.getView().getModel("local");

@@ -150,11 +150,10 @@ sap.ui.define([
             var iTotalAmount = 0;
             aSimulations.forEach(function (oSim, index) {
                 var sInstallmentType = "";
-                var mod = index % 4;
-                if (mod === 0 || mod === 1) {
-                    sInstallmentType = "Down Payment";
-                } else if (mod === 2) {
+                if (oSim.conditionType === "ZZ03") {
                     sInstallmentType = "Maintenance";
+                } else if (oSim.conditionType === "ZZ01") {
+                    sInstallmentType = "Down Payment";
                 } else {
                     sInstallmentType = "Installement";
                 }
@@ -207,12 +206,21 @@ sap.ui.define([
             // Ensure installment is set based on conditionType for consistency
             if (oData.conditions) {
                 oData.conditions.forEach(condition => {
-                    condition.installment = condition.conditionType === "Maintenance" ? "" : (condition.conditionType || "Installment");
+                    // Derive a human-readable installment label from either an existing label
+                    // or from known conditionType codes. Keep fallback to the raw value.
+                    condition.installment = condition.installment || (condition.conditionType === 'ZZ01' ? 'Down Payment' : (condition.conditionType === 'ZZ03' ? 'Maintenance' : (condition.conditionType === 'Maintenance' ? '' : (condition.conditionType || 'Installment'))));
+
+                    // Normalize conditionType to a description for display in the details dialog
+                    if (condition.conditionType === 'ZZ01') {
+                        condition.conditionType = 'Down Payment';
+                    } else if (condition.conditionType === 'ZZ03') {
+                        condition.conditionType = 'Maintenance';
+                    }
+
                     // Format numbers with comma separators - handle both numbers and strings
                     if (typeof condition.amount === 'number') {
                         condition.amount = condition.amount.toLocaleString('en-US');
                     } else if (typeof condition.amount === 'string' && !condition.amount.includes(',')) {
-                        // If it's a string but doesn't contain commas, try to parse and format
                         const numValue = parseFloat(condition.amount.replace(/,/g, ''));
                         if (!isNaN(numValue)) {
                             condition.amount = numValue.toLocaleString('en-US');
@@ -221,7 +229,6 @@ sap.ui.define([
                     if (typeof condition.maintenance === 'number') {
                         condition.maintenance = condition.maintenance.toLocaleString('en-US');
                     } else if (typeof condition.maintenance === 'string' && !condition.maintenance.includes(',')) {
-                        // If it's a string but doesn't contain commas, try to parse and format
                         const numValue = parseFloat(condition.maintenance.replace(/,/g, ''));
                         if (!isNaN(numValue)) {
                             condition.maintenance = numValue.toLocaleString('en-US');

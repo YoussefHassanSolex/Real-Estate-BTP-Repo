@@ -2245,7 +2245,7 @@ sap.ui.define([
                                 path: "simulationOutput>/",
                                 template: new sap.m.ColumnListItem({
                                     cells: [
-                                        new sap.m.Text({ text: "{simulationOutput>conditionType}" }),
+                                        new sap.m.Text({ text: "{simulationOutput>installment}" }),
                                         new sap.m.Text({ text: "{simulationOutput>dueDate}" }),
                                         new sap.m.Text({ text: "{simulationOutput>amount}" }),
                                         new sap.m.Text({ text: "{simulationOutput>maintenance}" })
@@ -2368,7 +2368,9 @@ sap.ui.define([
                 oLocal.setProperty("/pricePlan", pricePlanYears + "YP");  // e.g., "5YP"
                 oLocal.setProperty("/clientName", leadId || "N/A");  // Placeholder; fetch from lead if needed
 
-                // Now check for matching payment plan
+                let simulationSchedule = [];
+
+                // Check for matching payment plan
                 const oPlansModel = this._oSimulationDialog.getModel("paymentPlans");
                 const aPlans = oPlansModel ? oPlansModel.getData() : [];
                 const matchingPlan = aPlans.find(p =>
@@ -2377,23 +2379,12 @@ sap.ui.define([
                     p.assignedProjects.some(ap => ap.project?.projectId === projectId)
                 );
 
-                let simulationSchedule = [];
-
-                if (pricePlanYears === 0) {
-                    // Special case for Cash (0 years): Create a single one-time installment with full finalPrice
-                    const today = new Date();
-                    simulationSchedule.push({
-                        conditionType: "Cash Payment",
-                        dueDate: today.toISOString().split('T')[0],  // Due today
-                        amount: Math.round(finalPrice * 100) / 100,  // Full amount, rounded to 2 decimals
-                        maintenance: 0
-                    });
-                } else if (!matchingPlan) {
-                    // For non-zero years with no plan, warn and clear schedule
+                if (!matchingPlan) {
+                    // For any years with no plan, warn and clear schedule
                     MessageBox.warning(`No payment plan found for ${pricePlanYears} years. Final price set, but no schedule available.`);
                     simulationSchedule = [];  // Clear schedule
                 } else {
-                    // Proceed with schedule simulation for valid plans (non-zero years)
+                    // Proceed with schedule simulation for valid plans
                     const scheduleRes = await fetch(`/odata/v4/real-estate/PaymentPlanSchedules?$filter=paymentPlan_paymentPlanId eq '${paymentPlanId}'&$expand=conditionType,basePrice,frequency`);
                     const scheduleData = await scheduleRes.json();
                     const aSchedules = scheduleData.value || [];
@@ -2401,9 +2392,14 @@ sap.ui.define([
                     const today = new Date();
 
                     aSchedules.forEach(schedule => {
-                        // Use the filtered condition for base amount (already filtered by years)
-                        const condition = filteredConditions[0];
-                        const baseAmount = condition ? Number(condition.amount) : 0;
+                        // Use base amount based on basePrice
+                        let baseAmount = 0;
+                        if (schedule.basePrice?.code === "ZU01") {
+                            baseAmount = finalPrice;
+                        } else {
+                            const condition = filteredConditions.find(c => c.code === schedule.basePrice?.code);
+                            baseAmount = condition ? Number(condition.amount) : 0;
+                        }
                         const amount = (baseAmount * schedule.percentage) / 100;
                         const interval = this._getFrequencyIntervalPPS(schedule.frequency?.code);
 
@@ -2412,7 +2408,8 @@ sap.ui.define([
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
                                 simulationSchedule.push({
-                                    conditionType: "",  // Keep as is for maintenance
+                                    installment: "",
+                                    conditionType: "ZZ03",  // Set to Maintenance (code for validation)
                                     dueDate: dueDate.toISOString().split('T')[0],
                                     amount: 0,  // Maintenance has no amount
                                     maintenance: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100  // Round to 2 decimals
@@ -2439,7 +2436,8 @@ sap.ui.define([
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
                                 simulationSchedule.push({
-                                    conditionType: conditionType,
+                                    installment: conditionType,
+                                    conditionType: schedule.conditionType?.code || "ZZ02",
                                     dueDate: dueDate.toISOString().split('T')[0],
                                     amount: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100,  // Round to 2 decimals
                                     maintenance: 0
@@ -2535,8 +2533,12 @@ sap.ui.define([
             aConditions.forEach(c => {
                 const sDate = c.dueDate;
 
+                // derive a human-readable label if not provided
+                const derivedLabel = c.installment || (c.conditionType === 'ZZ01' ? 'Down Payment' : (c.conditionType === 'ZZ03' ? 'Maintenance' : 'Installment'));
+
                 if (!mByDate[sDate]) {
                     mByDate[sDate] = {
+                        installment: derivedLabel,
                         conditionType: c.conditionType,
                         dueDate: sDate,
                         amount: 0,
@@ -2547,6 +2549,10 @@ sap.ui.define([
                 if (c.amount && c.amount > 0) {
                     mByDate[sDate].amount += c.amount;
                     mByDate[sDate].conditionType = c.conditionType;
+                    // prefer explicit installment label if present
+                    if (c.installment) {
+                        mByDate[sDate].installment = c.installment;
+                    }
                 }
 
                 if (c.maintenance && c.maintenance > 0) {
