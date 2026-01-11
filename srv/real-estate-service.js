@@ -991,23 +991,40 @@ module.exports = cds.service.impl(async function () {
       }
 
       // Insert conditions
-      if (conditions?.length) {
-        await Promise.all(
-          conditions.map((c) =>
-            db.run(
-              INSERT.into(ReservationConditions).entries({
-                ID: c.ID || uuidv4(),
-                installment: c.installment,
-                dueDate: c.dueDate,
-                amount: c.amount,
-                maintenance: c.maintenance,
-                reservation_reservationId: reservationData.reservationId
-              })
-            )
+     if (conditions?.length) {
+    // Validate conditionType codes
+    for (const c of conditions) {
+        if (c.conditionType_code) {
+            const exists = await db.run(SELECT.one.from(ConditionTypes).where({ code: c.conditionType_code }));
+            if (!exists) {
+                req.error(400, `Condition type code '${c.conditionType_code}' is not valid.`);
+                return;
+            }
+        } else {
+            req.error(400, 'conditionType_code is required for each condition.');
+            return;
+        }
+    }
 
-          )
-        );
-      }
+    await Promise.all(
+        conditions.map((c) =>
+            db.run(
+                INSERT.into(ReservationConditions).entries({
+                    ID: c.ID,
+                    conditionType_code: c.conditionType_code,
+                    dueDate: c.dueDate,
+                    downPaymentAmount: c.downPaymentAmount || 0,
+                    installmentAmount: c.installmentAmount || 0,
+                    maintenanceAmount: c.maintenanceAmount || 0,
+                    downPaymentDescription: c.downPaymentDescription || "",
+                    installmentDescription: c.installmentDescription || "",
+                    maintenanceDescription: c.maintenanceDescription || "",
+                    reservation_reservationId: reservationData.reservationId
+                })
+            )
+        )
+    );
+}
 
       // Insert payments
       if (payments?.length) {
@@ -1077,7 +1094,78 @@ module.exports = cds.service.impl(async function () {
       req.error(500, "Error deleting Reservation: " + error.message);
     }
   });
+/*----------------------- ReservationConditions ---------------------------*/
 
+// READ
+this.on('READ', ReservationConditions, async (req) => {
+    console.log('READ ReservationConditions called');
+    const db = cds.transaction(req);
+    return await db.run(req.query);
+});
+
+// CREATE (for direct inserts, if needed)
+this.on('CREATE', ReservationConditions, async (req) => {
+    console.log('CREATE ReservationCondition called with data:', req.data);
+    const db = cds.transaction(req);
+    try {
+        const data = req.data;
+        data.ID = data.ID || uuidv4();
+
+        // Validate conditionType_code
+        if (data.conditionType_code) {
+            const exists = await db.run(SELECT.one.from(ConditionTypes).where({ code: data.conditionType_code }));
+            if (!exists) {
+                req.error(400, `Condition type code '${data.conditionType_code}' is not valid.`);
+                return;
+            }
+        } else {
+            req.error(400, 'conditionType_code is required.');
+            return;
+        }
+
+        return await db.run(INSERT.into(ReservationConditions).entries(data));
+    } catch (error) {
+        console.error('Error creating ReservationCondition:', error);
+        req.error(500, 'Error creating ReservationCondition: ' + error.message);
+    }
+});
+
+// UPDATE
+this.on('UPDATE', ReservationConditions, async (req) => {
+    console.log('UPDATE ReservationCondition called with:', req.data, 'params:', req.params);
+    const { ID } = req.params[0];
+    const db = cds.transaction(req);
+
+    try {
+        // Validate conditionType_code if provided
+        if (req.data.conditionType_code) {
+            const exists = await db.run(SELECT.one.from(ConditionTypes).where({ code: req.data.conditionType_code }));
+            if (!exists) {
+                req.error(400, `Condition type code '${req.data.conditionType_code}' is not valid.`);
+                return;
+            }
+        }
+
+        await db.run(UPDATE(ReservationConditions).set(req.data).where({ ID }));
+        const updated = await db.run(SELECT.one.from(ReservationConditions).where({ ID }));
+        return updated;
+    } catch (error) {
+        console.error('Error updating ReservationCondition:', error);
+        req.error(500, 'Error updating ReservationCondition: ' + error.message);
+    }
+});
+
+// DELETE
+this.on('DELETE', ReservationConditions, async (req) => {
+    console.log('DELETE ReservationCondition called for ID:', req.data.ID);
+    const db = cds.transaction(req);
+    try {
+        return await db.run(DELETE.from(ReservationConditions).where({ ID: req.data.ID }));
+    } catch (error) {
+        console.error('Error deleting ReservationCondition:', error);
+        req.error(500, 'Error deleting ReservationCondition: ' + error.message);
+    }
+});
   /*---------------------Simulations-----------------------*/
   // 🔹 Add handlers for PaymentPlanSimulations
   this.on('READ', PaymentPlanSimulations, async req => cds.transaction(req).run(req.query));

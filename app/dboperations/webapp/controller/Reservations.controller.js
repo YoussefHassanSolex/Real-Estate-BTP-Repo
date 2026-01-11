@@ -150,9 +150,9 @@ sap.ui.define([
             var iTotalAmount = 0;
             aSimulations.forEach(function (oSim, index) {
                 var sInstallmentType = "";
-                if (oSim.conditionType === "ZZ03") {
+                if (oSim.conditionType_code === "ZZ03") {
                     sInstallmentType = "Maintenance";
-                } else if (oSim.conditionType === "ZZ01") {
+                } else if (oSim.conditionType_code === "ZZ01") {
                     sInstallmentType = "Down Payment";
                 } else {
                     sInstallmentType = "Installement";
@@ -201,20 +201,98 @@ sap.ui.define([
             oDialogModel.setProperty("/conditions", aConditions);
         },
 
-        onDetails: function (oEvent) {
+        onDetails: async function (oEvent) {
+            debugger
             var oData = oEvent.getSource().getBindingContext().getObject();
-            // Ensure installment is set based on conditionType for consistency
+            console.log(oData.conditions);
+            console.log(oData);
+
+
+            // If unit_unitId exists, fetch simulations to update amounts in conditions
+            if (oData.unit_unitId) {
+                try {
+                    const unitRes = await fetch(`/odata/v4/real-estate/Units(unitId='${oData.unit_unitId}')?$expand=simulations`);
+                    if (unitRes.ok) {
+                        const unitData = await unitRes.json();
+                        const aSimulations = unitData.simulations || [];
+                        // Filter by years if available
+                        const iYears = oData.pricePlanYears || (oData.paymentPlan && oData.paymentPlan.planYears);
+                        let aFilteredSimulations = aSimulations;
+                        if (iYears) {
+                            aFilteredSimulations = aSimulations.filter(oSim => oSim.years === iYears);
+                        }
+                        // Further filter by payment plan ID if available
+                        if (oData.paymentPlan_paymentPlanId) {
+                            aFilteredSimulations = aFilteredSimulations.filter(oSim => oSim.paymentPlan_paymentPlanId === oData.paymentPlan_paymentPlanId);
+                        }
+                        // Use first simulation if available
+                        if (aFilteredSimulations.length > 0) {
+                            const oSelectedSim = aFilteredSimulations[0];
+                            const simRes = await fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulationId='${oSelectedSim.simulationId}')?$expand=schedule`);
+                            if (simRes.ok) {
+                                const simulation = await simRes.json();
+                                const schedule = simulation.schedule || [];
+                                // Create a map of dueDate to schedule item
+                                const scheduleMap = {};
+                                schedule.forEach(s => {
+                                    if (s.conditionType !== "Total") {
+                                        scheduleMap[s.dueDate] = s;
+                                    }
+                                });
+                                // Update oData.conditions amounts from schedule
+                                oData.conditions.forEach(condition => {
+                                    const s = scheduleMap[condition.dueDate];
+                                    if (s && s.amount && s.amount !== '0' && s.amount !== 0) {
+                                        const parsedAmount = typeof s.amount === 'number' ? s.amount : (typeof s.amount === 'string' && !s.amount.includes(',') ? parseFloat(s.amount.replace(/,/g, '')) : parseFloat(s.amount));
+                                        const parsedMaintenance = typeof s.maintenance === 'number' ? s.maintenance : (typeof s.maintenance === 'string' && !s.maintenance.includes(',') ? parseFloat(s.maintenance.replace(/,/g, '')) : parseFloat(s.maintenance));
+                                        if (condition.conditionType_code === 'ZZ01') {
+                                            condition.downPaymentAmount = parsedAmount;
+                                        } else if (condition.conditionType_code === 'ZZ03') {
+                                            condition.maintenanceAmount = parsedMaintenance;
+                                        } else {
+                                            condition.installmentAmount = parsedAmount;
+                                        }
+                                    }
+                                });
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error loading amounts from simulation:", err);
+                }
+            }
+
+            // Ensure installment is set based on conditionType_code for consistency
             if (oData.conditions) {
                 oData.conditions.forEach(condition => {
-                    // Derive a human-readable installment label from either an existing label
-                    // or from known conditionType codes. Keep fallback to the raw value.
-                    condition.installment = condition.conditionType === 'ZZ01' ? 'Downpayment' : 'Installment';
-
-                    // Normalize conditionType to a description for display in the details dialog
-                    if (condition.conditionType === 'ZZ01') {
-                        condition.conditionType = 'Down Payment';
-                    } else if (condition.conditionType === 'ZZ03') {
-                        condition.conditionType = 'Maintenance';
+                    // Derive installment label based on conditionType_code, keep conditionType_code as code
+                    if (condition.conditionType_code === 'ZZ01') {
+                        condition.installment = 'Down Payment';
+                        if (condition.downPaymentAmount !== undefined) {
+                            condition.amount = condition.downPaymentAmount;
+                        }
+                        if (!condition.amount || condition.amount === '0' || condition.amount === 0) {
+                            condition.amount = '0';
+                        }
+                        condition.maintenance = '0';
+                    } else if (condition.conditionType_code === 'ZZ03') {
+                        condition.installment = 'Maintenance';
+                        condition.amount = '0';
+                        if (condition.maintenanceAmount !== undefined) {
+                            condition.maintenance = condition.maintenanceAmount;
+                        }
+                        if (!condition.maintenance || condition.maintenance === '0' || condition.maintenance === 0) {
+                            condition.maintenance = '0';
+                        }
+                    } else {
+                        condition.installment = 'Installment';
+                        if (condition.installmentAmount !== undefined) {
+                            condition.amount = condition.installmentAmount;
+                        }
+                        if (!condition.amount || condition.amount === '0' || condition.amount === 0) {
+                            condition.amount = '0';
+                        }
+                        condition.maintenance = '0';
                     }
 
                     // Format numbers with comma separators - handle both numbers and strings
@@ -233,6 +311,13 @@ sap.ui.define([
                         if (!isNaN(numValue)) {
                             condition.maintenance = numValue.toLocaleString('en-US');
                         }
+                    }
+                    // Set default values if amount or maintenance are missing
+                    if (!condition.amount || condition.amount === '') {
+                        condition.amount = '0';
+                    }
+                    if (!condition.maintenance || condition.maintenance === '') {
+                        condition.maintenance = '0';
                     }
                 });
             }
@@ -399,7 +484,7 @@ _mergeConditionsByDueDate: function (aConditions) {
             mByDate[sDate] = {
                 ID: c.ID || this._generateUUID(),
                 installment: c.installment || "Installment",
-                conditionType: c.conditionType,
+                conditionType_code: c.conditionType_code,
                 dueDate: sDate,
                 amount: 0,
                 maintenance: 0
@@ -438,6 +523,107 @@ _mergeConditionsByDueDate: function (aConditions) {
                     } else {
                         data.pricePlanYears = null;  // Set to null so Number input shows empty and it's not sent if unchanged
                     }
+
+                    // If unit_unitId exists, fetch simulations to update amounts in conditions
+                    if (data.unit_unitId) {
+                        return fetch(`/odata/v4/real-estate/Units(unitId='${data.unit_unitId}')?$expand=simulations`)
+                            .then(unitRes => {
+                                if (unitRes.ok) {
+                                    return unitRes.json();
+                                } else {
+                                    console.error("Error fetching unit simulations:", unitRes.statusText);
+                                    return { simulations: [] };
+                                }
+                            })
+                            .then(unitData => {
+                                const aSimulations = unitData.simulations || [];
+                                // Filter by years if available
+                                const iYears = data.pricePlanYears || (data.paymentPlan && data.paymentPlan.planYears);
+                                let aFilteredSimulations = aSimulations;
+                                if (iYears) {
+                                    aFilteredSimulations = aSimulations.filter(oSim => oSim.years === iYears);
+                                }
+                                // Further filter by payment plan ID if available
+                                if (data.paymentPlan_paymentPlanId) {
+                                    aFilteredSimulations = aFilteredSimulations.filter(oSim => oSim.paymentPlan_paymentPlanId === data.paymentPlan_paymentPlanId);
+                                }
+                                // Use first simulation if available
+                                if (aFilteredSimulations.length > 0) {
+                                    const oSelectedSim = aFilteredSimulations[0];
+                                    return fetch(`/odata/v4/real-estate/PaymentPlanSimulations(simulationId='${oSelectedSim.simulationId}')?$expand=schedule`)
+                                        .then(simRes => {
+                                            if (simRes.ok) {
+                                                return simRes.json();
+                                            } else {
+                                                console.error("Error fetching simulation schedule:", simRes.statusText);
+                                                return { schedule: [] };
+                                            }
+                                        })
+                                        .then(simulation => {
+                                            const schedule = simulation.schedule || [];
+                                            // Create a map of dueDate to schedule item
+                                            const scheduleMap = {};
+                                            schedule.forEach(s => {
+                                                if (s.conditionType !== "Total") {
+                                                    scheduleMap[s.dueDate] = s;
+                                                }
+                                            });
+                                            // Update data.conditions amounts from schedule
+                                            if (data.conditions) {
+                                                data.conditions.forEach(condition => {
+                                                    const s = scheduleMap[condition.dueDate];
+                                                    if (s && s.amount && s.amount !== '0' && s.amount !== 0) {
+                                                        const parsedAmount = typeof s.amount === 'number' ? s.amount : (typeof s.amount === 'string' && !s.amount.includes(',') ? parseFloat(s.amount.replace(/,/g, '')) : parseFloat(s.amount));
+                                                        const parsedMaintenance = typeof s.maintenance === 'number' ? s.maintenance : (typeof s.maintenance === 'string' && !s.maintenance.includes(',') ? parseFloat(s.maintenance.replace(/,/g, '')) : parseFloat(s.maintenance));
+                                                        if (condition.conditionType_code === 'ZZ01') {
+                                                            condition.downPaymentAmount = parsedAmount;
+                                                        } else if (condition.conditionType_code === 'ZZ03') {
+                                                            condition.maintenanceAmount = parsedMaintenance;
+                                                        } else {
+                                                            condition.installmentAmount = parsedAmount;
+                                                        }
+                                                    }
+                                                });
+                                            }
+                                            return data;
+                                        });
+                                } else {
+                                    return data;
+                                }
+                            });
+                    } else {
+                        return data;
+                    }
+                })
+                .then(data => {
+                    // Process conditions to set amounts based on conditionType_code
+                    if (data.conditions) {
+                        data.conditions.forEach(condition => {
+                            // Derive installment label based on conditionType_code, keep conditionType_code as code
+                            if (condition.conditionType_code === 'ZZ01') {
+                                condition.installment = 'Down Payment';
+                                condition.amount = condition.amount || 0;
+                                condition.maintenance = 0;
+                            } else if (condition.conditionType_code === 'ZZ03') {
+                                condition.installment = 'Maintenance';
+                                condition.amount = 0;
+                                condition.maintenance = condition.maintenance || 0;
+                            } else {
+                                condition.installment = 'Installment';
+                                condition.amount = condition.amount || 0;
+                                condition.maintenance = 0;
+                            }
+
+                            // Ensure amount and maintenance are numbers for Number inputs in edit dialog
+                            if (typeof condition.amount === 'string') {
+                                condition.amount = parseFloat(condition.amount.replace(/,/g, '')) || 0;
+                            }
+                            if (typeof condition.maintenance === 'string') {
+                                condition.maintenance = parseFloat(condition.maintenance.replace(/,/g, '')) || 0;
+                            }
+                        });
+                    }
+
                     // Fetch unit conditions (simulations) to enable simulation in CreateReservation
                     if (data.unit_unitId) {
                         return fetch(`/odata/v4/real-estate/Units(unitId='${data.unit_unitId}')?$expand=simulations`)
@@ -924,19 +1110,26 @@ _mergeConditionsByDueDate: function (aConditions) {
 
 
         formatCreateContractVisible: function (oReservation) {
-    if (!oReservation || !oReservation.conditions || !oReservation.payments) {
-        return false;
-    }
+            debugger
+            if (!oReservation || !oReservation.conditions || !oReservation.payments) {
+                return false;
+            }
 
-    const downPaymentAmount = oReservation.conditions
-        .filter(c => c.conditionType === "ZZ01")
-        .reduce((s, c) => s + (Number(c.amount) || 0), 0);
+            const downPaymentAmount = oReservation.conditions
+                .filter(c => c.conditionType_code === "ZZ01" || c.conditionType === "ZZ01" || c.conditionType === "CASH")
+                .reduce((s, c) => {
+                    const parsedAmount = typeof c.downPaymentAmount === 'number' ? c.downPaymentAmount : (typeof c.downPaymentAmount === 'string' && c.downPaymentAmount && !c.downPaymentAmount.includes(',') ? parseFloat(c.downPaymentAmount) : (c.amount && typeof c.downPaymentAmount === 'string' ? parseFloat(c.downPaymentAmount.replace(/,/g, '')) : 0));
+                    return s + (parsedAmount || 0);
+                }, 0);
 
-    const totalPaymentAmount = oReservation.payments
-        .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+            const totalPaymentAmount = oReservation.payments
+                .reduce((s, p) => {
+                    const parsedAmount = typeof p.amount === 'number' ? p.amount : (typeof p.amount === 'string' && !p.amount.includes(',') ? parseFloat(p.amount) : parseFloat(p.amount.replace(/,/g, '')));
+                    return s + (parsedAmount || 0);
+                }, 0);
 
-    return totalPaymentAmount > 0 && Math.abs(downPaymentAmount - totalPaymentAmount) < 0.01;
-},
+            return totalPaymentAmount > 0 && downPaymentAmount > 0;
+        },
 
 onCreateContract: function (oEvent) {
     const oReservation = oEvent.getSource()
@@ -1007,27 +1200,6 @@ onCreateContract: function (oEvent) {
             printWindow.document.close();
             printWindow.focus();
             printWindow.print();
-        },
-        
-          // Formatter for Create Contract button visibility
-        formatCreateContractVisible: function (oReservation) {
-            if (!oReservation) return false;
-
-            // Sum of amounts in payments
-            const payments = oReservation.payments || [];
-            const totalPayments = payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-
-            // Sum of down payments in conditions
-            const conditions = oReservation.conditions || [];
-            const totalDownPayments = conditions.reduce((sum, c) => {
-                if (c.conditionType === 'ZZ01') {  // Using code as per requirement
-                    return sum + (parseFloat(c.amount) || 0);
-                }
-                return sum;
-            }, 0);
-
-            // Visible if total payments equal total down payments and total payments > 0
-            return totalPayments > 0 && totalPayments === totalDownPayments;
         },
     });
 });

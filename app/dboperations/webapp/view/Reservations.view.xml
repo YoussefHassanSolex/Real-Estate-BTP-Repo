@@ -75,13 +75,7 @@
                                     <Button id="_IDGenButton17" icon="sap-icon://information" tooltip="Details" press="onDetails" />
                                     <Button id="_IDGenButton20" icon="sap-icon://edit" tooltip="Edit" press="onEditReservation" />
                                     <Button id="_IDGenButton99" icon="sap-icon://print" tooltip="Print" press="onPrint" />
-                                    <Button
-    id="createContractBtn"
-    icon="sap-icon://create"
-    tooltip="Create Contract"
-    press="onCreateContract"
-    visible="{path: '', formatter: '.formatCreateContractVisible'}"
-/>
+                                    <Button id="createContractBtn" icon="sap-icon://create" text="" tooltip="Create Contract" press="onCreateContract" visible="{path: '', formatter: '.formatCreateContractVisible'}" />
                                     <Button id="_IDGenButton25" icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDelete" />
                                 </HBox>
                             </cells>

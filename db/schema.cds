@@ -326,13 +326,20 @@ entity ReservationPartners : managed {
 entity ReservationConditions : managed {
     key ID          : UUID;
 
-    reservation     : Association to Reservations;
+    reservation     : Association to Reservations;  // Association to parent reservation
+    conditionType   : Association to ConditionTypes;  // Association for code validation (e.g., ZZ01)
 
-    installment     : String(40);
-    conditionType   : String(40);
-    dueDate         : Date;
-    amount          : Decimal(15,2);
-    maintenance     : Decimal(15,2);
+    dueDate         : Date;  // Due date for the condition
+
+    // Type-specific amounts (replaces general 'amount' for better separation)
+    downPaymentAmount     : Decimal(15,2);  // Amount specifically for down payment
+    installmentAmount     : Decimal(15,2);  // Amount for installments
+    maintenanceAmount     : Decimal(15,2);  // Amount for maintenance
+
+    // Descriptions (optional, for UI display or notes)
+    downPaymentDescription     : String(255);
+    installmentDescription     : String(255);
+    maintenanceDescription     : String(255);
 }
 
 

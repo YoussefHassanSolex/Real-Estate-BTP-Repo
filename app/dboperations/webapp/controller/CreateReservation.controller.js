@@ -241,11 +241,29 @@ sap.ui.define([
                 await this._resolveSimulationByYears(Number(iDefaultYears));
             }
 
-            // For edit mode, ensure conditions have installment as conditionType
+            // For edit mode, transform backend conditions to frontend format
             if (bIsEdit) {
                 const aConditions = oModel.getProperty("/conditions") || [];
                 aConditions.forEach((condition, index) => {
-                    condition.installment = condition.conditionType === "ZZ01" ? "Downpayment" : "Installment";
+                    // Map backend specific amount fields to frontend amount/maintenance
+                    if (condition.conditionType_code === "ZZ01") {
+                        condition.amount = condition.downPaymentAmount || 0;
+                        condition.maintenance = 0;
+                        condition.installment = "Down Payment";
+                    } else if (condition.conditionType_code === "ZZ02") {
+                        condition.amount = condition.installmentAmount || 0;
+                        condition.maintenance = 0;
+                        condition.installment = "Installment";
+                    } else if (condition.conditionType_code === "ZZ03") {
+                        condition.amount = 0;
+                        condition.maintenance = condition.maintenanceAmount || 0;
+                        condition.installment = "Maintenance";
+                    } else {
+                        condition.amount = 0;
+                        condition.maintenance = 0;
+                        condition.installment = "Installment";
+                    }
+
                     // Format numbers with comma separators - handle both numbers and strings
                     if (typeof condition.amount === 'number') {
                         condition.amount = condition.amount.toLocaleString('en-US');
@@ -563,7 +581,7 @@ oModel.setProperty("/conditions", mergedConditions);
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .map((s, index) => ({
         ID: this._generateUUID(),
-        installment: s.conditionType === "ZZ01" ? "Downpayment" : "Installment",
+        installment: s.conditionType === "ZZ01" ? "Down Payment" : s.conditionType === "ZZ03" ? "Maintenance" : "Installment",
         conditionType: s.conditionType,
         dueDate: s.dueDate,
         amount: typeof s.amount === 'number' ? s.amount.toLocaleString('en-US') : (typeof s.amount === 'string' && !s.amount.includes(',') ? parseFloat(s.amount.replace(/,/g, '')) : s.amount).toLocaleString('en-US'),
@@ -577,32 +595,44 @@ oModel.setProperty("/conditions", aConditions);
             const mByDate = {};
 
             aConditions.forEach(c => {
-                const sDate = c.dueDate;
+                const sKey = c.dueDate + '-' + c.conditionType;
 
-                if (!mByDate[sDate]) {
-                    mByDate[sDate] = {
+                if (!mByDate[sKey]) {
+                    mByDate[sKey] = {
                         ID: this._generateUUID(),
                         installment: c.installment || "Installment",
                         conditionType: c.conditionType,
-                        dueDate: sDate,
+                        dueDate: c.dueDate,
                         amount: 0,
                         maintenance: 0
                     };
                 }
 
                 if (c.amount && c.amount > 0) {
-                    mByDate[sDate].amount += c.amount;
-                    mByDate[sDate].installment = c.installment || "Installment";
-                    mByDate[sDate].conditionType = c.conditionType;
+                    mByDate[sKey].amount += c.amount;
+                    mByDate[sKey].installment = c.installment || "Installment";
                 }
 
                 if (c.maintenance && c.maintenance > 0) {
-                    mByDate[sDate].maintenance += c.maintenance;
+                    mByDate[sKey].maintenance += c.maintenance;
                 }
             });
 
-            return Object.values(mByDate)
+            const merged = Object.values(mByDate)
                 .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+
+            // Adjust installment based on conditionType
+            merged.forEach(c => {
+                if (c.conditionType === "ZZ01") {
+                    c.installment = "Down Payment";
+                } else if (c.conditionType === "ZZ03") {
+                    c.installment = "Maintenance";
+                } else {
+                    c.installment = "Installment";
+                }
+            });
+
+            return merged;
         }
         ,
         _resolveSimulationByYears: async function (iYears) {
@@ -705,14 +735,17 @@ oModel.setProperty("/conditions", aConditions);
 
             const transformedConditions = oData.conditions.map((c, index) => ({
                 ID: c.ID || this._generateUUID(),
-                installment: c.installment || "Installment",
-                conditionType: c.conditionType || c.installment,
+                conditionType_code: c.conditionType,
                 dueDate: c.dueDate
                     ? new Date(c.dueDate).toISOString().split("T")[0]
                     : null,
-                amount: this._parseFormattedNumber(c.amount) ?? 0,
-                maintenance: this._parseFormattedNumber(c.maintenance) ?? 0,
                 reservation_reservationId: reservationId,
+                downPaymentAmount: c.conditionType === "ZZ01" ? this._parseFormattedNumber(c.amount) ?? 0 : 0,
+                installmentAmount: c.conditionType === "ZZ02" ? this._parseFormattedNumber(c.amount) ?? 0 : 0,
+                maintenanceAmount: c.conditionType === "ZZ03" ? this._parseFormattedNumber(c.maintenance) ?? 0 : 0,
+                downPaymentDescription: c.conditionType === "ZZ01" ? c.installment || "" : "",
+                installmentDescription: c.conditionType === "ZZ02" ? c.installment || "" : "",
+                maintenanceDescription: c.conditionType === "ZZ03" ? c.installment || "" : "",
             }));
 
 
