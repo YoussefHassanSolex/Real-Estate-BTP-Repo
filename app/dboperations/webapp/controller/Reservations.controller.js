@@ -929,13 +929,13 @@ _mergeConditionsByDueDate: function (aConditions) {
     }
 
     const downPaymentAmount = oReservation.conditions
-        .filter(c => c.conditionType === "Down Payment")
+        .filter(c => c.conditionType === "ZZ01")
         .reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
     const totalPaymentAmount = oReservation.payments
         .reduce((s, p) => s + (Number(p.amount) || 0), 0);
 
-    return Math.abs(downPaymentAmount - totalPaymentAmount) < 0.01;
+    return totalPaymentAmount > 0 && Math.abs(downPaymentAmount - totalPaymentAmount) < 0.01;
 },
 
 onCreateContract: function (oEvent) {
@@ -1020,14 +1020,14 @@ onCreateContract: function (oEvent) {
             // Sum of down payments in conditions
             const conditions = oReservation.conditions || [];
             const totalDownPayments = conditions.reduce((sum, c) => {
-                if (c.conditionType === 'Down Payment') {  // Using description since code not available in data
+                if (c.conditionType === 'ZZ01') {  // Using code as per requirement
                     return sum + (parseFloat(c.amount) || 0);
                 }
                 return sum;
             }, 0);
 
-            // Visible if total payments equal total down payments
-            return totalPayments === totalDownPayments;
+            // Visible if total payments equal total down payments and total payments > 0
+            return totalPayments > 0 && totalPayments === totalDownPayments;
         },
     });
 });

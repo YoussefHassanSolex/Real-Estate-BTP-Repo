@@ -724,6 +724,12 @@
                         press="onSaveReservation"
                     />
                     <Button
+                        id="_IDGenButton348"
+                        text="Create Contract"
+                        visible="{local>/showCreateContractButton}"
+                        press="onCreateContract"
+                    />
+                    <Button
                         id="_IDGenButton33"
                         text="Cancel"
                         press="onCancelReservation"

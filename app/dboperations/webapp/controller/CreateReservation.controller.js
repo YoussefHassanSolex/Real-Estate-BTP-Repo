@@ -42,7 +42,18 @@ sap.ui.define([
             fetch("/odata/v4/real-estate/ReservationPartners")
                 .then(res => res.json())
                 .then(data => {
-                    this.getView().setModel(new JSONModel(data.value || []), "partnersList");
+                       const uniquePartners = data.value.reduce((acc, curr) => {
+                        if (!acc.find(c => c.customerCode === curr.customerCode)) {  // Check for unique code
+                            acc.push({
+                                customerCode: curr.customerCode,
+                                customerName: curr.customerName,
+                                customerAddress:curr.customerAddress,
+                                validFrom:curr.validFrom
+                            });
+                        }
+                        return acc;
+                    }, []);
+                    this.getView().setModel(new JSONModel(uniquePartners), "partnersList");
                 })
                 .catch(err => console.error("Failed to load Partners list:", err));
         },
@@ -105,6 +116,7 @@ sap.ui.define([
                 selectedPricePlanYears: "",
                 selectedSimulationId: "",
                 selectedSimulationFinalPrice: oReservation.unitPrice || 0,
+                showCreateContractButton: false,
 
                 mode: oReservation.mode || "create",
                 maintenanceEditable: !bIsEdit, // Disable maintenance editing in edit mode
@@ -214,9 +226,6 @@ sap.ui.define([
                         this.getView().byId("_IDGenSelect2").updateItems();
                         oModel.setProperty("/selectedPricePlanYears", String(oReservation.pricePlanYears));
                         this.getView().byId("_IDGenSelect2").invalidate();
-                        setTimeout(() => {
-                            this.getView().byId("_IDGenSelect2").setSelectedKey(String(oReservation.pricePlanYears));
-                        }, 0);
                         // Don't load conditions from simulation in edit mode - keep existing DB conditions
                         // this._resolveSimulationByYears(Number(oReservation.pricePlanYears));
                     } else {
@@ -866,6 +875,7 @@ oModel.setProperty("/conditions", aConditions);
                 cancellationStatus: "",
                 rejectionReason: "",
                 cancellationFees: 0,
+                showCreateContractButton: false,
                 payments: [],
                 partners: [],
                 conditions: []

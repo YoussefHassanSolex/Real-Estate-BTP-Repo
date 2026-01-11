@@ -23,7 +23,10 @@ sap.ui.define([
             fetch("/odata/v4/real-estate/ReservationPartners")
                 .then(res => res.json())
                 .then(data => {
-                    this.getView().setModel(new JSONModel(data.value || []), "Partners");
+                      const uniqueData = data.value.filter((item, index, self) =>
+                        index === self.findIndex(t => t.customerCode === item.customerCode)
+                    );
+                    this.getView().setModel(new JSONModel(uniqueData), "Partners");
                 })
                 .catch(err => console.error("Failed to load Partners:", err));
         },
