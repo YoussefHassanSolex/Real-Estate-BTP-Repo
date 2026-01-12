@@ -8,8 +8,9 @@ sap.ui.define([
     "sap/m/ComboBox",
     "sap/m/DatePicker",
     "sap/m/TextArea",
-    "sap/ui/model/json/JSONModel"
-], function (Controller, MessageBox, Dialog, Input, Button, Label, ComboBox, DatePicker, TextArea, JSONModel) {
+    "sap/ui/model/json/JSONModel",
+    "sap/m/MessageToast"
+], function (Controller, MessageBox, Dialog, Input, Button, Label, ComboBox, DatePicker, TextArea, JSONModel, MessageToast) {
     "use strict";
 
     return Controller.extend("dboperations.controller.Reservations", {
@@ -23,8 +24,19 @@ sap.ui.define([
             this._oPaymentPlansModel = new JSONModel([]);
             this.getView().setModel(this._oPaymentPlansModel, "paymentPlans");
 
+            this.getView().setModel(new JSONModel({
+                CompanyCode: "",
+                Responsible: "",
+                REContractType: "",
+                ContractStartDate: ""
+            }), "contractModel");
+
+
+            this.getView().setModel(new JSONModel([]), "contractsModel");
+
             this._loadPaymentPlans();
             this._loadReservations();
+            this._loadContracts();
         },
 
         _onRouteMatched: function () {
@@ -474,37 +486,7 @@ sap.ui.define([
             this._oDetailsDialog.setModel(oDialogModel);
             this._oDetailsDialog.open();
         },
-_mergeConditionsByDueDate: function (aConditions) {
-    const mByDate = {};
 
-    (aConditions || []).forEach(c => {
-        const sDate = c.dueDate;
-
-        if (!mByDate[sDate]) {
-            mByDate[sDate] = {
-                ID: c.ID || this._generateUUID(),
-                installment: c.installment || "Installment",
-                conditionType_code: c.conditionType_code,
-                dueDate: sDate,
-                amount: 0,
-                maintenance: 0
-            };
-        }
-
-        if (c.amount && c.amount > 0) {
-            mByDate[sDate].amount += Number(c.amount);
-            mByDate[sDate].installment = c.installment || "Installment";
-        }
-
-        if (c.maintenance && c.maintenance > 0) {
-            mByDate[sDate].maintenance += Number(c.maintenance);
-        }
-    });
-
-    return Object.values(mByDate)
-        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-}
-,
         // UPDATED: onEditReservation - Navigate to CreateReservation in edit mode
         onEditReservation: function (oEvent) {
             var oData = oEvent.getSource().getBindingContext().getObject();
@@ -1118,56 +1100,129 @@ _mergeConditionsByDueDate: function (aConditions) {
             const downPaymentAmount = oReservation.conditions
                 .filter(c => c.conditionType_code === "ZZ01" || c.conditionType === "ZZ01" || c.conditionType === "CASH")
                 .reduce((s, c) => {
-                    const parsedAmount = typeof c.downPaymentAmount === 'number' ? c.downPaymentAmount : (typeof c.downPaymentAmount === 'string' && c.downPaymentAmount && !c.downPaymentAmount.includes(',') ? parseFloat(c.downPaymentAmount) : (c.amount && typeof c.downPaymentAmount === 'string' ? parseFloat(c.downPaymentAmount.replace(/,/g, '')) : 0));
+                    const parsedAmount = typeof c.downPaymentAmount === 'number'
+                        ? c.downPaymentAmount
+                        : (typeof c.downPaymentAmount === 'string' && c.downPaymentAmount && !c.downPaymentAmount.includes(',')
+                            ? parseFloat(c.downPaymentAmount)
+                            : (c.amount && typeof c.downPaymentAmount === 'string'
+                                ? parseFloat(c.downPaymentAmount.replace(/,/g, ''))
+                                : 0));
                     return s + (parsedAmount || 0);
                 }, 0);
 
             const totalPaymentAmount = oReservation.payments
                 .reduce((s, p) => {
-                    const parsedAmount = typeof p.amount === 'number' ? p.amount : (typeof p.amount === 'string' && !p.amount.includes(',') ? parseFloat(p.amount) : parseFloat(p.amount.replace(/,/g, '')));
+                    const parsedAmount = typeof p.amount === 'number'
+                        ? p.amount
+                        : (typeof p.amount === 'string' && !p.amount.includes(',')
+                            ? parseFloat(p.amount)
+                            : parseFloat(p.amount.replace(/,/g, '')));
                     return s + (parsedAmount || 0);
                 }, 0);
 
             return totalPaymentAmount > 0 && downPaymentAmount > 0;
         },
 
-onCreateContract: function (oEvent) {
-    const oReservation = oEvent.getSource()
-        .getBindingContext()
-        .getObject();
+        // =========================
+        // OPEN CONTRACT DIALOG
+        // =========================
+        onCreateContract: function (oEvent) {
+            const oReservation = oEvent.getSource().getBindingContext().getObject();
 
-    sap.m.MessageBox.confirm(
-        `Create contract for reservation ${oReservation.reservationId}?`,
-        {
-            onClose: async (oAction) => {
-                if (oAction !== sap.m.MessageBox.Action.OK) return;
+            // Pre-fill contract model with reservation values
+            this.getView().getModel("contractModel").setData({
+                CompanyCode: oReservation.companyCode || "",
+                Responsible: oReservation.responsibleBP || "",
+                REContractType: oReservation.contractType || "",
+                ContractStartDate: new Date().toISOString().split("T")[0]
+            });
 
-                try {
-                    const oModel = this.getOwnerComponent().getModel();
-
-                    const payload = {
-                        CompanyCode: oReservation.companyCode,
-                        Responsible: oReservation.responsible,
-                        REContractType: oReservation.contractType,
-                        ContractStartDate: new Date().toISOString().split('T')[0]
-                    };
-
-                    await oModel.callFunction("/CreateREContract", {
-                        method: "POST",
-                        urlParameters: payload
-                    });
-
-                    sap.m.MessageToast.show("Contract created successfully");
-
-                } catch (e) {
-                    sap.m.MessageBox.error(
-                        e.message || "Contract creation failed"
-                    );
-                }
+            // Open inline dialog
+            if (!this._oContractDialog) {
+                this._oContractDialog = new sap.m.Dialog({
+                    title: "Create Contract",
+                    type: "Message",
+                    content: [
+                        new sap.m.Input({ placeholder: "Company Code", value: "{contractModel>/CompanyCode}", required: true }),
+                        new sap.m.Input({ placeholder: "Responsible", value: "{contractModel>/Responsible}", required: true }),
+                        new sap.m.Input({ placeholder: "Contract Type", value: "{contractModel>/REContractType}", required: true }),
+                        new sap.m.DatePicker({
+                            placeholder: "Contract Start Date",
+                            value: "{contractModel>/ContractStartDate}",
+                            valueFormat: "yyyy-MM-dd",
+                            displayFormat: "yyyy-MM-dd",
+                            required: true
+                        })
+                    ],
+                    beginButton: new sap.m.Button({
+                        text: "Create",
+                        type: "Emphasized",
+                        press: this.onConfirmCreateContract.bind(this)
+                    }),
+                    endButton: new sap.m.Button({
+                        text: "Cancel",
+                        press: function () { this._oContractDialog.close(); }.bind(this)
+                    })
+                });
+                this.getView().addDependent(this._oContractDialog);
             }
-        }
-    );
-},
+
+            this._oContractDialog.open();
+        },
+
+        // =========================
+        // POST CONTRACT
+        // =========================
+        onConfirmCreateContract: async function () {
+            try {
+                const oPayload = this.getView().getModel("contractModel").getData();
+
+                // Basic validation
+                if (!oPayload.CompanyCode || !oPayload.Responsible || !oPayload.REContractType) {
+                    MessageBox.error("Please fill all mandatory fields");
+                    return;
+                }
+
+                const response = await fetch("/odata/v4/real-estate/CreateREContract", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(oPayload)
+                });
+
+                if (!response.ok) {
+                    const err = await response.text();
+                    throw new Error(err);
+                }
+
+                MessageToast.show("Contract created successfully");
+                this._oContractDialog.close();
+
+                // Refresh contracts list
+                this._loadContracts();
+
+            } catch (err) {
+                console.error("Contract creation failed", err);
+                MessageBox.error(err.message || "Contract creation failed");
+            }
+        },
+
+        // =========================
+        // GET Contracts
+        // =========================
+        _loadContracts: async function () {
+            try {
+                const response = await fetch("/odata/v4/real-estate/RealEstateContracts");
+                const data = await response.json();
+                this.getView().getModel("contractsModel").setData(data.value || []);
+            } catch (err) {
+                console.error("Failed to load contracts", err);
+            }
+        },
+
+        onCancelCreateContract: function () {
+            this.byId("createContractDialog").close();
+        },
+
 
         onPrint: function () {
             var printWindow = window.open('', '_blank');

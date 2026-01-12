@@ -85,4 +85,57 @@
             </ScrollContainer>
         </content>
     </Page>
+
+    <Dialog
+        id="createContractDialog"
+        title="Create Contract"
+        draggable="true"
+        resizable="true">
+
+        <VBox class="sapUiSmallMargin">
+            <Input
+                placeholder="Company Code"
+                value="{contractModel>/CompanyCode}"
+                required="true"/>
+
+            <Input
+                placeholder="Responsible BP"
+                value="{contractModel>/Responsible}"
+                required="true"/>
+
+            <Input
+                placeholder="Contract Type"
+                value="{contractModel>/REContractType}"
+                required="true"/>
+
+            <DatePicker
+                placeholder="Start Date"
+                value="{contractModel>/ContractStartDate}"
+                valueFormat="yyyy-MM-dd"
+                displayFormat="yyyy-MM-dd"
+                required="true"/>
+        </VBox>
+
+        <beginButton>
+            <Button
+                text="Create"
+                type="Emphasized"
+                press="onConfirmCreateContract"/>
+        </beginButton>
+
+        <endButton>
+            <Button
+                text="Cancel"
+                press="onCancelCreateContract"/>
+        </endButton>
+    </Dialog>
+
+    <List
+        headerText="Contracts"
+        items="{contractsModel>/}">
+        <StandardListItem
+            title="{contractsModel>REContract}"
+            description="{contractsModel>CompanyCode} - {contractsModel>REContractType}" />
+    </List>
+    
 </mvc:View>

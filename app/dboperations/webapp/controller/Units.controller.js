@@ -2425,9 +2425,6 @@ sap.ui.define([
                                 case "ZZ02":
                                     conditionType = "Installment";
                                     break;
-                                case "ZZ03":
-                                    conditionType = "Maintenance";
-                                    break;
                                 default:
                                     conditionType = "Installment";
                             }
@@ -2447,10 +2444,31 @@ sap.ui.define([
                     });
                 }
                 // Merge conditions by due date (similar to CreateReservation)
-                simulationSchedule = this._mergeConditionsByDueDate(simulationSchedule);
-
-                // Sort the schedule by dueDate (ascending, empty dueDate for Total will be handled below)
-                simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+                const mByDate = {};
+                simulationSchedule.forEach(c => {
+                    const sDate = c.dueDate;
+                    const derivedLabel = c.installment || (c.conditionType === 'ZZ01' ? 'Down Payment' : (c.conditionType === 'ZZ03' ? 'Maintenance' : 'Installment'));
+                    if (!mByDate[sDate]) {
+                        mByDate[sDate] = {
+                            installment: derivedLabel,
+                            conditionType: c.conditionType,
+                            dueDate: sDate,
+                            amount: 0,
+                            maintenance: 0
+                        };
+                    }
+                    if (c.amount && c.amount > 0) {
+                        mByDate[sDate].amount += c.amount;
+                        mByDate[sDate].conditionType = c.conditionType;
+                        if (c.installment) {
+                            mByDate[sDate].installment = c.installment;
+                        }
+                    }
+                    if (c.maintenance && c.maintenance > 0) {
+                        mByDate[sDate].maintenance += c.maintenance;
+                    }
+                });
+                simulationSchedule = Object.values(mByDate).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
                 // Calculate totals and add Total row (after sorting, so Total is last)
                 const totalAmount = simulationSchedule.reduce((sum, item) => sum + Number(item.amount || 0), 0);
@@ -2526,43 +2544,7 @@ sap.ui.define([
             const paddedNumber = ("00000" + this._idCounter).slice(-5);  // Pad to 5 digits
             return "PPS" + paddedNumber;
         },
-        // Helper: Merge conditions by due date (similar to CreateReservation)
-        _mergeConditionsByDueDate: function (aConditions) {
-            const mByDate = {};
-
-            aConditions.forEach(c => {
-                const sDate = c.dueDate;
-
-                // derive a human-readable label if not provided
-                const derivedLabel = c.installment || (c.conditionType === 'ZZ01' ? 'Down Payment' : (c.conditionType === 'ZZ03' ? 'Maintenance' : 'Installment'));
-
-                if (!mByDate[sDate]) {
-                    mByDate[sDate] = {
-                        installment: derivedLabel,
-                        conditionType: c.conditionType,
-                        dueDate: sDate,
-                        amount: 0,
-                        maintenance: 0
-                    };
-                }
-
-                if (c.amount && c.amount > 0) {
-                    mByDate[sDate].amount += c.amount;
-                    mByDate[sDate].conditionType = c.conditionType;
-                    // prefer explicit installment label if present
-                    if (c.installment) {
-                        mByDate[sDate].installment = c.installment;
-                    }
-                }
-
-                if (c.maintenance && c.maintenance > 0) {
-                    mByDate[sDate].maintenance += c.maintenance;
-                }
-            });
-
-            return Object.values(mByDate)
-                .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-        },
+       
         //#endregion
 
     });

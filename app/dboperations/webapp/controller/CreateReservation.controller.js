@@ -457,7 +457,7 @@ sap.ui.define([
                                     today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000
                                 );
                                 simulationSchedule.push({
-                                    installment: "",
+                                    installment: "Maintenance",
                                     conditionType: "ZZ03",
                                     dueDate: dueDate.toISOString().split("T")[0],
                                     amount: 0,
@@ -476,9 +476,6 @@ sap.ui.define([
                                     break;
                                 case "ZZ02":
                                     conditionType = "Installment";
-                                    break;
-                                case "ZZ03":
-                                    conditionType = "Maintenance";
                                     break;
                                 default:
                                     conditionType = "Installment";
@@ -504,20 +501,24 @@ sap.ui.define([
                         }
                 });
 
-                // Sort and set to conditions
-                // simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-                // oModel.setProperty(
-                //     "/conditions",
-                //     simulationSchedule.map((s) => ({
-                //         ID: this._generateUUID(),
-                //         installment: s.installment,
-                //         conditionType: s.conditionType,
-                //         dueDate: s.dueDate,
-                //         amount: s.amount,
-                //         maintenance: s.maintenance,
-                //     }))
-                // );
-const mergedConditions = this._mergeConditionsByDueDate(simulationSchedule);
+                // Sort simulationSchedule first to ensure merged conditions are in due date order
+                simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+                const mergedConditions = Object.values(simulationSchedule.reduce((acc, curr) => {
+                    const key = `${curr.dueDate}-${curr.conditionType}`;
+                    if (!acc[key]) {
+                        acc[key] = {
+                            ID: this._generateUUID(),
+                            installment: curr.installment,
+                            conditionType: curr.conditionType,
+                            dueDate: curr.dueDate,
+                            amount: 0,
+                            maintenance: 0
+                        };
+                    }
+                    acc[key].amount += curr.amount;
+                    acc[key].maintenance += curr.maintenance;
+                    return acc;
+                }, {})).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 mergedConditions.forEach(c => {
     c.previousDueDate = c.dueDate;
     // Format numbers with comma separators - handle both numbers and strings
@@ -591,50 +592,7 @@ oModel.setProperty("/conditions", mergedConditions);
 oModel.setProperty("/conditions", aConditions);
 
         },
-        _mergeConditionsByDueDate: function (aConditions) {
-            const mByDate = {};
 
-            aConditions.forEach(c => {
-                const sKey = c.dueDate + '-' + c.conditionType;
-
-                if (!mByDate[sKey]) {
-                    mByDate[sKey] = {
-                        ID: this._generateUUID(),
-                        installment: c.installment || "Installment",
-                        conditionType: c.conditionType,
-                        dueDate: c.dueDate,
-                        amount: 0,
-                        maintenance: 0
-                    };
-                }
-
-                if (c.amount && c.amount > 0) {
-                    mByDate[sKey].amount += c.amount;
-                    mByDate[sKey].installment = c.installment || "Installment";
-                }
-
-                if (c.maintenance && c.maintenance > 0) {
-                    mByDate[sKey].maintenance += c.maintenance;
-                }
-            });
-
-            const merged = Object.values(mByDate)
-                .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-
-            // Adjust installment based on conditionType
-            merged.forEach(c => {
-                if (c.conditionType === "ZZ01") {
-                    c.installment = "Down Payment";
-                } else if (c.conditionType === "ZZ03") {
-                    c.installment = "Maintenance";
-                } else {
-                    c.installment = "Installment";
-                }
-            });
-
-            return merged;
-        }
-        ,
         _resolveSimulationByYears: async function (iYears) {
             const oModel = this.getView().getModel("local");
             const aCond = oModel.getProperty("/unitConditions") || [];
@@ -1187,7 +1145,6 @@ debugger
                                     maintenance: maintenance
                                 };
                             });
-
                             // Merge conditions for consistent validation
                             const mergedConditions = this._mergeConditionsByDueDate(aUpdatedConditions);
 
