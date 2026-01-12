@@ -247,18 +247,22 @@ sap.ui.define([
                 aConditions.forEach((condition, index) => {
                     // Map backend specific amount fields to frontend amount/maintenance
                     if (condition.conditionType_code === "ZZ01") {
+                        condition.conditionType = "ZZ01";
                         condition.amount = condition.downPaymentAmount || 0;
                         condition.maintenance = 0;
                         condition.installment = "Down Payment";
                     } else if (condition.conditionType_code === "ZZ02") {
+                        condition.conditionType = "ZZ02";
                         condition.amount = condition.installmentAmount || 0;
                         condition.maintenance = 0;
                         condition.installment = "Installment";
                     } else if (condition.conditionType_code === "ZZ03") {
+                        condition.conditionType = "ZZ03";
                         condition.amount = 0;
                         condition.maintenance = condition.maintenanceAmount || 0;
                         condition.installment = "Maintenance";
                     } else {
+                        condition.conditionType = "ZZ02"; // Default to Installment
                         condition.amount = 0;
                         condition.maintenance = 0;
                         condition.installment = "Installment";
@@ -1078,7 +1082,6 @@ oModel.setProperty("/conditions", aConditions);
                 MessageBox.error("XLSX library is not loaded. Please refresh the page and try again.");
                 return;
             }
-debugger
             const oModel = this.getView().getModel("local");
             const aOriginalConditions = oModel.getProperty("/conditions") || [];
             const originalTotalAmount = aOriginalConditions.reduce((sum, c) => sum + (this._parseFormattedNumber(c.amount) || 0), 0);
@@ -1091,7 +1094,6 @@ debugger
                 change: (oEvent) => {
                     const oFile = oEvent.getParameter("files")[0];
                     if (!oFile) return;
-debugger
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         try {
@@ -1145,16 +1147,13 @@ debugger
                                     maintenance: maintenance
                                 };
                             });
-                            // Merge conditions for consistent validation
-                            const mergedConditions = this._mergeConditionsByDueDate(aUpdatedConditions);
-
                             // Validate total amount matches unit price (ignoring maintenance)
                             if (Math.abs(newTotalAmount - unitPrice) > 0.01) {  // Allow small floating-point tolerance
                                 throw new Error(`Total Amount (${newTotalAmount}) does not match unit price (${unitPrice}). Import canceled.`);
                             }
 
                             // Validate that all installments are equal (no installment greater than others)
-                            const installmentAmounts = mergedConditions
+                            const installmentAmounts = aUpdatedConditions
                                 .filter(c => c.conditionType === "Installment" && c.amount > 0)
                                 .map(c => c.amount);
                             if (installmentAmounts.length > 1) {
@@ -1208,7 +1207,6 @@ debugger
 
             // Create dialog content
             var oDialogContent = new sap.m.VBox({ items: [oFileUploader] });
-debugger
             // Create and open dialog
             var oImportDialog = new sap.m.Dialog({
                 title: "Import Conditions from XLSX",
@@ -1230,6 +1228,7 @@ debugger
 
             oImportDialog.open();
         },
+
         excelSerialToDate: function (serial) {
             // Excel serial date starts from 1900-01-01 as day 1
             // JavaScript Date starts from 1970-01-01
