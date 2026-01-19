@@ -89,6 +89,14 @@ sap.ui.define([
                         let uom = buaMeasurement ? buaMeasurement.uom : null;
                         let measurementCode = buaMeasurement ? buaMeasurement.code : null;
 
+                        // Extract Garden Area (from measurements where code = 'GA')
+                        let gardenMeasurement = unit.measurements?.find(m =>
+                            m.code && m.code.trim().toUpperCase() === "GA"
+                        );
+
+                        let gardenArea = gardenMeasurement ? Number(gardenMeasurement.quantity) : null;
+                        let gardenUom = gardenMeasurement ? gardenMeasurement.uom : null;
+
                         // Extract Original Price (from first condition or based on some rule)
                         let firstCondition = unit.conditions?.[0];
                         let originalPrice = firstCondition ? firstCondition.amount : null;
@@ -114,7 +122,9 @@ sap.ui.define([
                             uom,
                             measurementCode,
                             measurements: formattedMeasurements,
-                            conditions: formattedConditions
+                            conditions: formattedConditions,
+                             gardenArea: formatNumber(gardenArea),
+                            gardenUom,
                         };
                     });
 
@@ -2334,7 +2344,7 @@ sap.ui.define([
             }
         },
 
-        onSimulatePPS: async function () {
+      onSimulatePPS: async function () {
             const oLocal = this._oSimulationDialog.getModel("local");
             const unitId = oLocal ? oLocal.getProperty("/unitId") : null;
             const projectId = sap.ui.getCore().byId("projectIdInputPPS").getValue();
@@ -2404,7 +2414,10 @@ sap.ui.define([
                         const interval = this._getFrequencyIntervalPPS(schedule.frequency?.code);
 
                         if (schedule.conditionType?.code === "ZZ03") {
-                            for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
+                            const numInstallments = schedule.numberOfInstallments || 1;
+                            const baseMaintenance = Math.floor((amount * 100) / numInstallments) / 100;
+                            const remainderMaintenance = Math.round((amount - baseMaintenance * numInstallments) * 100) / 100;
+                            for (let i = 0; i < numInstallments; i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
                                 simulationSchedule.push({
@@ -2412,7 +2425,7 @@ sap.ui.define([
                                     conditionType: "ZZ03",  // Set to Maintenance (code for validation)
                                     dueDate: dueDate.toISOString().split('T')[0],
                                     amount: 0,  // Maintenance has no amount
-                                    maintenance: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100  // Round to 2 decimals
+                                    maintenance: i === numInstallments - 1 ? baseMaintenance + remainderMaintenance : baseMaintenance
                                 });
                             }
                         } else {
@@ -2429,14 +2442,17 @@ sap.ui.define([
                                     conditionType = "Installment";
                             }
 
-                            for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
+                            const numInstallments = schedule.numberOfInstallments || 1;
+                            const baseAmount = Math.floor((amount * 100) / numInstallments) / 100;
+                            const remainderAmount = Math.round((amount - baseAmount * numInstallments) * 100) / 100;
+                            for (let i = 0; i < numInstallments; i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000);
                                 simulationSchedule.push({
                                     installment: conditionType,
                                     conditionType: schedule.conditionType?.code || "ZZ02",
                                     dueDate: dueDate.toISOString().split('T')[0],
-                                    amount: Math.round((amount / Math.max(1, schedule.numberOfInstallments)) * 100) / 100,  // Round to 2 decimals
+                                    amount: i === numInstallments - 1 ? baseAmount + remainderAmount : baseAmount,
                                     maintenance: 0
                                 });
                             }

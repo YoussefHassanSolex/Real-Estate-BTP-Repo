@@ -455,7 +455,10 @@ sap.ui.define([
                         );
 
                         if (schedule.conditionType?.code === "ZZ03") {
-                            for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
+                            const numInstallments = schedule.numberOfInstallments || 1;
+                            const baseMaintenance = Math.floor((amount * 100) / numInstallments) / 100;
+                            const remainderMaintenance = Math.round((amount - baseMaintenance * numInstallments) * 100) / 100;
+                            for (let i = 0; i < numInstallments; i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(
                                     today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000
@@ -465,11 +468,7 @@ sap.ui.define([
                                     conditionType: "ZZ03",
                                     dueDate: dueDate.toISOString().split("T")[0],
                                     amount: 0,
-                                    maintenance:
-                                        Math.round(
-                                            (amount / Math.max(1, schedule.numberOfInstallments)) *
-                                            100
-                                        ) / 100,
+                                    maintenance: i === numInstallments - 1 ? baseMaintenance + remainderMaintenance : baseMaintenance
                                 });
                             }
                         } else {
@@ -485,7 +484,10 @@ sap.ui.define([
                                     conditionType = "Installment";
                             }
 
-                            for (let i = 0; i < (schedule.numberOfInstallments || 1); i++) {
+                            const numInstallments = schedule.numberOfInstallments || 1;
+                            const baseAmount = Math.floor((amount * 100) / numInstallments) / 100;
+                            const remainderAmount = Math.round((amount - baseAmount * numInstallments) * 100) / 100;
+                            for (let i = 0; i < numInstallments; i++) {
                                 const monthsToAdd = schedule.dueInMonth + i * interval;
                                 const dueDate = new Date(
                                     today.getTime() + monthsToAdd * 30 * 24 * 60 * 60 * 1000
@@ -494,16 +496,12 @@ sap.ui.define([
                                     installment: conditionType,
                                     conditionType: schedule.conditionType?.code || "ZZ02",
                                     dueDate: dueDate.toISOString().split("T")[0],
-                                    amount:
-                                        Math.round(
-                                            (amount / Math.max(1, schedule.numberOfInstallments)) *
-                                            100
-                                        ) / 100,
-                                    maintenance: 0,
+                                    amount: i === numInstallments - 1 ? baseAmount + remainderAmount : baseAmount,
+                                    maintenance: 0
                                 });
                             }
                         }
-                });
+                    });
 
                 // Sort simulationSchedule first to ensure merged conditions are in due date order
                 simulationSchedule.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
