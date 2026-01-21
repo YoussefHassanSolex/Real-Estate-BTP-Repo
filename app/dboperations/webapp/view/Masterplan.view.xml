@@ -1,0 +1,56 @@
+<mvc:View
+    controllerName="dboperations.controller.Masterplan"
+    xmlns="sap.m"
+    xmlns:mvc="sap.ui.core.mvc"
+    xmlns:core="sap.ui.core"
+    xmlns:l="sap.ui.layout"
+    xmlns:u="sap.ui.unified"
+>
+    <Page
+        id="masterplanPage"
+        title="Masterplan"
+    >
+        <headerContent>
+            <VBox id="_IDGenVBox8">
+                <u:FileUploader
+                    id="fileUploader"
+                    name="fileUploader"
+                    uploadUrl=""
+                    tooltip="Upload SVG file"
+                    change="onFileChange"
+                    typeMissmatch="onTypeMissmatch"
+                    fileType="svg"
+                    mimeType="image/svg+xml"
+                    maximumFileSize="10"
+                    uploadOnChange="false"
+                    sendXHR="false"
+                    useMultipart="false"
+                    buttonText="Upload SVG Masterplan"
+                    style="Emphasized"
+                />
+                <Text id="uploadStatus" text="Please upload an SVG file to view the masterplan" />
+            </VBox>
+        </headerContent>
+        <content>
+            <VBox
+                id="svgContainer"
+                width="100%"
+                height="100%"
+                renderType="Bare"
+                justifyContent="Center"
+                alignItems="Center"
+            >
+                <VBox id="_IDGenVBox9"
+                    width="100%"
+                    height="100%"
+                    renderType="Bare"
+                    visible="{= ${view>/svgContent} !== '' }"
+                />
+                <Text id="_IDGenText44"
+                    text="No SVG file uploaded yet. Please upload an SVG file using the upload area above."
+                    visible="{= ${view>/svgContent} === '' }"
+                />
+            </VBox>
+        </content>
+    </Page>
+</mvc:View>

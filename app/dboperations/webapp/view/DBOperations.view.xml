@@ -136,7 +136,22 @@
                                         />
                                     </TileContent>
                                 </GenericTile>
-
+            <GenericTile
+                                    id="_IDGenGenericTileMasterplan"
+                                    class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout"
+                                    header="Masterplan"
+                                    press="onNavigateToMasterplan"
+                                >
+                                    <TileContent
+                                        id="_IDGenTileContentMasterplan"
+                                        footer="Masterplan Viewer"
+                                    >
+                                        <ImageContent
+                                            id="_IDGenImageContentMasterplan"
+                                            src="sap-icon://map"
+                                        />
+                                    </TileContent>
+                                </GenericTile>
                                 <!-- <GenericTile
                                     id="_IDGenGenericTile7"
                                     class="sapUiTinyMarginBegin sapUiTinyMarginTop tileLayout"

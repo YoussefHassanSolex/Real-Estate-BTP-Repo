@@ -53,5 +53,8 @@ sap.ui.define([
         onNavigateToPartners() {
             this.getOwnerComponent().getRouter().navTo("Partners");
         },
+         onNavigateToMasterplan() {
+            this.getOwnerComponent().getRouter().navTo("Masterplan");
+        },
     });
 });
