@@ -103,6 +103,7 @@ entity Units : managed {
                                    on conditions.unit = $self;
     simulations              : Composition of many PaymentPlanSimulations
                                    on simulations.unit = $self;  // Added to allow many simulations per unit
+    svgElementId             : String(100);  // ID of the SVG element corresponding to this unit
 }
 entity PaymentPlanSimulations : managed {
     key simulationId       : String;

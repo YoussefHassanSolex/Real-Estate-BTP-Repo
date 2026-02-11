@@ -9,9 +9,10 @@ sap.ui.define([
     "sap/ui/layout/form/SimpleForm",
     "sap/m/Table",
     "sap/m/Column",
-    "sap/m/ColumnListItem"
+    "sap/m/ColumnListItem",
+    "sap/m/Popover"
 ], function (
-    Controller, MessageBox, Dialog, Button, Text, JSONModel, Title, SimpleForm, Table, Column, ColumnListItem
+    Controller, MessageBox, Dialog, Button, Text, JSONModel, Title, SimpleForm, Table, Column, ColumnListItem, Popover
 ) {
     "use strict";
 
@@ -24,7 +25,8 @@ sap.ui.define([
             var oModel = new sap.ui.model.json.JSONModel({
                 svgContent: "",
                 units: [],
-                selectedUnit: null
+                selectedUnit: null,
+                loading: true
             });
             this.getView().setModel(oModel, "view");
 
@@ -36,10 +38,11 @@ sap.ui.define([
             // Reset on navigation
             this.getView().getModel("view").setProperty("/svgContent", "");
             this.getView().getModel("view").setProperty("/selectedUnit", null);
+            this.getView().getModel("view").setProperty("/placedMarkers", []);
         },
 
         _loadUnits: function () {
-            fetch("/odata/v4/real-estate/Units?$expand=measurements,conditions")
+            fetch("/odata/v4/real-estate/Units?$expand=measurements,conditions&$filter=unitStatusDescription eq 'Open'")
                 .then(response => response.json())
                 .then(data => {
                     // Enrich units similar to Units controller
@@ -66,6 +69,19 @@ sap.ui.define([
                     });
 
                     this.getView().getModel("view").setProperty("/units", enrichedUnits);
+                    this.getView().getModel("view").setProperty("/loading", false);
+
+                    // Attach dragstart event to list items
+                    setTimeout(function() {
+                        var oList = this.getView().byId("unitsList");
+                        oList.getItems().forEach(function(oItem) {
+                            var domRef = oItem.getDomRef();
+                            if (domRef) {
+                                domRef.draggable = true;
+                                domRef.addEventListener("dragstart", this.onDragStart.bind(this));
+                            }
+                        }.bind(this));
+                    }.bind(this), 100);
                 })
                 .catch(err => {
                     console.error("Error fetching units", err);
@@ -73,7 +89,6 @@ sap.ui.define([
         },
 
         onFileChange: function (oEvent) {
-            debugger
             var oFileUploader = oEvent.getSource();
             var aFiles = oFileUploader.oFileUpload.files;
 
@@ -88,6 +103,8 @@ sap.ui.define([
             var reader = new FileReader();
             reader.onload = function (e) {
                 var svgContent = e.target.result;
+                // Ensure SVG fills the container exactly for accurate coordinate transformation
+                svgContent = svgContent.replace(/width="[^"]*" height="[^"]*"/, 'width="100%" height="100%"');
                 this.getView().getModel("view").setProperty("/svgContent", svgContent);
 console.log(svgContent);
 
@@ -109,8 +126,9 @@ console.log(svgContent);
             MessageBox.error("Please select a valid SVG file.");
         },
 
+
+
         _attachSvgClickHandlers: function (svgContent) {
-            debugger
             // Use a timeout to ensure DOM is updated
             setTimeout(function () {
                 var svgContainer = this.getView().byId("svgContainer");
@@ -136,41 +154,73 @@ console.log(svgContent);
                 var allElements = svgElement.querySelectorAll('*');
                 console.log("SVG elements:", allElements.length);
 
-                // Filter to get only shape elements (rect, circle, path, etc.) excluding the root svg
+                // Filter to get only shape elements (rect, circle, path, etc.) excluding the root svg and g
                 var shapeElements = Array.from(allElements).filter(element => {
                     var tag = element.tagName.toLowerCase();
-                    return tag !== 'svg' && (tag === 'rect' || tag === 'circle' || tag === 'ellipse' || tag === 'line' || tag === 'polyline' || tag === 'polygon' || tag === 'path' || tag === 'text' || tag === 'g');
+                    return tag !== 'svg' && tag !== 'g' && (tag === 'rect' || tag === 'circle' || tag === 'ellipse' || tag === 'line' || tag === 'polyline' || tag === 'polygon' || tag === 'path' || tag === 'text');
                 });
                 console.log("Shape elements:", shapeElements.length);
 
-                // Attach click handlers to shape elements
-                shapeElements.forEach((element, index) => {
-                    var unitIndex = index % units.length;
-                    var unit = units[unitIndex];
-                    element.style.cursor = "pointer";
-                    element.style.fill = "lightblue"; // Visual feedback
-                    element.setAttribute("title", unit.unitId); // Show unit ID on hover
-                    element.addEventListener("mouseover", function () {
-                        this.style.fill = "blue"; // Change color on hover
-                    });
-                    element.addEventListener("mouseout", function () {
-                        this.style.fill = "lightblue"; // Revert color on mouse out
-                    });
-                    element.addEventListener("click", function (event) {
-                        event.stopPropagation();
-                        console.log("Clicked on SVG element for unit:", unit.unitId);
-                        this._showUnitDetails(unit);
-                    }.bind(this));
+                // Disable pointer events on existing shapes to allow drop on SVG
+                shapeElements.forEach((element) => {
+                    element.style.pointerEvents = "none";
                 });
 
-                // Add a global click handler to the SVG for testing
-                svgElement.addEventListener("click", function (event) {
-//                     debugger
-//                     console.log("SVG clicked at:", event.clientX, event.clientY);
-// alert(`SVG clicked at: ${event.clientX}, ${event.clientY}`);
-                });
+                // Find the <g> element
+                var gElement = svgElement.querySelector("g");
+
+                // Enable drop on SVG container
+                svgContainer.getDomRef().addEventListener("dragover", this.onDragOver.bind(this));
+                svgContainer.getDomRef().addEventListener("drop", this.onDrop.bind(this));
+
+                // Render existing markers
+                var gElement = svgElement.querySelector("g");
+                this._renderMarkers(svgElement, gElement);
 
             }.bind(this), 100); // Reduced timeout
+        },
+
+
+
+        _renderMarkers: function (svgElement, gElement) {
+            // Remove existing markers
+            var existingMarkers = svgElement.querySelectorAll(".unit-marker");
+            existingMarkers.forEach(function (marker) {
+                marker.remove();
+            });
+
+            var aMarkers = this.getView().getModel("view").getProperty("/placedMarkers") || [];
+            aMarkers.forEach(function (oMarker) {
+                var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", oMarker.x);
+                circle.setAttribute("cy", oMarker.y);
+                circle.setAttribute("r", oMarker.size);
+                circle.setAttribute("fill", "red");
+                circle.setAttribute("stroke", "black");
+                circle.setAttribute("stroke-width", "1");
+                circle.classList.add("unit-marker");
+                circle.style.cursor = "pointer";
+
+                // Hover effects
+                circle.addEventListener("mouseover", function () {
+                    this.setAttribute("fill", "darkred");
+                });
+                circle.addEventListener("mouseout", function () {
+                    this.setAttribute("fill", "red");
+                });
+
+                // Click for unit options
+                circle.addEventListener("click", function (event) {
+                    this._showUnitOptions(oMarker.unit, event);
+                }.bind(this));
+
+                // Append to gElement since coordinates are in g element's coordinate system
+                if (gElement) {
+                    gElement.appendChild(circle);
+                } else {
+                    svgElement.appendChild(circle);
+                }
+            }.bind(this));
         },
 
         _showUnitDetails: function (unit) {
@@ -283,6 +333,152 @@ console.log(svgContent);
 
             this._oDetailsDialog.setModel(oDialogModel);
             this._oDetailsDialog.open();
-        }
+        },
+
+        onDragStart: function (oEvent) {
+            console.log("Drag start event fired");
+            var oTarget = oEvent.target;
+            var oItem = sap.ui.getCore().byId(oTarget.id);
+            if (oItem && oItem.getBindingContext) {
+                var oContext = oItem.getBindingContext("view");
+                if (oContext) {
+                    var oUnit = oContext.getObject();
+                    console.log("Dragging unit:", oUnit.unitId);
+                    oEvent.dataTransfer.setData("application/json", JSON.stringify(oUnit));
+
+                    // Create a small drag image (circle like the marker)
+                    var dragImage = document.createElement('div');
+                    dragImage.style.width = '10px';
+                    dragImage.style.height = '10px';
+                    dragImage.style.backgroundColor = 'red';
+                    dragImage.style.borderRadius = '50%';
+                    dragImage.style.border = '1px solid black';
+                    document.body.appendChild(dragImage);
+                    oEvent.dataTransfer.setDragImage(dragImage, 5, 5);
+                    // Remove the temporary element after a short delay
+                    setTimeout(function() {
+                        document.body.removeChild(dragImage);
+                    }, 0);
+                }
+            }
+        },
+
+        onDragOver: function (oEvent) {
+            oEvent.preventDefault();
+        },
+
+        onDrop: function (oEvent) {
+            console.log("Drop event fired");
+            oEvent.preventDefault();
+            var svgContainer = oEvent.currentTarget;
+            var svgElement = svgContainer.querySelector("svg");
+
+            if (!svgElement) {
+                console.log("SVG element not found");
+                return;
+            }
+
+            // Get mouse position relative to SVG element
+            var rect = svgElement.getBoundingClientRect();
+            var mouseX = oEvent.clientX - rect.left;
+            var mouseY = oEvent.clientY - rect.top;
+
+            // Map to viewBox coordinates (assuming SVG fills container)
+            if (!svgElement.viewBox) {
+                console.log("SVG has no viewBox");
+                return;
+            }
+            var viewBox = svgElement.viewBox.baseVal;
+            var scaleX = viewBox.width / rect.width;
+            var scaleY = viewBox.height / rect.height;
+            var vx = mouseX * scaleX;
+            var vy = mouseY * scaleY;
+
+            // Clamp to viewBox
+            vx = Math.max(0, Math.min(viewBox.width, vx));
+            vy = Math.max(0, Math.min(viewBox.height, vy));
+
+            // Transform to g element's coordinate system
+            // g transform: translate(0,468) scale(0.1,-0.1)
+            // Inverse: scale(10,-10) translate(0,-468)
+            var gx = vx * 10;
+            var gy = (vy - 468) * (-10);
+
+            console.log("Drop coordinates (viewBox):", vx, vy);
+
+            var data = oEvent.dataTransfer.getData("application/json");
+            if (data) {
+                var oUnit = JSON.parse(data);
+                console.log("Dropped unit:", oUnit.unitId);
+                var aMarkers = this.getView().getModel("view").getProperty("/placedMarkers") || [];
+                aMarkers.push({
+                    x: gx,
+                    y: gy,
+                    size: 50,
+                    unit: oUnit
+                });
+                this.getView().getModel("view").setProperty("/placedMarkers", aMarkers);
+                console.log("Total markers:", aMarkers.length);
+                var gElement = svgElement.querySelector("g");
+                this._renderMarkers(svgElement, gElement);
+            } else {
+                console.log("No data in dataTransfer");
+            }
+        },
+
+        _showUnitOptions: function (unit, event) {
+            // Get the clicked marker element
+            var oMarker = event.target;
+
+            var oPopover = new Popover({
+                title: "Unit Options",
+                placement: "Bottom",
+                content: [
+                    new sap.m.HBox({
+                        wrap: "Wrap",
+                        items: [
+                            new sap.m.Button({
+                                icon: "sap-icon://information",
+                                text: "Details",
+                                press: function () {
+                                    this._showUnitDetails(unit);
+                                    oPopover.close();
+                                }.bind(this)
+                            }),
+                            new sap.m.Button({
+                                icon: "sap-icon://add-document",
+                                text: "Create Reservation",
+                                press: function () {
+                                    this._navigateToCreateReservation(unit);
+                                    oPopover.close();
+                                }.bind(this)
+                            })
+                        ]
+                    })
+                ]
+            });
+
+            // Open popover by the clicked marker
+            oPopover.openBy(oMarker);
+        },
+
+        _navigateToCreateReservation: function (unit) {
+            var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
+            var reservationData = {
+                mode: "create",
+                unit_unitId: unit.unitId,
+                project_projectId: unit.projectId,
+                buildingId: unit.buildingId,
+                bua: unit.bua,
+                unitPrice: unit.originalPrice,
+                unitType: unit.unitTypeDescription,
+                description: unit.unitDescription || "",
+                unitConditions: unit.unitConditions || []
+            };
+            var sData = encodeURIComponent(JSON.stringify(reservationData));
+            oRouter.navTo("CreateReservation", { reservationData: sData });
+        },
+
+
     });
 });
