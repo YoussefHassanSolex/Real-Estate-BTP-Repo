@@ -190,23 +190,34 @@ console.log(svgContent);
             });
 
             var aMarkers = this.getView().getModel("view").getProperty("/placedMarkers") || [];
-            aMarkers.forEach(function (oMarker) {
+            console.log("Rendering", aMarkers.length, "markers");
+
+            aMarkers.forEach(function (oMarker, index) {
                 var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", oMarker.x);
                 circle.setAttribute("cy", oMarker.y);
-                circle.setAttribute("r", oMarker.size);
+                circle.setAttribute("r", Math.max(oMarker.size, 8)); // Ensure minimum visible size
                 circle.setAttribute("fill", "red");
                 circle.setAttribute("stroke", "black");
-                circle.setAttribute("stroke-width", "1");
+                circle.setAttribute("stroke-width", "2");
                 circle.classList.add("unit-marker");
                 circle.style.cursor = "pointer";
+
+                // Add unit ID as title for debugging
+                var title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+                title.textContent = "Unit: " + oMarker.unit.unitId + " (x:" + oMarker.x.toFixed(2) + ", y:" + oMarker.y.toFixed(2) + ")";
+                circle.appendChild(title);
+
+                console.log("Marker", index, "- Unit:", oMarker.unit.unitId, "Position:", oMarker.x, oMarker.y, "Size:", oMarker.size);
 
                 // Hover effects
                 circle.addEventListener("mouseover", function () {
                     this.setAttribute("fill", "darkred");
+                    this.setAttribute("r", Math.max(oMarker.size + 2, 10));
                 });
                 circle.addEventListener("mouseout", function () {
                     this.setAttribute("fill", "red");
+                    this.setAttribute("r", Math.max(oMarker.size, 8));
                 });
 
                 // Click for unit options
@@ -217,10 +228,14 @@ console.log(svgContent);
                 // Append to gElement since coordinates are in g element's coordinate system
                 if (gElement) {
                     gElement.appendChild(circle);
+                    console.log("Appended marker to g element");
                 } else {
                     svgElement.appendChild(circle);
+                    console.log("Appended marker to svg root element");
                 }
             }.bind(this));
+
+            console.log("Finished rendering markers. Total markers in DOM:", svgElement.querySelectorAll(".unit-marker").length);
         },
 
         _showUnitDetails: function (unit) {
@@ -398,13 +413,37 @@ console.log(svgContent);
             vx = Math.max(0, Math.min(viewBox.width, vx));
             vy = Math.max(0, Math.min(viewBox.height, vy));
 
-            // Transform to g element's coordinate system
-            // g transform: translate(0,468) scale(0.1,-0.1)
-            // Inverse: scale(10,-10) translate(0,-468)
-            var gx = vx * 10;
-            var gy = (vy - 468) * (-10);
+            // Transform to g element's coordinate system - dynamically parse transform
+            var gElement = svgElement.querySelector("g");
+            var gx = vx;
+            var gy = vy;
 
-            console.log("Drop coordinates (viewBox):", vx, vy);
+            if (gElement) {
+                var transform = gElement.getAttribute("transform");
+                if (transform) {
+                    // Parse transform like "translate(tx,ty) scale(sx,sy)"
+                    var translateMatch = transform.match(/translate\(([^,]+),([^)]+)\)/);
+                    var scaleMatch = transform.match(/scale\(([^,]+),([^)]+)\)/);
+
+                    if (translateMatch && scaleMatch) {
+                        var tx = parseFloat(translateMatch[1]);
+                        var ty = parseFloat(translateMatch[2]);
+                        var sx = parseFloat(scaleMatch[1]);
+                        var sy = parseFloat(scaleMatch[2]);
+
+                        // Apply inverse transformation
+                        gx = vx / sx - tx / sx;
+                        gy = vy / sy - ty / sy;
+
+                        console.log("SVG transform:", transform);
+                        console.log("Parsed - translate:", tx, ty, "scale:", sx, sy);
+                    } else {
+                        console.log("Could not parse SVG transform:", transform);
+                    }
+                }
+            }
+
+            console.log("Drop coordinates (viewBox):", vx, vy, "-> (g):", gx, gy);
 
             var data = oEvent.dataTransfer.getData("application/json");
             if (data) {
@@ -414,7 +453,7 @@ console.log(svgContent);
                 aMarkers.push({
                     x: gx,
                     y: gy,
-                    size: 50,
+                    size: 5, // Small marker size relative to SVG coordinates
                     unit: oUnit
                 });
                 this.getView().getModel("view").setProperty("/placedMarkers", aMarkers);

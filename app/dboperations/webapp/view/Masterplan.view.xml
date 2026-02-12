@@ -37,58 +37,57 @@
                 visible="{view>/loading}"
                 text="Loading units..."
             />
-            <l:Splitter id="_IDGenSplitter1" orientation="Horizontal" width="100%" height="100%" visible="{= !${view>/loading} }">
-                <l:contentAreas>
-                    <VBox id="_IDGenVBox7" width="30%" height="100%">
-                        <Title id="_IDGenTitle3" text="Available Units" level="H3" />
-                        <List
-                            id="unitsList"
-                            items="{view>/units}"
-                            mode="None"
-                            growing="true"
-                            growingThreshold="20"
-                        >
-                            <items>
-                                <CustomListItem id="_IDGenCustomListItem">
-                                    <HBox id="_IDGenHBox4" alignItems="Center" justifyContent="Start">
-                                        <Avatar id="_IDGenAvatar"
-                                            src=""
-                                            displayShape="Circle"
-                                            displaySize="M"
-                                            backgroundColor="Accent1"
-                                            press="onUnitPress"
-                                        />
-                                        <VBox id="_IDGenVBox10" class="sapUiSmallMarginBegin">
-                                            <Text id="_IDGenText116" text="{view>unitId}" />
-                                            <Text id="_IDGenText117" text="{view>bua} sqm" />
-                                        </VBox>
-                                    </HBox>
-                                </CustomListItem>
-                            </items>
-                        </List>
-                    </VBox>
-                    <VBox
-                        id="svgContainer"
-                        width="70%"
+            <HBox id="_IDGenHBox_1" width="100%" height="100%" visible="{= !${view>/loading} }">
+                <VBox id="_IDGenVBox7" width="20%" height="100%">
+                    <Title id="_IDGenTitle3" text="Available Units" level="H3" />
+                    <List
+                        id="unitsList"
+                        items="{view>/units}"
+                        mode="None"
+                        growing="true"
+                        growingThreshold="20"
                         height="100%"
-                        justifyContent="Center"
-                        alignItems="Center"
                     >
-                        <VBox id="_IDGenVBox9"
-                            width="100%"
-                            height="100%"
-                            renderType="Bare"
-                            visible="{= ${view>/svgContent} !== '' }"
-                        >
-                            <core:HTML id="svgContent" content="{view>/svgContent}" />
-                        </VBox>
-                        <Text id="_IDGenText44"
-                            text="No SVG file uploaded yet. Please upload an SVG file using the upload area above."
-                            visible="{= ${view>/svgContent} === '' }"
-                        />
+                        <items>
+                            <CustomListItem id="_IDGenCustomListItem">
+                                <HBox id="_IDGenHBox4" alignItems="Center" justifyContent="Start">
+                                    <Avatar id="_IDGenAvatar"
+                                        src=""
+                                        displayShape="Circle"
+                                        displaySize="M"
+                                        backgroundColor="Accent1"
+                                        press="onUnitPress"
+                                    />
+                                    <VBox id="_IDGenVBox10" class="sapUiSmallMarginBegin">
+                                        <Text id="_IDGenText116" text="{view>unitId}" />
+                                        <Text id="_IDGenText117" text="{view>bua} sqm" />
+                                    </VBox>
+                                </HBox>
+                            </CustomListItem>
+                        </items>
+                    </List>
+                </VBox>
+                <VBox
+                    id="svgContainer"
+                    width="80%"
+                    height="100%"
+                    justifyContent="Center"
+                    alignItems="Center"
+                >
+                    <VBox id="_IDGenVBox9"
+                        width="100%"
+                        height="100%"
+                        renderType="Bare"
+                        visible="{= ${view>/svgContent} !== '' }"
+                    >
+                        <core:HTML id="svgContent" content="{view>/svgContent}" />
                     </VBox>
-                </l:contentAreas>
-            </l:Splitter>
+                    <Text id="_IDGenText44"
+                        text="No SVG file uploaded yet. Please upload an SVG file using the upload area above."
+                        visible="{= ${view>/svgContent} === '' }"
+                    />
+                </VBox>
+            </HBox>
         </content>
     </Page>
 </mvc:View>
