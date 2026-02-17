@@ -18,6 +18,7 @@ sap.ui.define([
 
     return Controller.extend("dboperations.controller.Masterplan", {
         onInit: function () {
+            this.getView().setBusyIndicatorDelay(0);
             this.getOwnerComponent().getRouter()
                 .getRoute("Masterplan")
                 .attachPatternMatched(this._onRouteMatched, this);
@@ -26,7 +27,8 @@ sap.ui.define([
                 svgContent: "",
                 units: [],
                 selectedUnit: null,
-                loading: true
+                loading: true,
+                converting: false
             });
             this.getView().setModel(oModel, "view");
 
@@ -39,6 +41,7 @@ sap.ui.define([
             this.getView().getModel("view").setProperty("/svgContent", "");
             this.getView().getModel("view").setProperty("/selectedUnit", null);
             this.getView().getModel("view").setProperty("/placedMarkers", []);
+            this._setConverting(false);
         },
 
         _loadUnits: function () {
@@ -97,6 +100,20 @@ sap.ui.define([
             var oFile = aFiles[0];
             if (!oFile) return;
 
+            var sFileName = oFile.name.toLowerCase();
+            var sFileType = oFile.type || "";
+            
+            // SVG files are loaded directly; all other files are vectorized via backend.
+            var isSvg = sFileName.endsWith('.svg') || sFileType === "image/svg+xml";
+
+            if (isSvg) {
+                this._handleSvgFile(oFile);
+            } else {
+                this._handleVectorizerConversion(oFile);
+            }
+        },
+
+        _handleSvgFile: function (oFile) {
             // Update status
             this.getView().byId("uploadStatus").setText("Loading SVG file...");
 
@@ -106,7 +123,7 @@ sap.ui.define([
                 // Ensure SVG fills the container exactly for accurate coordinate transformation
                 svgContent = svgContent.replace(/width="[^"]*" height="[^"]*"/, 'width="100%" height="100%"');
                 this.getView().getModel("view").setProperty("/svgContent", svgContent);
-console.log(svgContent);
+                console.log(svgContent);
 
                 // Update status
                 this.getView().byId("uploadStatus").setText("SVG loaded successfully. Click on units to view details.");
@@ -122,8 +139,62 @@ console.log(svgContent);
             reader.readAsText(oFile);
         },
 
+        _handleVectorizerConversion: function (oFile) {
+            this.getView().byId("uploadStatus").setText("Converting file to SVG with Vectorizer.ai... This may take a moment.");
+            this._setConverting(true);
+
+            var reader = new FileReader();
+            reader.onload = async function (e) {
+                try {
+                    var sDataUrl = e.target.result || "";
+                    var sBase64 = sDataUrl.split(",")[1];
+                    if (!sBase64) {
+                        throw new Error("Invalid file payload.");
+                    }
+
+                    var oResponse = await fetch("/odata/v4/real-estate/ConvertMasterplanToSvg", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        },
+                        body: JSON.stringify({
+                            fileName: oFile.name,
+                            mimeType: oFile.type || "application/octet-stream",
+                            base64Data: sBase64
+                        })
+                    });
+
+                    var oResult = await oResponse.json();
+                    if (!oResponse.ok || !oResult || !oResult.svgContent) {
+                        var sError = oResult && oResult.error && oResult.error.message ? oResult.error.message : "Vectorization failed.";
+                        throw new Error(sError);
+                    }
+
+                    var svgString = oResult.svgContent.replace(/width="[^"]*" height="[^"]*"/, 'width="100%" height="100%"');
+                    this.getView().getModel("view").setProperty("/svgContent", svgString);
+                    this.getView().byId("uploadStatus").setText("File converted successfully. Click on units to view details.");
+                    this._attachSvgClickHandlers(svgString);
+                } catch (error) {
+                    console.error("Error converting file to SVG:", error);
+                    this.getView().byId("uploadStatus").setText("Error converting file to SVG.");
+                    MessageBox.error("Error converting file to SVG: " + error.message);
+                } finally {
+                    this._setConverting(false);
+                }
+            }.bind(this);
+
+            reader.onerror = function () {
+                this.getView().byId("uploadStatus").setText("Error reading uploaded file.");
+                MessageBox.error("Error reading uploaded file.");
+                this._setConverting(false);
+            }.bind(this);
+
+            reader.readAsDataURL(oFile);
+        },
+
         onTypeMissmatch: function (oEvent) {
-            MessageBox.error("Please select a valid SVG file.");
+            MessageBox.error("Please upload a valid file.");
         },
 
 
@@ -170,14 +241,66 @@ console.log(svgContent);
                 var gElement = svgElement.querySelector("g");
 
                 // Enable drop on SVG container
-                svgContainer.getDomRef().addEventListener("dragover", this.onDragOver.bind(this));
-                svgContainer.getDomRef().addEventListener("drop", this.onDrop.bind(this));
+                var oContainerDomRef = svgContainer.getDomRef();
+                if (!this._boundOnDragOver) {
+                    this._boundOnDragOver = this.onDragOver.bind(this);
+                }
+                if (!this._boundOnDrop) {
+                    this._boundOnDrop = this.onDrop.bind(this);
+                }
+                oContainerDomRef.removeEventListener("dragover", this._boundOnDragOver);
+                oContainerDomRef.removeEventListener("drop", this._boundOnDrop);
+                oContainerDomRef.addEventListener("dragover", this._boundOnDragOver);
+                oContainerDomRef.addEventListener("drop", this._boundOnDrop);
 
                 // Render existing markers
-                var gElement = svgElement.querySelector("g");
                 this._renderMarkers(svgElement, gElement);
 
             }.bind(this), 100); // Reduced timeout
+        },
+
+        _setConverting: function (bConverting) {
+            this.getView().getModel("view").setProperty("/converting", bConverting);
+            this.getView().setBusy(!!bConverting);
+        },
+
+        _getPointInElementCoordinates: function (clientX, clientY, svgElement, targetElement) {
+            if (!svgElement || !targetElement || !targetElement.getScreenCTM || !svgElement.createSVGPoint) {
+                return null;
+            }
+
+            var ctm = targetElement.getScreenCTM();
+            if (!ctm) {
+                return null;
+            }
+
+            var point = svgElement.createSVGPoint();
+            point.x = clientX;
+            point.y = clientY;
+            var transformedPoint = point.matrixTransform(ctm.inverse());
+            return { x: transformedPoint.x, y: transformedPoint.y };
+        },
+
+        _getOrCreateMarkerLayer: function (svgElement, gElement) {
+            var markerLayer = svgElement.querySelector(".unit-marker-layer");
+            if (!markerLayer) {
+                markerLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                markerLayer.classList.add("unit-marker-layer");
+                svgElement.appendChild(markerLayer);
+            }
+
+            var transform = gElement ? gElement.getAttribute("transform") : null;
+            if (transform) {
+                markerLayer.setAttribute("transform", transform);
+            } else {
+                markerLayer.removeAttribute("transform");
+            }
+
+            markerLayer.setAttribute("opacity", "1");
+            markerLayer.setAttribute("fill-opacity", "1");
+            markerLayer.style.opacity = "1";
+            markerLayer.style.mixBlendMode = "normal";
+            return markerLayer;
         },
 
 
@@ -188,6 +311,8 @@ console.log(svgContent);
             existingMarkers.forEach(function (marker) {
                 marker.remove();
             });
+
+            var markerLayer = this._getOrCreateMarkerLayer(svgElement, gElement);
 
             var aMarkers = this.getView().getModel("view").getProperty("/placedMarkers") || [];
             console.log("Rendering", aMarkers.length, "markers");
@@ -200,8 +325,13 @@ console.log(svgContent);
                 circle.setAttribute("fill", "red");
                 circle.setAttribute("stroke", "black");
                 circle.setAttribute("stroke-width", "2");
+                circle.setAttribute("opacity", "1");
+                circle.setAttribute("fill-opacity", "1");
+                circle.setAttribute("stroke-opacity", "1");
                 circle.classList.add("unit-marker");
                 circle.style.cursor = "pointer";
+                circle.style.opacity = "1";
+                circle.style.mixBlendMode = "normal";
 
                 // Add unit ID as title for debugging
                 var title = document.createElementNS("http://www.w3.org/2000/svg", "title");
@@ -225,14 +355,8 @@ console.log(svgContent);
                     this._showUnitOptions(oMarker.unit, event);
                 }.bind(this));
 
-                // Append to gElement since coordinates are in g element's coordinate system
-                if (gElement) {
-                    gElement.appendChild(circle);
-                    console.log("Appended marker to g element");
-                } else {
-                    svgElement.appendChild(circle);
-                    console.log("Appended marker to svg root element");
-                }
+                markerLayer.appendChild(circle);
+                console.log("Appended marker to marker layer");
             }.bind(this));
 
             console.log("Finished rendering markers. Total markers in DOM:", svgElement.querySelectorAll(".unit-marker").length);
@@ -393,57 +517,18 @@ console.log(svgContent);
                 return;
             }
 
-            // Get mouse position relative to SVG element
-            var rect = svgElement.getBoundingClientRect();
-            var mouseX = oEvent.clientX - rect.left;
-            var mouseY = oEvent.clientY - rect.top;
+            var gElement = svgElement.querySelector("g");
+            var targetElement = gElement || svgElement;
+            var localPoint = this._getPointInElementCoordinates(oEvent.clientX, oEvent.clientY, svgElement, targetElement);
 
-            // Map to viewBox coordinates (assuming SVG fills container)
-            if (!svgElement.viewBox) {
-                console.log("SVG has no viewBox");
+            if (!localPoint || isNaN(localPoint.x) || isNaN(localPoint.y)) {
+                console.log("Could not compute drop coordinates");
                 return;
             }
-            var viewBox = svgElement.viewBox.baseVal;
-            var scaleX = viewBox.width / rect.width;
-            var scaleY = viewBox.height / rect.height;
-            var vx = mouseX * scaleX;
-            var vy = mouseY * scaleY;
 
-            // Clamp to viewBox
-            vx = Math.max(0, Math.min(viewBox.width, vx));
-            vy = Math.max(0, Math.min(viewBox.height, vy));
-
-            // Transform to g element's coordinate system - dynamically parse transform
-            var gElement = svgElement.querySelector("g");
-            var gx = vx;
-            var gy = vy;
-
-            if (gElement) {
-                var transform = gElement.getAttribute("transform");
-                if (transform) {
-                    // Parse transform like "translate(tx,ty) scale(sx,sy)"
-                    var translateMatch = transform.match(/translate\(([^,]+),([^)]+)\)/);
-                    var scaleMatch = transform.match(/scale\(([^,]+),([^)]+)\)/);
-
-                    if (translateMatch && scaleMatch) {
-                        var tx = parseFloat(translateMatch[1]);
-                        var ty = parseFloat(translateMatch[2]);
-                        var sx = parseFloat(scaleMatch[1]);
-                        var sy = parseFloat(scaleMatch[2]);
-
-                        // Apply inverse transformation
-                        gx = vx / sx - tx / sx;
-                        gy = vy / sy - ty / sy;
-
-                        console.log("SVG transform:", transform);
-                        console.log("Parsed - translate:", tx, ty, "scale:", sx, sy);
-                    } else {
-                        console.log("Could not parse SVG transform:", transform);
-                    }
-                }
-            }
-
-            console.log("Drop coordinates (viewBox):", vx, vy, "-> (g):", gx, gy);
+            var gx = localPoint.x;
+            var gy = localPoint.y;
+            console.log("Drop coordinates (local):", gx, gy);
 
             var data = oEvent.dataTransfer.getData("application/json");
             if (data) {

@@ -32,6 +32,11 @@
     "watch-dboperations": "cds watch --open dboperations/index.html?sap-ui-xx-viewCache=false --livereload false"
   },
   "cds": {
+     "server": {
+      "body_parser": {
+        "limit": "30mb"
+      }
+    },
     "sql": {
       "native_hana_associations": false
     },

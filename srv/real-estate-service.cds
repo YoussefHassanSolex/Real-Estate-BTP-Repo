@@ -39,4 +39,13 @@ service RealEstateService {
     ContractStartDate  : Date
   ) returns RealEstateContracts;
 
+    type SvgConversionResult {
+        svgContent : LargeString;
+    }
+
+     action ConvertMasterplanToSvg(
+        fileName   : String,
+        mimeType   : String,
+        base64Data : LargeString
+    ) returns SvgConversionResult;
 }

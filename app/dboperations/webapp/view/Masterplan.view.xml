@@ -16,19 +16,17 @@
                     id="fileUploader"
                     name="fileUploader"
                     uploadUrl=""
-                    tooltip="Upload SVG file"
+                    tooltip="Upload any masterplan file"
                     change="onFileChange"
                     typeMissmatch="onTypeMissmatch"
-                    fileType="svg"
-                    mimeType="image/svg+xml"
                     maximumFileSize="10"
                     uploadOnChange="false"
                     sendXHR="false"
                     useMultipart="false"
-                    buttonText="Upload SVG Masterplan"
+                    buttonText="Upload Masterplan File"
                     style="Emphasized"
                 />
-                <Text id="uploadStatus" text="Please upload an SVG file to view the masterplan" />
+                <Text id="uploadStatus" text="Please upload a masterplan file (SVG or any supported format) to view the plan" />
             </VBox>
         </headerContent>
         <content>
@@ -46,7 +44,6 @@
                         mode="None"
                         growing="true"
                         growingThreshold="20"
-                        height="100%"
                     >
                         <items>
                             <CustomListItem id="_IDGenCustomListItem">
@@ -83,7 +80,7 @@
                         <core:HTML id="svgContent" content="{view>/svgContent}" />
                     </VBox>
                     <Text id="_IDGenText44"
-                        text="No SVG file uploaded yet. Please upload an SVG file using the upload area above."
+                        text="No file uploaded yet. Please upload a masterplan file using the upload area above."
                         visible="{= ${view>/svgContent} === '' }"
                     />
                 </VBox>

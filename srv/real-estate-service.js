@@ -3,6 +3,89 @@ const { ref } = cds.ql;
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 
+const VECTORIZER_API_URL = 'https://api.vectorizer.ai/api/v1/vectorize';
+const HARDCODED_VECTORIZER_API_ID = 'vkr6j68pntclhbm';
+const HARDCODED_VECTORIZER_API_SECRET = '8itatc7toke8g0f0v0eaddo6p3pkk89q7km1hhlf4qm0b169nhb1';
+const HARDCODED_VECTORIZER_MODE = 'test';
+
+function _getVectorizerSettings() {
+  const vectorizerCreds = cds.env?.requires?.vectorizer?.credentials || {};
+  const apiKey =
+    process.env.VECTORIZER_API_KEY ||
+    vectorizerCreds.apiKey ||
+    vectorizerCreds.api_key ||
+    null;
+
+  const apiId =
+    process.env.VECTORIZER_API_ID ||
+    vectorizerCreds.apiId ||
+    vectorizerCreds.api_id ||
+    vectorizerCreds.username ||
+    HARDCODED_VECTORIZER_API_ID ||
+    null;
+
+  const apiSecret =
+    process.env.VECTORIZER_API_SECRET ||
+    vectorizerCreds.apiSecret ||
+    vectorizerCreds.api_secret ||
+    vectorizerCreds.password ||
+    HARDCODED_VECTORIZER_API_SECRET ||
+    null;
+
+  const mode =
+    process.env.VECTORIZER_MODE ||
+    vectorizerCreds.mode ||
+    HARDCODED_VECTORIZER_MODE;
+
+  return {
+    apiKey,
+    apiId,
+    apiSecret,
+    mode: String(mode).toLowerCase()
+  };
+}
+
+function _buildVectorizerAuthHeader(settings) {
+  const { apiKey, apiId, apiSecret } = settings;
+
+  if (apiId && apiSecret) {
+    return `Basic ${Buffer.from(`${apiId}:${apiSecret}`).toString('base64')}`;
+  }
+
+  if (apiKey) {
+    // Accept either:
+    // 1) raw "id:secret" in VECTORIZER_API_KEY, or
+    // 2) legacy single-token key style.
+    const credentialPair = apiKey.includes(':') ? apiKey : `${apiKey}:`;
+    return `Basic ${Buffer.from(credentialPair).toString('base64')}`;
+  }
+
+  return null;
+}
+
+function _buildMultipartBody(fileBuffer, fileName, mimeType, mode) {
+  const boundary = `----VectorizerBoundary${Date.now()}`;
+  const eol = '\r\n';
+  const chunks = [];
+
+  chunks.push(Buffer.from(`--${boundary}${eol}`));
+  chunks.push(Buffer.from(`Content-Disposition: form-data; name="image"; filename="${fileName || 'upload.bin'}"${eol}`));
+  chunks.push(Buffer.from(`Content-Type: ${mimeType || 'application/octet-stream'}${eol}${eol}`));
+  chunks.push(fileBuffer);
+  chunks.push(Buffer.from(eol));
+
+  chunks.push(Buffer.from(`--${boundary}${eol}`));
+  chunks.push(Buffer.from(`Content-Disposition: form-data; name="mode"${eol}${eol}`));
+  chunks.push(Buffer.from(`${mode}${eol}`));
+
+  chunks.push(Buffer.from(`--${boundary}--${eol}`));
+
+  return {
+    body: Buffer.concat(chunks),
+    boundary
+  };
+}
+
 module.exports = cds.service.impl(async function () {
 
   const
@@ -30,6 +113,55 @@ module.exports = cds.service.impl(async function () {
       RealEstateContracts,
       // CompanyCodes
     } = this.entities;
+
+ /*-------------------------CONVERT TO VECTOR-----------------------*/
+
+this.on('ConvertMasterplanToSvg', async (req) => {
+    try {
+      const { fileName, mimeType, base64Data } = req.data || {};
+      const settings = _getVectorizerSettings();
+      const authHeader = _buildVectorizerAuthHeader(settings);
+      const mode = settings.mode;
+
+      if (!authHeader) {
+        return req.reject(
+          500,
+          'Missing Vectorizer credentials. Set VECTORIZER_API_ID + VECTORIZER_API_SECRET (preferred), or VECTORIZER_API_KEY.'
+        );
+      }
+
+      if (!base64Data) {
+        return req.reject(400, 'Missing file payload.');
+      }
+
+      const safeMode = mode === 'production' ? 'production' : 'test';
+      const fileBuffer = Buffer.from(base64Data, 'base64');
+      const { body, boundary } = _buildMultipartBody(fileBuffer, fileName, mimeType, safeMode);
+      const response = await axios.post(VECTORIZER_API_URL, body, {
+        headers: {
+          Authorization: authHeader,
+          Accept: 'image/svg+xml,application/json',
+          'Content-Type': `multipart/form-data; boundary=${boundary}`
+        },
+        responseType: 'text',
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+      });
+
+      const svgContent = response.data;
+      if (typeof svgContent !== 'string' || !svgContent.includes('<svg')) {
+        return req.reject(502, 'Vectorizer.ai did not return SVG content.');
+      }
+
+      return { svgContent };
+    } catch (err) {
+      const details = err.response?.data || err.message || 'Unknown error';
+      const message = typeof details === 'string' ? details : JSON.stringify(details);
+      console.error('ConvertMasterplanToSvg failed:', message);
+      return req.reject(502, `Vectorization failed: ${message}`);
+    }
+  });
+
 
   /*-------------------------Company Codes-----------------------*/
   //Read
