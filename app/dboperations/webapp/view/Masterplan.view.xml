@@ -11,7 +11,7 @@
         title="Masterplan"
     >
         <headerContent>
-            <VBox id="_IDGenVBox8">
+            <HBox id="_IDGenVBox8" alignItems="Center" wrap="Wrap">
                 <u:FileUploader
                     id="fileUploader"
                     name="fileUploader"
@@ -26,10 +26,33 @@
                     buttonText="Upload Masterplan File"
                     style="Emphasized"
                 />
-                <Text id="uploadStatus" text="Please upload a masterplan file (SVG or any supported format) to view the plan" />
-            </VBox>
+                <HBox id="_IDGenHBox11" class="sapUiTinyMarginBegin" alignItems="Center">
+                    <Text id="_IDGenText118" text="Marker Color" class="sapUiTinyMarginEnd" />
+                    <Select
+                        id="markerColorSelect"
+                        selectedKey="{view>/markerColor}"
+                        change="onMarkerColorChange"
+                        width="12rem"
+                    >
+                        <core:Item id="_IDGenItem19" key="#FF0000" text="Red" />
+                        <core:Item id="_IDGenItem20" key="#0070F2" text="Blue" />
+                        <core:Item id="_IDGenItem21" key="#107E3E" text="Green" />
+                        <core:Item id="_IDGenItem22" key="#E9730C" text="Orange" />
+                        <core:Item id="_IDGenItem23" key="#6A1B9A" text="Violet" />
+                        <core:Item id="_IDGenItem26" key="#1F2937" text="Charcoal" />
+                    </Select>
+                </HBox>
+            </HBox>
         </headerContent>
         <content>
+            <MessageStrip
+                id="uploadStatus"
+                text="{view>/uploadStatusText}"
+                type="{view>/uploadStatusType}"
+                showIcon="true"
+                showCloseButton="false"
+                class="sapUiSmallMarginBegin sapUiSmallMarginEnd sapUiSmallMarginTop"
+            />
             <BusyIndicator
                 id="pageBusyIndicator"
                 visible="{view>/loading}"

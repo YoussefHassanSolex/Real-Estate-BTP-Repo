@@ -28,7 +28,10 @@ sap.ui.define([
                 units: [],
                 selectedUnit: null,
                 loading: true,
-                converting: false
+                converting: false,
+                markerColor: "#FF0000",
+                uploadStatusText: "Please upload a masterplan file (SVG or any supported format) to view the plan",
+                uploadStatusType: "Information"
             });
             this.getView().setModel(oModel, "view");
 
@@ -91,6 +94,12 @@ sap.ui.define([
                 });
         },
 
+        _setUploadStatus: function (sText, sType) {
+            var oViewModel = this.getView().getModel("view");
+            oViewModel.setProperty("/uploadStatusText", sText || "");
+            oViewModel.setProperty("/uploadStatusType", sType || "Information");
+        },
+
         onFileChange: function (oEvent) {
             var oFileUploader = oEvent.getSource();
             var aFiles = oFileUploader.oFileUpload.files;
@@ -102,6 +111,9 @@ sap.ui.define([
 
             var sFileName = oFile.name.toLowerCase();
             var sFileType = oFile.type || "";
+
+            // Start fresh for each uploaded file
+            this.getView().getModel("view").setProperty("/placedMarkers", []);
             
             // SVG files are loaded directly; all other files are vectorized via backend.
             var isSvg = sFileName.endsWith('.svg') || sFileType === "image/svg+xml";
@@ -115,7 +127,7 @@ sap.ui.define([
 
         _handleSvgFile: function (oFile) {
             // Update status
-            this.getView().byId("uploadStatus").setText("Loading SVG file...");
+            this._setUploadStatus("Loading SVG file...", "Information");
 
             var reader = new FileReader();
             reader.onload = function (e) {
@@ -126,21 +138,21 @@ sap.ui.define([
                 console.log(svgContent);
 
                 // Update status
-                this.getView().byId("uploadStatus").setText("SVG loaded successfully. Click on units to view details.");
+                this._setUploadStatus("SVG loaded successfully. Click on units to view details.", "Success");
 
                 // Parse SVG and attach click handlers
                 this._attachSvgClickHandlers(svgContent);
             }.bind(this);
 
             reader.onerror = function () {
-                this.getView().byId("uploadStatus").setText("Error loading SVG file.");
+                this._setUploadStatus("Error loading SVG file.", "Error");
             }.bind(this);
 
             reader.readAsText(oFile);
         },
 
         _handleVectorizerConversion: function (oFile) {
-            this.getView().byId("uploadStatus").setText("Converting file to SVG with Vectorizer.ai... This may take a moment.");
+            this._setUploadStatus("Converting file to SVG with Vectorizer.ai... This may take a moment.", "Information");
             this._setConverting(true);
 
             var reader = new FileReader();
@@ -173,11 +185,11 @@ sap.ui.define([
 
                     var svgString = oResult.svgContent.replace(/width="[^"]*" height="[^"]*"/, 'width="100%" height="100%"');
                     this.getView().getModel("view").setProperty("/svgContent", svgString);
-                    this.getView().byId("uploadStatus").setText("File converted successfully. Click on units to view details.");
+                    this._setUploadStatus("File converted successfully. Click on units to view details.", "Success");
                     this._attachSvgClickHandlers(svgString);
                 } catch (error) {
                     console.error("Error converting file to SVG:", error);
-                    this.getView().byId("uploadStatus").setText("Error converting file to SVG.");
+                    this._setUploadStatus("Error converting file to SVG.", "Error");
                     MessageBox.error("Error converting file to SVG: " + error.message);
                 } finally {
                     this._setConverting(false);
@@ -185,7 +197,7 @@ sap.ui.define([
             }.bind(this);
 
             reader.onerror = function () {
-                this.getView().byId("uploadStatus").setText("Error reading uploaded file.");
+                this._setUploadStatus("Error reading uploaded file.", "Error");
                 MessageBox.error("Error reading uploaded file.");
                 this._setConverting(false);
             }.bind(this);
@@ -303,6 +315,61 @@ sap.ui.define([
             return markerLayer;
         },
 
+        _darkenColor: function (sHexColor, ratio) {
+            if (!sHexColor || typeof sHexColor !== "string") {
+                return "#CC0000";
+            }
+
+            var sHex = sHexColor.replace("#", "");
+            if (sHex.length === 3) {
+                sHex = sHex.split("").map(function (c) {
+                    return c + c;
+                }).join("");
+            }
+
+            if (sHex.length !== 6) {
+                return "#CC0000";
+            }
+
+            var r = parseInt(sHex.substring(0, 2), 16);
+            var g = parseInt(sHex.substring(2, 4), 16);
+            var b = parseInt(sHex.substring(4, 6), 16);
+            var factor = typeof ratio === "number" ? ratio : 0.8;
+
+            r = Math.max(0, Math.min(255, Math.round(r * factor)));
+            g = Math.max(0, Math.min(255, Math.round(g * factor)));
+            b = Math.max(0, Math.min(255, Math.round(b * factor)));
+
+            var toHex = function (value) {
+                return value.toString(16).padStart(2, "0");
+            };
+
+            return "#" + toHex(r) + toHex(g) + toHex(b);
+        },
+
+        _getCurrentMarkerColor: function () {
+            return this.getView().getModel("view").getProperty("/markerColor") || "#FF0000";
+        },
+
+        onMarkerColorChange: function (oEvent) {
+            var oSelectedItem = oEvent.getParameter("selectedItem");
+            var sColor = (oSelectedItem && oSelectedItem.getKey && oSelectedItem.getKey()) || oEvent.getParameter("selectedKey");
+            if (!sColor) {
+                return;
+            }
+            this.getView().getModel("view").setProperty("/markerColor", sColor);
+
+            var svgContainer = this.getView().byId("svgContainer");
+            var oDomRef = svgContainer && svgContainer.getDomRef();
+            var svgElement = oDomRef && oDomRef.querySelector("svg");
+            if (!svgElement) {
+                return;
+            }
+
+            var gElement = svgElement.querySelector("g");
+            this._renderMarkers(svgElement, gElement);
+        },
+
 
 
         _renderMarkers: function (svgElement, gElement) {
@@ -318,11 +385,13 @@ sap.ui.define([
             console.log("Rendering", aMarkers.length, "markers");
 
             aMarkers.forEach(function (oMarker, index) {
+                var sMarkerColor = oMarker.color || this._getCurrentMarkerColor();
+                var sHoverColor = this._darkenColor(sMarkerColor, 0.8);
                 var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", oMarker.x);
                 circle.setAttribute("cy", oMarker.y);
                 circle.setAttribute("r", Math.max(oMarker.size, 8)); // Ensure minimum visible size
-                circle.setAttribute("fill", "red");
+                circle.setAttribute("fill", sMarkerColor);
                 circle.setAttribute("stroke", "black");
                 circle.setAttribute("stroke-width", "2");
                 circle.setAttribute("opacity", "1");
@@ -342,17 +411,17 @@ sap.ui.define([
 
                 // Hover effects
                 circle.addEventListener("mouseover", function () {
-                    this.setAttribute("fill", "darkred");
+                    this.setAttribute("fill", sHoverColor);
                     this.setAttribute("r", Math.max(oMarker.size + 2, 10));
                 });
                 circle.addEventListener("mouseout", function () {
-                    this.setAttribute("fill", "red");
+                    this.setAttribute("fill", sMarkerColor);
                     this.setAttribute("r", Math.max(oMarker.size, 8));
                 });
 
                 // Click for unit options
                 circle.addEventListener("click", function (event) {
-                    this._showUnitOptions(oMarker.unit, event);
+                    this._showUnitOptions(oMarker, event);
                 }.bind(this));
 
                 markerLayer.appendChild(circle);
@@ -489,7 +558,7 @@ sap.ui.define([
                     var dragImage = document.createElement('div');
                     dragImage.style.width = '10px';
                     dragImage.style.height = '10px';
-                    dragImage.style.backgroundColor = 'red';
+                    dragImage.style.backgroundColor = this._getCurrentMarkerColor();
                     dragImage.style.borderRadius = '50%';
                     dragImage.style.border = '1px solid black';
                     document.body.appendChild(dragImage);
@@ -539,6 +608,7 @@ sap.ui.define([
                     x: gx,
                     y: gy,
                     size: 5, // Small marker size relative to SVG coordinates
+                    color: this._getCurrentMarkerColor(),
                     unit: oUnit
                 });
                 this.getView().getModel("view").setProperty("/placedMarkers", aMarkers);
@@ -550,9 +620,28 @@ sap.ui.define([
             }
         },
 
-        _showUnitOptions: function (unit, event) {
+        _showUnitOptions: function (oMarkerData, event) {
             // Get the clicked marker element
             var oMarker = event.target;
+            var oUnit = oMarkerData.unit;
+            var aColorOptions = [
+                { key: "#FF0000", text: "Red" },
+                { key: "#0070F2", text: "Blue" },
+                { key: "#107E3E", text: "Green" },
+                { key: "#E9730C", text: "Orange" },
+                { key: "#6A1B9A", text: "Violet" },
+                { key: "#1F2937", text: "Charcoal" }
+            ];
+            var oColorSelect = new sap.m.Select({
+                width: "11rem",
+                selectedKey: oMarkerData.color || this._getCurrentMarkerColor()
+            });
+            aColorOptions.forEach(function (oOption) {
+                oColorSelect.addItem(new sap.ui.core.Item({
+                    key: oOption.key,
+                    text: oOption.text
+                }));
+            });
 
             var oPopover = new Popover({
                 title: "Unit Options",
@@ -565,7 +654,7 @@ sap.ui.define([
                                 icon: "sap-icon://information",
                                 text: "Details",
                                 press: function () {
-                                    this._showUnitDetails(unit);
+                                    this._showUnitDetails(oUnit);
                                     oPopover.close();
                                 }.bind(this)
                             }),
@@ -573,10 +662,46 @@ sap.ui.define([
                                 icon: "sap-icon://add-document",
                                 text: "Create Reservation",
                                 press: function () {
-                                    this._navigateToCreateReservation(unit);
+                                    this._navigateToCreateReservation(oUnit);
+                                    oPopover.close();
+                                }.bind(this)
+                            }),
+                            new sap.m.Button({
+                                icon: "sap-icon://palette",
+                                text: "Apply Color",
+                                press: function () {
+                                    var sSelectedColor = oColorSelect.getSelectedKey();
+                                    if (!sSelectedColor) {
+                                        return;
+                                    }
+
+                                    oMarkerData.color = sSelectedColor;
+
+                                    var oViewModel = this.getView().getModel("view");
+                                    var aMarkers = oViewModel.getProperty("/placedMarkers") || [];
+                                    oViewModel.setProperty("/placedMarkers", aMarkers);
+
+                                    var svgContainer = this.getView().byId("svgContainer");
+                                    var oDomRef = svgContainer && svgContainer.getDomRef();
+                                    var svgElement = oDomRef && oDomRef.querySelector("svg");
+                                    if (svgElement) {
+                                        var gElement = svgElement.querySelector("g");
+                                        this._renderMarkers(svgElement, gElement);
+                                    }
                                     oPopover.close();
                                 }.bind(this)
                             })
+                        ]
+                    }),
+                    new sap.m.HBox({
+                        class: "sapUiTinyMarginTop",
+                        alignItems: "Center",
+                        items: [
+                            new sap.m.Text({
+                                text: "Marker Color",
+                                class: "sapUiTinyMarginEnd"
+                            }),
+                            oColorSelect
                         ]
                     })
                 ]
