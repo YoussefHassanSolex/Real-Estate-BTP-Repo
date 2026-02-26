@@ -42,6 +42,21 @@
                         <core:Item id="_IDGenItem26" key="#1F2937" text="Charcoal" />
                     </Select>
                 </HBox>
+                <HBox class="sapUiTinyMarginBegin" alignItems="Center">
+                    <Text text="Reservation Partner" class="sapUiTinyMarginEnd" />
+                    <Select
+                        id="reservationPartnerSelect"
+                        selectedKey="{view>/selectedReservationPartnerId}"
+                        change="onReservationPartnerChange"
+                        items="{view>/reservationPartners}"
+                        width="18rem"
+                    >
+                        <core:Item
+                            key="{view>ID}"
+                            text="{= ${view>ID} ? ${view>customerCode} + ' - ' + ${view>customerName} : 'General (No Partner)' }"
+                        />
+                    </Select>
+                </HBox>
             </HBox>
         </headerContent>
         <content>

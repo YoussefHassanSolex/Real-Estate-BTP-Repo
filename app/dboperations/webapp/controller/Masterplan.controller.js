@@ -26,10 +26,15 @@ sap.ui.define([
             var oModel = new sap.ui.model.json.JSONModel({
                 svgContent: "",
                 units: [],
+                reservationPartners: [],
+                selectedReservationPartnerId: "",
                 selectedUnit: null,
+                placedMarkers: [],
                 loading: true,
                 converting: false,
                 markerColor: "#FF0000",
+                layoutScope: "USER",
+                currentPlanKey: "",
                 uploadStatusText: "Please upload a masterplan file (SVG or any supported format) to view the plan",
                 uploadStatusType: "Information"
             });
@@ -37,6 +42,7 @@ sap.ui.define([
 
             // Load units data
             this._loadUnits();
+            this._loadReservationPartners();
         },
 
         _onRouteMatched: function () {
@@ -44,6 +50,11 @@ sap.ui.define([
             this.getView().getModel("view").setProperty("/svgContent", "");
             this.getView().getModel("view").setProperty("/selectedUnit", null);
             this.getView().getModel("view").setProperty("/placedMarkers", []);
+            this.getView().getModel("view").setProperty("/currentPlanKey", "");
+            if (this._persistTimer) {
+                clearTimeout(this._persistTimer);
+                this._persistTimer = null;
+            }
             this._setConverting(false);
         },
 
@@ -94,6 +105,19 @@ sap.ui.define([
                 });
         },
 
+        _loadReservationPartners: function () {
+            fetch("/odata/v4/real-estate/ReservationPartners?$select=ID,customerCode,customerName")
+                .then(response => response.json())
+                .then(data => {
+                    var aPartners = Array.isArray(data && data.value) ? data.value : [];
+                    aPartners.unshift({ ID: "", customerCode: "General", customerName: "(No Partner)" });
+                    this.getView().getModel("view").setProperty("/reservationPartners", aPartners);
+                })
+                .catch(err => {
+                    console.error("Error fetching reservation partners", err);
+                });
+        },
+
         _setUploadStatus: function (sText, sType) {
             var oViewModel = this.getView().getModel("view");
             oViewModel.setProperty("/uploadStatusText", sText || "");
@@ -114,6 +138,7 @@ sap.ui.define([
 
             // Start fresh for each uploaded file
             this.getView().getModel("view").setProperty("/placedMarkers", []);
+            this.getView().getModel("view").setProperty("/currentPlanKey", this._buildPlanKey(oFile.name));
             
             // SVG files are loaded directly; all other files are vectorized via backend.
             var isSvg = sFileName.endsWith('.svg') || sFileType === "image/svg+xml";
@@ -265,8 +290,8 @@ sap.ui.define([
                 oContainerDomRef.addEventListener("dragover", this._boundOnDragOver);
                 oContainerDomRef.addEventListener("drop", this._boundOnDrop);
 
-                // Render existing markers
-                this._renderMarkers(svgElement, gElement);
+                // Load persisted markers for current plan and render
+                this._loadMarkersForCurrentPlan(svgElement, gElement);
 
             }.bind(this), 100); // Reduced timeout
         },
@@ -274,6 +299,209 @@ sap.ui.define([
         _setConverting: function (bConverting) {
             this.getView().getModel("view").setProperty("/converting", bConverting);
             this.getView().setBusy(!!bConverting);
+        },
+
+        _buildPlanKey: function (sFileName) {
+            return String(sFileName || "").trim().toLowerCase();
+        },
+
+        _getLayoutScope: function () {
+            return this.getView().getModel("view").getProperty("/layoutScope") || "USER";
+        },
+
+        _getSelectedReservationPartnerId: function () {
+            var sId = this.getView().getModel("view").getProperty("/selectedReservationPartnerId");
+            return sId ? String(sId).trim() : null;
+        },
+
+        _getReservationPartnerLabel: function (sPartnerId) {
+            var aPartners = this.getView().getModel("view").getProperty("/reservationPartners") || [];
+            var sNormalizedId = sPartnerId ? String(sPartnerId).trim() : "";
+            if (!sNormalizedId) {
+                return "General (No Partner)";
+            }
+            var oPartner = aPartners.find(function (p) {
+                return String(p.ID || "") === sNormalizedId;
+            });
+            if (!oPartner) {
+                return "Partner: " + sNormalizedId;
+            }
+            var sCode = oPartner.customerCode || "";
+            var sName = oPartner.customerName || "";
+            return (sCode && sName) ? (sCode + " - " + sName) : (sCode || sName || ("Partner: " + sNormalizedId));
+        },
+
+        _getCoordinateBounds: function (svgElement, gElement) {
+            var target = gElement || svgElement;
+            var fallback = { minX: 0, minY: 0, width: 1, height: 1 };
+            if (!target) {
+                return fallback;
+            }
+
+            try {
+                if (target.getBBox) {
+                    var b = target.getBBox();
+                    if (b && isFinite(b.width) && isFinite(b.height) && b.width > 0 && b.height > 0) {
+                        return { minX: b.x, minY: b.y, width: b.width, height: b.height };
+                    }
+                }
+            } catch (e) {
+                // Ignore and fallback below.
+            }
+
+            var vb = svgElement && svgElement.viewBox && svgElement.viewBox.baseVal;
+            if (vb && isFinite(vb.width) && isFinite(vb.height) && vb.width > 0 && vb.height > 0) {
+                return { minX: vb.x, minY: vb.y, width: vb.width, height: vb.height };
+            }
+
+            return fallback;
+        },
+
+        _toNormalizedPoint: function (x, y, oBounds) {
+            var width = oBounds && oBounds.width ? oBounds.width : 1;
+            var height = oBounds && oBounds.height ? oBounds.height : 1;
+            var minX = oBounds && isFinite(oBounds.minX) ? oBounds.minX : 0;
+            var minY = oBounds && isFinite(oBounds.minY) ? oBounds.minY : 0;
+            return {
+                xNorm: Math.max(0, Math.min(1, (x - minX) / width)),
+                yNorm: Math.max(0, Math.min(1, (y - minY) / height))
+            };
+        },
+
+        _fromNormalizedPoint: function (xNorm, yNorm, oBounds) {
+            var width = oBounds && oBounds.width ? oBounds.width : 1;
+            var height = oBounds && oBounds.height ? oBounds.height : 1;
+            var minX = oBounds && isFinite(oBounds.minX) ? oBounds.minX : 0;
+            var minY = oBounds && isFinite(oBounds.minY) ? oBounds.minY : 0;
+            return {
+                x: minX + (Number(xNorm) || 0) * width,
+                y: minY + (Number(yNorm) || 0) * height
+            };
+        },
+
+        _schedulePersistMarkers: function (svgElement, gElement) {
+            if (this._persistTimer) {
+                clearTimeout(this._persistTimer);
+            }
+            this._persistTimer = setTimeout(function () {
+                this._persistMarkersForCurrentPlan(svgElement, gElement);
+            }.bind(this), 600);
+        },
+
+        _persistMarkersForCurrentPlan: async function (svgElement, gElement) {
+            var oViewModel = this.getView().getModel("view");
+            var sPlanKey = oViewModel.getProperty("/currentPlanKey");
+            var sSelectedPartnerId = this._getSelectedReservationPartnerId();
+            if (!sPlanKey || !svgElement) {
+                return;
+            }
+
+            var oBounds = this._getCoordinateBounds(svgElement, gElement);
+            var aMarkers = oViewModel.getProperty("/placedMarkers") || [];
+            var aPayloadMarkers = aMarkers
+                .map(function (oMarker) {
+                    if (!oMarker || !oMarker.unit || !oMarker.unit.unitId) {
+                        return null;
+                    }
+                    var sMarkerPartnerId = oMarker.reservationPartnerId ? String(oMarker.reservationPartnerId).trim() : null;
+                    if ((sSelectedPartnerId || null) !== sMarkerPartnerId) {
+                        return null;
+                    }
+                    var oNorm = this._toNormalizedPoint(Number(oMarker.x) || 0, Number(oMarker.y) || 0, oBounds);
+                    return {
+                        unitId: oMarker.unit.unitId,
+                        xNorm: Number(oNorm.xNorm.toFixed(6)),
+                        yNorm: Number(oNorm.yNorm.toFixed(6)),
+                        color: oMarker.color || this._getCurrentMarkerColor(),
+                        size: Number(oMarker.size || 5),
+                        reservationPartnerId: sSelectedPartnerId
+                    };
+                }.bind(this))
+                .filter(Boolean);
+
+            try {
+                var oResponse = await fetch("/odata/v4/real-estate/SaveMyMasterplanLayout", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        planKey: sPlanKey,
+                        scope: this._getLayoutScope(),
+                        customerId: null,
+                        reservationPartnerId: this._getSelectedReservationPartnerId(),
+                        markers: aPayloadMarkers
+                    })
+                });
+
+                if (!oResponse.ok) {
+                    var oError = await oResponse.json().catch(function () { return null; });
+                    var sError = oError && oError.error && oError.error.message ? oError.error.message : "Failed to save marker layout.";
+                    throw new Error(sError);
+                }
+            } catch (err) {
+                console.error("Error saving masterplan markers:", err);
+                this._setUploadStatus("Marker save failed. You can continue working and retry by changing markers.", "Warning");
+            }
+        },
+
+        _loadMarkersForCurrentPlan: async function (svgElement, gElement) {
+            var oViewModel = this.getView().getModel("view");
+            var sPlanKey = oViewModel.getProperty("/currentPlanKey");
+            if (!sPlanKey || !svgElement) {
+                this._renderMarkers(svgElement, gElement);
+                return;
+            }
+
+            try {
+                var oResponse = await fetch("/odata/v4/real-estate/GetMyMasterplanLayout", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        planKey: sPlanKey,
+                        scope: this._getLayoutScope(),
+                        customerId: null,
+                        reservationPartnerId: this._getSelectedReservationPartnerId()
+                    })
+                });
+
+                if (!oResponse.ok) {
+                    throw new Error("Failed to load saved markers.");
+                }
+
+                var oData = await oResponse.json();
+                var aSaved = Array.isArray(oData && oData.value) ? oData.value : [];
+                var aUnits = oViewModel.getProperty("/units") || [];
+                var oBounds = this._getCoordinateBounds(svgElement, gElement);
+
+                var aMarkers = aSaved.map(function (oSaved) {
+                    var oPos = this._fromNormalizedPoint(oSaved.xNorm, oSaved.yNorm, oBounds);
+                    var oUnit = aUnits.find(function (u) {
+                        return u.unitId === oSaved.unitId;
+                    }) || { unitId: oSaved.unitId };
+                    return {
+                        x: oPos.x,
+                        y: oPos.y,
+                        size: Number(oSaved.size || 5),
+                        color: oSaved.color || this._getCurrentMarkerColor(),
+                        reservationPartnerId: oSaved.reservationPartnerId || null,
+                        unit: oUnit
+                    };
+                }.bind(this));
+
+                oViewModel.setProperty("/placedMarkers", aMarkers);
+                if (aMarkers.length > 0) {
+                    this._setUploadStatus("Loaded " + aMarkers.length + " saved marker(s).", "Success");
+                }
+            } catch (err) {
+                console.error("Error loading masterplan markers:", err);
+            } finally {
+                this._renderMarkers(svgElement, gElement);
+            }
         },
 
         _getPointInElementCoordinates: function (clientX, clientY, svgElement, targetElement) {
@@ -370,6 +598,25 @@ sap.ui.define([
             this._renderMarkers(svgElement, gElement);
         },
 
+        onReservationPartnerChange: function () {
+            var oViewModel = this.getView().getModel("view");
+            var sPartnerId = this._getSelectedReservationPartnerId();
+            var aPartners = oViewModel.getProperty("/reservationPartners") || [];
+            var oPartner = aPartners.find(function (p) { return p.ID === sPartnerId; });
+            var sPartnerText = oPartner ? ((oPartner.customerCode || "") + " - " + (oPartner.customerName || "")).trim() : "General";
+
+            var svgContainer = this.getView().byId("svgContainer");
+            var oDomRef = svgContainer && svgContainer.getDomRef();
+            var svgElement = oDomRef && oDomRef.querySelector("svg");
+            if (!svgElement) {
+                return;
+            }
+
+            var gElement = svgElement.querySelector("g");
+            this._loadMarkersForCurrentPlan(svgElement, gElement);
+            this._setUploadStatus("Loaded marker layout for: " + sPartnerText, "Information");
+        },
+
 
 
         _renderMarkers: function (svgElement, gElement) {
@@ -385,8 +632,10 @@ sap.ui.define([
             console.log("Rendering", aMarkers.length, "markers");
 
             aMarkers.forEach(function (oMarker, index) {
+                var sUnitId = oMarker && oMarker.unit ? oMarker.unit.unitId : "Unknown";
                 var sMarkerColor = oMarker.color || this._getCurrentMarkerColor();
                 var sHoverColor = this._darkenColor(sMarkerColor, 0.8);
+                var sPartnerLabel = this._getReservationPartnerLabel(oMarker.reservationPartnerId);
                 var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", oMarker.x);
                 circle.setAttribute("cy", oMarker.y);
@@ -404,10 +653,10 @@ sap.ui.define([
 
                 // Add unit ID as title for debugging
                 var title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-                title.textContent = "Unit: " + oMarker.unit.unitId + " (x:" + oMarker.x.toFixed(2) + ", y:" + oMarker.y.toFixed(2) + ")";
+                title.textContent = "Unit: " + sUnitId + " | Partner: " + sPartnerLabel + " (x:" + oMarker.x.toFixed(2) + ", y:" + oMarker.y.toFixed(2) + ")";
                 circle.appendChild(title);
 
-                console.log("Marker", index, "- Unit:", oMarker.unit.unitId, "Position:", oMarker.x, oMarker.y, "Size:", oMarker.size);
+                console.log("Marker", index, "- Unit:", sUnitId, "Position:", oMarker.x, oMarker.y, "Size:", oMarker.size);
 
                 // Hover effects
                 circle.addEventListener("mouseover", function () {
@@ -609,12 +858,14 @@ sap.ui.define([
                     y: gy,
                     size: 5, // Small marker size relative to SVG coordinates
                     color: this._getCurrentMarkerColor(),
+                    reservationPartnerId: this._getSelectedReservationPartnerId(),
                     unit: oUnit
                 });
                 this.getView().getModel("view").setProperty("/placedMarkers", aMarkers);
                 console.log("Total markers:", aMarkers.length);
                 var gElement = svgElement.querySelector("g");
                 this._renderMarkers(svgElement, gElement);
+                this._schedulePersistMarkers(svgElement, gElement);
             } else {
                 console.log("No data in dataTransfer");
             }
@@ -624,6 +875,7 @@ sap.ui.define([
             // Get the clicked marker element
             var oMarker = event.target;
             var oUnit = oMarkerData.unit;
+            var sPartnerLabel = this._getReservationPartnerLabel(oMarkerData.reservationPartnerId);
             var aColorOptions = [
                 { key: "#FF0000", text: "Red" },
                 { key: "#0070F2", text: "Blue" },
@@ -647,6 +899,10 @@ sap.ui.define([
                 title: "Unit Options",
                 placement: "Bottom",
                 content: [
+                    new sap.m.ObjectStatus({
+                        title: "Reservation Partner",
+                        text: sPartnerLabel
+                    }),
                     new sap.m.HBox({
                         wrap: "Wrap",
                         items: [
@@ -670,6 +926,13 @@ sap.ui.define([
                                 icon: "sap-icon://palette",
                                 text: "Apply Color",
                                 press: function () {
+                                    var sSelectedPartnerId = this._getSelectedReservationPartnerId();
+                                    var sMarkerPartnerId = oMarkerData.reservationPartnerId ? String(oMarkerData.reservationPartnerId).trim() : null;
+                                    if ((sSelectedPartnerId || null) !== sMarkerPartnerId) {
+                                        MessageBox.warning("You can only edit markers for the selected reservation partner.");
+                                        return;
+                                    }
+
                                     var sSelectedColor = oColorSelect.getSelectedKey();
                                     if (!sSelectedColor) {
                                         return;
@@ -687,6 +950,7 @@ sap.ui.define([
                                     if (svgElement) {
                                         var gElement = svgElement.querySelector("g");
                                         this._renderMarkers(svgElement, gElement);
+                                        this._schedulePersistMarkers(svgElement, gElement);
                                     }
                                     oPopover.close();
                                 }.bind(this)

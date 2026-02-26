@@ -376,3 +376,26 @@ entity PaymentPlanSimulationSchedules : managed {
         amount        : Decimal(15, 2);
         maintenance   : Decimal(15, 2);
 }
+
+
+entity MasterplanLayouts : managed {
+    key ID        : UUID;
+        planKey   : String(255);
+        scope     : String(20);
+        ownerUser : String(255);
+        customerId: String(36);
+        reservationPartner : Association to ReservationPartners;
+
+        markers   : Composition of many MasterplanMarkers
+                        on markers.layout = $self;
+}
+
+entity MasterplanMarkers : managed {
+    key ID    : UUID;
+        layout: Association to MasterplanLayouts;
+        unit  : Association to Units;
+        xNorm : Decimal(9, 6);
+        yNorm : Decimal(9, 6);
+        color : String(10);
+        size  : Decimal(9, 3);
+}

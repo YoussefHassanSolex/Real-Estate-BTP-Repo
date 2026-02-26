@@ -86,7 +86,26 @@ function _buildMultipartBody(fileBuffer, fileName, mimeType, mode) {
   };
 }
 
+function _normalizeLayoutScope(scope) {
+  const normalized = String(scope || 'USER').toUpperCase();
+  if (normalized === 'PUBLIC' || normalized === 'CUSTOMER' || normalized === 'USER') {
+    return normalized;
+  }
+  console.log('normalized',normalized);
+  
+  return 'USER';
+}
+
+function _markerCoordinateKey(xNorm, yNorm) {
+  return `${Number(xNorm).toFixed(6)}|${Number(yNorm).toFixed(6)}`;
+}
+
 module.exports = cds.service.impl(async function () {
+  const {
+    MasterplanLayouts: DbMasterplanLayouts,
+    MasterplanMarkers: DbMasterplanMarkers,
+    ReservationPartners: DbReservationPartners
+  } = cds.entities('real.estate');
 
   const
     {
@@ -104,6 +123,8 @@ module.exports = cds.service.impl(async function () {
       ReservationPartners,
       ReservationConditions,
       ReservationPayments,
+      MasterplanLayouts,
+      MasterplanMarkers,
       ConditionTypes,
       BasePrices,
       CalculationMethods,
@@ -160,6 +181,170 @@ this.on('ConvertMasterplanToSvg', async (req) => {
       console.error('ConvertMasterplanToSvg failed:', message);
       return req.reject(502, `Vectorization failed: ${message}`);
     }
+  });
+
+  this.on('SaveMyMasterplanLayout', async (req) => {
+    const tx = cds.transaction(req);
+    const payload = req.data || {};
+    const planKey = String(payload.planKey || '').trim();
+    const scope = _normalizeLayoutScope(payload.scope);
+    const customerId = payload.customerId ? String(payload.customerId).trim() : null;
+    const reservationPartnerId = payload.reservationPartnerId ? String(payload.reservationPartnerId).trim() : null;
+    const markers = Array.isArray(payload.markers) ? payload.markers : [];
+    const ownerUser = req.user?.id || 'anonymous';
+
+    if (!planKey) {
+      return req.reject(400, 'planKey is required.');
+    }
+    if (scope === 'CUSTOMER' && !customerId) {
+      return req.reject(400, 'customerId is required for CUSTOMER scope.');
+    }
+    if (reservationPartnerId) {
+      const partnerExists = await tx.run(
+        SELECT.one.from(DbReservationPartners).where({ ID: reservationPartnerId })
+      );
+      if (!partnerExists) {
+        return req.reject(400, 'reservationPartnerId is invalid.');
+      }
+    }
+
+    const contextWhere = { planKey, scope };
+    if (scope === 'USER') {
+      contextWhere.ownerUser = ownerUser;
+    } else if (scope === 'CUSTOMER') {
+      contextWhere.customerId = customerId;
+    }
+    const where = { ...contextWhere, reservationPartner_ID: reservationPartnerId };
+
+    let layout = await tx.run(SELECT.one.from(DbMasterplanLayouts).where(where));
+    if (!layout) {
+      const newId = uuidv4();
+      const entry = {
+        ID: newId,
+        planKey,
+        scope,
+        ownerUser: scope === 'USER' ? ownerUser : null,
+        customerId: scope === 'CUSTOMER' ? customerId : null,
+        reservationPartner_ID: reservationPartnerId
+      };
+      await tx.run(INSERT.into(DbMasterplanLayouts).entries(entry));
+      layout = { ID: newId };
+    }
+
+    await tx.run(DELETE.from(DbMasterplanMarkers).where({ layout_ID: layout.ID }));
+
+    if (markers.length > 0) {
+      const markerEntries = markers.map((m) => ({
+        ID: uuidv4(),
+        layout_ID: layout.ID,
+        unit_unitId: String(m.unitId || '').trim(),
+        xNorm: Number(Number(m.xNorm || 0).toFixed(6)),
+        yNorm: Number(Number(m.yNorm || 0).toFixed(6)),
+        color: m.color ? String(m.color).trim() : '#FF0000',
+        size: Number(m.size || 5)
+      })).filter((m) => m.unit_unitId);
+
+      const payloadCoordinates = new Set();
+      for (const marker of markerEntries) {
+        const key = _markerCoordinateKey(marker.xNorm, marker.yNorm);
+        if (payloadCoordinates.has(key)) {
+          return req.reject(400, `Duplicate marker coordinates in payload: ${key}`);
+        }
+        payloadCoordinates.add(key);
+      }
+
+      const otherLayouts = await tx.run(
+        SELECT.from(DbMasterplanLayouts)
+          .columns('ID')
+          .where({ ...contextWhere, ID: { '!=': layout.ID } })
+      );
+      const otherLayoutIds = otherLayouts.map((l) => l.ID);
+      if (otherLayoutIds.length > 0 && markerEntries.length > 0) {
+        const otherMarkers = await tx.run(
+          SELECT.from(DbMasterplanMarkers)
+            .columns('xNorm', 'yNorm')
+            .where({ layout_ID: { in: otherLayoutIds } })
+        );
+        const occupiedCoordinates = new Set(
+          otherMarkers.map((m) => _markerCoordinateKey(m.xNorm, m.yNorm))
+        );
+        const conflictingMarker = markerEntries.find((m) =>
+          occupiedCoordinates.has(_markerCoordinateKey(m.xNorm, m.yNorm))
+        );
+        if (conflictingMarker) {
+          return req.reject(
+            409,
+            `Marker coordinate already used by another partner: ${_markerCoordinateKey(conflictingMarker.xNorm, conflictingMarker.yNorm)}`
+          );
+        }
+      }
+
+      if (markerEntries.length > 0) {
+        await tx.run(INSERT.into(DbMasterplanMarkers).entries(markerEntries));
+      }
+    }
+
+    return layout.ID;
+  });
+
+  this.on('GetMyMasterplanLayout', async (req) => {
+    const tx = cds.transaction(req);
+    const payload = req.data || {};
+    const planKey = String(payload.planKey || '').trim();
+    const scope = _normalizeLayoutScope(payload.scope);
+    const customerId = payload.customerId ? String(payload.customerId).trim() : null;
+    const reservationPartnerId = payload.reservationPartnerId ? String(payload.reservationPartnerId).trim() : null;
+    const ownerUser = req.user?.id || 'anonymous';
+
+    if (!planKey) {
+      return req.reject(400, 'planKey is required.');
+    }
+    if (scope === 'CUSTOMER' && !customerId) {
+      return req.reject(400, 'customerId is required for CUSTOMER scope.');
+    }
+    if (reservationPartnerId) {
+      const partnerExists = await tx.run(
+        SELECT.one.from(DbReservationPartners).where({ ID: reservationPartnerId })
+      );
+      if (!partnerExists) {
+        return req.reject(400, 'reservationPartnerId is invalid.');
+      }
+    }
+
+    const contextWhere = { planKey, scope };
+    if (scope === 'USER') {
+      contextWhere.ownerUser = ownerUser;
+    } else if (scope === 'CUSTOMER') {
+      contextWhere.customerId = customerId;
+    }
+
+    const layouts = await tx.run(
+      SELECT.from(DbMasterplanLayouts)
+        .columns('ID', 'reservationPartner_ID')
+        .where(contextWhere)
+    );
+    if (!layouts || layouts.length === 0) {
+      return [];
+    }
+    const layoutIds = layouts.map((l) => l.ID);
+    const partnerByLayout = new Map(
+      layouts.map((l) => [l.ID, l.reservationPartner_ID || null])
+    );
+
+    const rows = await tx.run(
+      SELECT.from(DbMasterplanMarkers)
+        .columns('layout_ID', 'unit_unitId', 'xNorm', 'yNorm', 'color', 'size')
+        .where({ layout_ID: { in: layoutIds } })
+    );
+
+    return rows.map((row) => ({
+      unitId: row.unit_unitId,
+      xNorm: Number(row.xNorm || 0),
+      yNorm: Number(row.yNorm || 0),
+      color: row.color || '#FF0000',
+      size: Number(row.size || 5),
+      reservationPartnerId: partnerByLayout.get(row.layout_ID)
+    }));
   });
 
 

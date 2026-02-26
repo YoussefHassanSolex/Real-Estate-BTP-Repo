@@ -21,6 +21,8 @@ service RealEstateService {
     entity ReservationPartners            as projection on my.ReservationPartners;
     entity ReservationConditions          as projection on my.ReservationConditions;
     entity ReservationPayments            as projection on my.ReservationPayments;
+    entity MasterplanLayouts              as projection on my.MasterplanLayouts;
+    entity MasterplanMarkers              as projection on my.MasterplanMarkers;
     entity PaymentPlanSimulations         as projection on my.PaymentPlanSimulations;
     entity PaymentPlanSimulationSchedules as projection on my.PaymentPlanSimulationSchedules;
 
@@ -43,9 +45,33 @@ service RealEstateService {
         svgContent : LargeString;
     }
 
+    type MasterplanMarkerInput {
+        unitId : String(8);
+        xNorm  : Decimal(9, 6);
+        yNorm  : Decimal(9, 6);
+        color  : String(10);
+        size   : Decimal(9, 3);
+        reservationPartnerId : UUID;
+    }
+
      action ConvertMasterplanToSvg(
         fileName   : String,
         mimeType   : String,
         base64Data : LargeString
     ) returns SvgConversionResult;
+
+    action SaveMyMasterplanLayout(
+        planKey    : String(255),
+        scope      : String(20),
+        customerId : String(36),
+        reservationPartnerId : UUID,
+        markers    : many MasterplanMarkerInput
+    ) returns UUID;
+
+    action GetMyMasterplanLayout(
+        planKey    : String(255),
+        scope      : String(20),
+        customerId : String(36),
+        reservationPartnerId : UUID
+    ) returns many MasterplanMarkerInput;
 }
