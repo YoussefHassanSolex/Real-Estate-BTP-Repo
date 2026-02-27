@@ -100,9 +100,15 @@ function _markerCoordinateKey(xNorm, yNorm) {
   return `${Number(xNorm).toFixed(6)}|${Number(yNorm).toFixed(6)}`;
 }
 
+function _readRowField(row, fieldName) {
+  if (!row || !fieldName) return undefined;
+  return row[fieldName] ?? row[String(fieldName).toUpperCase()];
+}
+
 module.exports = cds.service.impl(async function () {
   const {
     MasterplanLayouts: DbMasterplanLayouts,
+    MasterplanVectors: DbMasterplanVectors,
     MasterplanMarkers: DbMasterplanMarkers,
     ReservationPartners: DbReservationPartners
   } = cds.entities('real.estate');
@@ -124,6 +130,7 @@ module.exports = cds.service.impl(async function () {
       ReservationConditions,
       ReservationPayments,
       MasterplanLayouts,
+      MasterplanVectors,
       MasterplanMarkers,
       ConditionTypes,
       BasePrices,
@@ -345,6 +352,135 @@ this.on('ConvertMasterplanToSvg', async (req) => {
       size: Number(row.size || 5),
       reservationPartnerId: partnerByLayout.get(row.layout_ID)
     }));
+  });
+
+  this.on('SaveMyMasterplanVector', async (req) => {
+    const tx = cds.transaction(req);
+    const payload = req.data || {};
+    const planKey = String(payload.planKey || '').trim();
+    const fileName = String(payload.fileName || '').trim() || planKey;
+    const svgContent = String(payload.svgContent || '').trim();
+    const scope = _normalizeLayoutScope(payload.scope);
+    const customerId = payload.customerId ? String(payload.customerId).trim() : null;
+    const ownerUser = req.user?.id || 'anonymous';
+
+    if (!planKey) {
+      return req.reject(400, 'planKey is required.');
+    }
+    if (!svgContent || !svgContent.includes('<svg')) {
+      return req.reject(400, 'svgContent must be valid SVG content.');
+    }
+    if (scope === 'CUSTOMER' && !customerId) {
+      return req.reject(400, 'customerId is required for CUSTOMER scope.');
+    }
+
+    const where = { planKey, scope };
+    if (scope === 'USER') {
+      where.ownerUser = ownerUser;
+    } else if (scope === 'CUSTOMER') {
+      where.customerId = customerId;
+    }
+
+    const existing = await tx.run(SELECT.one.from(DbMasterplanVectors).where(where));
+    if (existing) {
+      await tx.run(
+        UPDATE(DbMasterplanVectors)
+          .set({ fileName, svgContent })
+          .where({ ID: existing.ID })
+      );
+      return existing.ID;
+    }
+
+    const newId = uuidv4();
+    await tx.run(
+      INSERT.into(DbMasterplanVectors).entries({
+        ID: newId,
+        planKey,
+        fileName,
+        scope,
+        ownerUser: scope === 'USER' ? ownerUser : null,
+        customerId: scope === 'CUSTOMER' ? customerId : null,
+        svgContent
+      })
+    );
+
+    return newId;
+  });
+
+  this.on('ListMyMasterplanVectors', async (req) => {
+    const tx = cds.transaction(req);
+    const payload = req.data || {};
+    const scope = _normalizeLayoutScope(payload.scope);
+    const customerId = payload.customerId ? String(payload.customerId).trim() : null;
+    const ownerUser = req.user?.id || 'anonymous';
+
+    if (scope === 'CUSTOMER' && !customerId) {
+      return req.reject(400, 'customerId is required for CUSTOMER scope.');
+    }
+
+    const where = { scope };
+    if (scope === 'USER') {
+      where.ownerUser = ownerUser;
+    } else if (scope === 'CUSTOMER') {
+      where.customerId = customerId;
+    }
+
+    const rows = await tx.run(
+      SELECT.from(DbMasterplanVectors)
+        .columns('planKey', 'fileName', 'modifiedAt')
+        .where(where)
+    );
+
+    return (rows || [])
+      .sort((a, b) => {
+        const aModified = _readRowField(a, 'modifiedAt') || 0;
+        const bModified = _readRowField(b, 'modifiedAt') || 0;
+        return new Date(bModified) - new Date(aModified);
+      })
+      .map((row) => ({
+        planKey: _readRowField(row, 'planKey'),
+        fileName: _readRowField(row, 'fileName') || _readRowField(row, 'planKey')
+      }));
+  });
+
+  this.on('GetMyMasterplanVector', async (req) => {
+    const tx = cds.transaction(req);
+    const payload = req.data || {};
+    const planKey = String(payload.planKey || '').trim();
+    const scope = _normalizeLayoutScope(payload.scope);
+    const customerId = payload.customerId ? String(payload.customerId).trim() : null;
+    const ownerUser = req.user?.id || 'anonymous';
+
+    if (!planKey) {
+      return req.reject(400, 'planKey is required.');
+    }
+    if (scope === 'CUSTOMER' && !customerId) {
+      return req.reject(400, 'customerId is required for CUSTOMER scope.');
+    }
+
+    const where = { planKey, scope };
+    if (scope === 'USER') {
+      where.ownerUser = ownerUser;
+    } else if (scope === 'CUSTOMER') {
+      where.customerId = customerId;
+    }
+
+    const row = await tx.run(
+      SELECT.one.from(DbMasterplanVectors).columns('planKey', 'fileName', 'svgContent').where(where)
+    );
+    if (!row) {
+      return req.reject(404, 'Saved vector not found.');
+    }
+
+    const planKeyOut = _readRowField(row, 'planKey');
+    const fileNameOut = _readRowField(row, 'fileName');
+    const svgContentOut = _readRowField(row, 'svgContent');
+
+    return {
+      planKey: planKeyOut,
+      fileName: fileNameOut || planKeyOut,
+      svgContent: svgContentOut
+    };
   });
 
 

@@ -26,6 +26,21 @@
                     buttonText="Upload Masterplan File"
                     style="Emphasized"
                 />
+                <HBox id="_IDGenHBox12" class="sapUiTinyMarginBegin" alignItems="Center">
+                    <Text id="_IDGenText230" text="Saved Vectors" class="sapUiTinyMarginEnd" />
+                    <Select
+                        id="savedVectorsSelect"
+                        selectedKey="{view>/selectedSavedVectorKey}"
+                        change="onSavedVectorChange"
+                        items="{view>/savedVectors}"
+                        width="20rem"
+                    >
+                        <core:Item id="_IDGenItem27"
+                            key="{view>planKey}"
+                            text="{view>fileName}"
+                        />
+                    </Select>
+                </HBox>
                 <HBox id="_IDGenHBox11" class="sapUiTinyMarginBegin" alignItems="Center">
                     <Text id="_IDGenText118" text="Marker Color" class="sapUiTinyMarginEnd" />
                     <Select
@@ -42,8 +57,8 @@
                         <core:Item id="_IDGenItem26" key="#1F2937" text="Charcoal" />
                     </Select>
                 </HBox>
-                <HBox class="sapUiTinyMarginBegin" alignItems="Center">
-                    <Text text="Reservation Partner" class="sapUiTinyMarginEnd" />
+                <HBox id="_IDGenHBox13" class="sapUiTinyMarginBegin" alignItems="Center">
+                    <Text id="_IDGenText231" text="Reservation Partner" class="sapUiTinyMarginEnd" />
                     <Select
                         id="reservationPartnerSelect"
                         selectedKey="{view>/selectedReservationPartnerId}"
@@ -51,7 +66,7 @@
                         items="{view>/reservationPartners}"
                         width="18rem"
                     >
-                        <core:Item
+                        <core:Item id="_IDGenItem28"
                             key="{view>ID}"
                             text="{= ${view>ID} ? ${view>customerCode} + ' - ' + ${view>customerName} : 'General (No Partner)' }"
                         />

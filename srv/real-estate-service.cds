@@ -22,6 +22,7 @@ service RealEstateService {
     entity ReservationConditions          as projection on my.ReservationConditions;
     entity ReservationPayments            as projection on my.ReservationPayments;
     entity MasterplanLayouts              as projection on my.MasterplanLayouts;
+    entity MasterplanVectors              as projection on my.MasterplanVectors;
     entity MasterplanMarkers              as projection on my.MasterplanMarkers;
     entity PaymentPlanSimulations         as projection on my.PaymentPlanSimulations;
     entity PaymentPlanSimulationSchedules as projection on my.PaymentPlanSimulationSchedules;
@@ -42,6 +43,17 @@ service RealEstateService {
   ) returns RealEstateContracts;
 
     type SvgConversionResult {
+        svgContent : LargeString;
+    }
+
+    type MasterplanVectorHeader {
+        planKey  : String(255);
+        fileName : String(255);
+    }
+
+    type MasterplanVectorResult {
+        planKey    : String(255);
+        fileName   : String(255);
         svgContent : LargeString;
     }
 
@@ -74,4 +86,23 @@ service RealEstateService {
         customerId : String(36),
         reservationPartnerId : UUID
     ) returns many MasterplanMarkerInput;
+
+    action SaveMyMasterplanVector(
+        planKey    : String(255),
+        fileName   : String(255),
+        svgContent : LargeString,
+        scope      : String(20),
+        customerId : String(36)
+    ) returns UUID;
+
+    action ListMyMasterplanVectors(
+        scope      : String(20),
+        customerId : String(36)
+    ) returns many MasterplanVectorHeader;
+
+    action GetMyMasterplanVector(
+        planKey    : String(255),
+        scope      : String(20),
+        customerId : String(36)
+    ) returns MasterplanVectorResult;
 }

@@ -399,3 +399,12 @@ entity MasterplanMarkers : managed {
         color : String(10);
         size  : Decimal(9, 3);
 }
+entity MasterplanVectors : managed {
+    key ID        : UUID;
+        planKey   : String(255);
+        fileName  : String(255);
+        scope     : String(20);
+        ownerUser : String(255);
+        customerId: String(36);
+        svgContent: LargeString;
+}

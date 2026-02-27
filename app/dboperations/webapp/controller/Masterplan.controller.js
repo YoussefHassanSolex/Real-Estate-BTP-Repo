@@ -15,6 +15,7 @@ sap.ui.define([
     Controller, MessageBox, Dialog, Button, Text, JSONModel, Title, SimpleForm, Table, Column, ColumnListItem, Popover
 ) {
     "use strict";
+    var SAVED_VECTOR_STORAGE_KEY = "masterplan.selectedSavedVectorKey";
 
     return Controller.extend("dboperations.controller.Masterplan", {
         onInit: function () {
@@ -25,6 +26,8 @@ sap.ui.define([
 
             var oModel = new sap.ui.model.json.JSONModel({
                 svgContent: "",
+                savedVectors: [],
+                selectedSavedVectorKey: "",
                 units: [],
                 reservationPartners: [],
                 selectedReservationPartnerId: "",
@@ -38,11 +41,14 @@ sap.ui.define([
                 uploadStatusText: "Please upload a masterplan file (SVG or any supported format) to view the plan",
                 uploadStatusType: "Information"
             });
+            var sPersistedKey = window.localStorage.getItem(SAVED_VECTOR_STORAGE_KEY) || "";
+            oModel.setProperty("/selectedSavedVectorKey", sPersistedKey);
             this.getView().setModel(oModel, "view");
 
             // Load units data
             this._loadUnits();
             this._loadReservationPartners();
+            this._loadSavedVectors({ autoLoadSelected: true });
         },
 
         _onRouteMatched: function () {
@@ -51,11 +57,13 @@ sap.ui.define([
             this.getView().getModel("view").setProperty("/selectedUnit", null);
             this.getView().getModel("view").setProperty("/placedMarkers", []);
             this.getView().getModel("view").setProperty("/currentPlanKey", "");
+            this.getView().getModel("view").setProperty("/selectedSavedVectorKey", window.localStorage.getItem(SAVED_VECTOR_STORAGE_KEY) || "");
             if (this._persistTimer) {
                 clearTimeout(this._persistTimer);
                 this._persistTimer = null;
             }
             this._setConverting(false);
+            this._loadSavedVectors({ autoLoadSelected: true });
         },
 
         _loadUnits: function () {
@@ -124,6 +132,131 @@ sap.ui.define([
             oViewModel.setProperty("/uploadStatusType", sType || "Information");
         },
 
+        _loadSavedVectors: async function (mOptions) {
+            mOptions = mOptions || {};
+            try {
+                var oResponse = await fetch("/odata/v4/real-estate/ListMyMasterplanVectors", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        scope: this._getLayoutScope(),
+                        customerId: null
+                    })
+                });
+                if (!oResponse.ok) {
+                    throw new Error("Failed to load saved vectors.");
+                }
+
+                var oResult = await oResponse.json();
+                var aVectors = Array.isArray(oResult && oResult.value) ? oResult.value : [];
+                var aItems = [{ planKey: "", fileName: "Please select a vector" }].concat(aVectors);
+                var oViewModel = this.getView().getModel("view");
+                var sSelected = oViewModel.getProperty("/selectedSavedVectorKey") || "";
+                var bExists = aItems.some(function (v) { return v.planKey === sSelected; });
+                oViewModel.setProperty("/savedVectors", aItems);
+                if (!bExists) {
+                    oViewModel.setProperty("/selectedSavedVectorKey", "");
+                    window.localStorage.setItem(SAVED_VECTOR_STORAGE_KEY, "");
+                    return;
+                }
+
+                if (mOptions.autoLoadSelected && sSelected) {
+                    await this._loadSavedVectorByKey(sSelected, {
+                        persistSelection: false
+                    });
+                }
+            } catch (error) {
+                console.error("Error loading saved vectors:", error);
+            }
+        },
+
+        _loadSavedVectorByKey: async function (sPlanKey, mOptions) {
+            mOptions = mOptions || {};
+            var bPersistSelection = mOptions.persistSelection !== false;
+            if (!sPlanKey) {
+                return;
+            }
+
+            if (bPersistSelection) {
+                window.localStorage.setItem(SAVED_VECTOR_STORAGE_KEY, sPlanKey);
+            }
+            this._setUploadStatus("Loading saved vector...", "Information");
+            this._setConverting(true);
+            try {
+                var oResponse = await fetch("/odata/v4/real-estate/GetMyMasterplanVector", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        planKey: sPlanKey,
+                        scope: this._getLayoutScope(),
+                        customerId: null
+                    })
+                });
+                if (!oResponse.ok) {
+                    throw new Error("Failed to load selected vector.");
+                }
+
+                var oRaw = await oResponse.json();
+                var oResult = (oRaw && oRaw.value && typeof oRaw.value === "object") ? oRaw.value : oRaw;
+                if (!oResult || !oResult.svgContent) {
+                    throw new Error("Selected vector has no SVG content.");
+                }
+
+                var svgString = oResult.svgContent.replace(/width="[^"]*" height="[^"]*"/, 'width="100%" height="100%"');
+                var oViewModel = this.getView().getModel("view");
+                oViewModel.setProperty("/svgContent", svgString);
+                oViewModel.setProperty("/currentPlanKey", sPlanKey);
+                oViewModel.setProperty("/selectedSavedVectorKey", sPlanKey);
+                oViewModel.setProperty("/placedMarkers", []);
+                this._setUploadStatus("Loaded saved vector: " + (oResult.fileName || sPlanKey), "Success");
+                this._attachSvgClickHandlers(svgString);
+            } catch (error) {
+                console.error("Error loading selected vector:", error);
+                this._setUploadStatus("Error loading selected saved vector.", "Error");
+                MessageBox.error("Error loading selected saved vector: " + error.message);
+            } finally {
+                this._setConverting(false);
+            }
+        },
+
+        _saveCurrentVector: async function (sPlanKey, sFileName, sSvgContent) {
+            if (!sPlanKey || !sSvgContent) {
+                return;
+            }
+            try {
+                var oResponse = await fetch("/odata/v4/real-estate/SaveMyMasterplanVector", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        planKey: sPlanKey,
+                        fileName: sFileName || sPlanKey,
+                        svgContent: sSvgContent,
+                        scope: this._getLayoutScope(),
+                        customerId: null
+                    })
+                });
+
+                if (!oResponse.ok) {
+                    throw new Error("Failed to save vector.");
+                }
+
+                await this._loadSavedVectors();
+                this.getView().getModel("view").setProperty("/selectedSavedVectorKey", sPlanKey);
+                window.localStorage.setItem(SAVED_VECTOR_STORAGE_KEY, sPlanKey);
+            } catch (error) {
+                console.error("Error saving vector:", error);
+            }
+        },
+
         onFileChange: function (oEvent) {
             var oFileUploader = oEvent.getSource();
             var aFiles = oFileUploader.oFileUpload.files;
@@ -139,6 +272,8 @@ sap.ui.define([
             // Start fresh for each uploaded file
             this.getView().getModel("view").setProperty("/placedMarkers", []);
             this.getView().getModel("view").setProperty("/currentPlanKey", this._buildPlanKey(oFile.name));
+            this.getView().getModel("view").setProperty("/selectedSavedVectorKey", this._buildPlanKey(oFile.name));
+            window.localStorage.setItem(SAVED_VECTOR_STORAGE_KEY, this._buildPlanKey(oFile.name));
             
             // SVG files are loaded directly; all other files are vectorized via backend.
             var isSvg = sFileName.endsWith('.svg') || sFileType === "image/svg+xml";
@@ -155,7 +290,7 @@ sap.ui.define([
             this._setUploadStatus("Loading SVG file...", "Information");
 
             var reader = new FileReader();
-            reader.onload = function (e) {
+            reader.onload = async function (e) {
                 var svgContent = e.target.result;
                 // Ensure SVG fills the container exactly for accurate coordinate transformation
                 svgContent = svgContent.replace(/width="[^"]*" height="[^"]*"/, 'width="100%" height="100%"');
@@ -167,6 +302,7 @@ sap.ui.define([
 
                 // Parse SVG and attach click handlers
                 this._attachSvgClickHandlers(svgContent);
+                await this._saveCurrentVector(this._buildPlanKey(oFile.name), oFile.name, svgContent);
             }.bind(this);
 
             reader.onerror = function () {
@@ -212,6 +348,7 @@ sap.ui.define([
                     this.getView().getModel("view").setProperty("/svgContent", svgString);
                     this._setUploadStatus("File converted successfully. Click on units to view details.", "Success");
                     this._attachSvgClickHandlers(svgString);
+                    await this._saveCurrentVector(this._buildPlanKey(oFile.name), oFile.name, svgString);
                 } catch (error) {
                     console.error("Error converting file to SVG:", error);
                     this._setUploadStatus("Error converting file to SVG.", "Error");
@@ -228,6 +365,22 @@ sap.ui.define([
             }.bind(this);
 
             reader.readAsDataURL(oFile);
+        },
+
+        onSavedVectorChange: async function (oEvent) {
+            var sPlanKey = oEvent.getParameter("selectedItem")
+                ? oEvent.getParameter("selectedItem").getKey()
+                : oEvent.getParameter("selectedKey");
+            if (!sPlanKey) {
+                this.getView().getModel("view").setProperty("/svgContent", "");
+                this.getView().getModel("view").setProperty("/currentPlanKey", "");
+                this.getView().getModel("view").setProperty("/placedMarkers", []);
+                this._setUploadStatus("Please select a vector or upload a masterplan file.", "Information");
+                window.localStorage.setItem(SAVED_VECTOR_STORAGE_KEY, "");
+                return;
+            }
+
+            await this._loadSavedVectorByKey(sPlanKey, { persistSelection: true });
         },
 
         onTypeMissmatch: function (oEvent) {
