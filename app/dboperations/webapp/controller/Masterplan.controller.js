@@ -67,7 +67,7 @@ sap.ui.define([
         },
 
         _loadUnits: function () {
-            fetch("/odata/v4/real-estate/Units?$expand=measurements,conditions&$filter=unitStatusDescription eq 'Open'")
+            fetch("/odata/v4/real-estate/Units?$expand=measurements,conditions")
                 .then(response => response.json())
                 .then(data => {
                     // Enrich units similar to Units controller
@@ -83,34 +83,80 @@ sap.ui.define([
                         );
                         let bua = buaMeasurement ? Number(buaMeasurement.quantity) : null;
                         let originalPrice = unit.conditions?.[0]?.amount || null;
+                        var oStatusMeta = this._getStatusMeta(unit.unitStatusDescription);
 
                         return {
                             ...unit,
                             bua: formatNumber(bua),
                             originalPrice: formatNumber(originalPrice),
                             profitCenter: formatNumber(unit.profitCenter),
-                            functionalArea: formatNumber(unit.functionalArea)
+                            functionalArea: formatNumber(unit.functionalArea),
+                            statusHighlight: oStatusMeta.highlight,
+                            unitStatusColor: oStatusMeta.color
                         };
                     });
 
                     this.getView().getModel("view").setProperty("/units", enrichedUnits);
                     this.getView().getModel("view").setProperty("/loading", false);
 
-                    // Attach dragstart event to list items
                     setTimeout(function() {
-                        var oList = this.getView().byId("unitsList");
-                        oList.getItems().forEach(function(oItem) {
-                            var domRef = oItem.getDomRef();
-                            if (domRef) {
-                                domRef.draggable = true;
-                                domRef.addEventListener("dragstart", this.onDragStart.bind(this));
-                            }
-                        }.bind(this));
+                        this._applyUnitListItemStylingAndDnD();
                     }.bind(this), 100);
                 })
                 .catch(err => {
                     console.error("Error fetching units", err);
+                    this.getView().getModel("view").setProperty("/loading", false);
                 });
+        },
+
+        _getStatusMeta: function (sUnitStatusDescription) {
+            var sStatus = String(sUnitStatusDescription || "").trim().toUpperCase();
+
+            if (sStatus.includes("OPEN") || sStatus.includes("AVAILABLE")) {
+                return { highlight: "Success", color: "#107E3E" };
+            }
+            if (sStatus.includes("RESERVED") || sStatus.includes("PENDING") || sStatus.includes("HOLD")) {
+                return { highlight: "Warning", color: "#E9730C" };
+            }
+            if (sStatus.includes("SOLD") || sStatus.includes("CLOSED") || sStatus.includes("BOOKED")) {
+                return { highlight: "Error", color: "#BB0000" };
+            }
+
+            return { highlight: "Information", color: "#0070F2" };
+        },
+
+        _applyUnitListItemStylingAndDnD: function () {
+            var oList = this.getView().byId("unitsList");
+            if (!oList) {
+                return;
+            }
+
+            oList.getItems().forEach(function (oItem) {
+                var domRef = oItem.getDomRef();
+                var oContext = oItem.getBindingContext("view");
+                var oUnit = oContext && oContext.getObject();
+                var sColor = oUnit && oUnit.unitStatusColor;
+                if (!domRef) {
+                    return;
+                }
+
+                domRef.draggable = true;
+                this._boundOnUnitDragStart = this._boundOnUnitDragStart || this.onDragStart.bind(this);
+                if (this._boundOnUnitDragStart) {
+                    domRef.removeEventListener("dragstart", this._boundOnUnitDragStart);
+                }
+                domRef.addEventListener("dragstart", this._boundOnUnitDragStart);
+                domRef.style.backgroundColor = sColor || "";
+                domRef.style.color = sColor ? "#FFFFFF" : "";
+                domRef.style.borderRadius = sColor ? "0.25rem" : "";
+                domRef.querySelectorAll(".sapMText, .sapUiIcon").forEach(function (el) {
+                    el.style.color = sColor ? "#FFFFFF" : "";
+                });
+            }.bind(this));
+        },
+
+        onUnitsListUpdateFinished: function () {
+            this._applyUnitListItemStylingAndDnD();
         },
 
         _loadReservationPartners: function () {
@@ -381,6 +427,67 @@ sap.ui.define([
             }
 
             await this._loadSavedVectorByKey(sPlanKey, { persistSelection: true });
+        },
+
+        onDeleteSavedVector: async function () {
+            var oViewModel = this.getView().getModel("view");
+            var sPlanKey = (oViewModel.getProperty("/selectedSavedVectorKey") || "").trim();
+            if (!sPlanKey) {
+                MessageBox.information("Please select a saved vector to delete.");
+                return;
+            }
+
+            var bConfirmed = await new Promise(function (resolve) {
+                MessageBox.confirm("Delete selected saved vector?", {
+                    actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
+                    emphasizedAction: MessageBox.Action.CANCEL,
+                    onClose: function (sAction) {
+                        resolve(sAction === MessageBox.Action.OK);
+                    }
+                });
+            });
+            if (!bConfirmed) {
+                return;
+            }
+
+            try {
+                var oResponse = await fetch("/odata/v4/real-estate/DeleteMyMasterplanVector", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({
+                        planKey: sPlanKey,
+                        scope: this._getLayoutScope(),
+                        customerId: null
+                    })
+                });
+
+                var oRaw = await oResponse.json();
+                var bDeleted = oRaw && typeof oRaw === "object" && Object.prototype.hasOwnProperty.call(oRaw, "value")
+                    ? !!oRaw.value
+                    : !!oRaw;
+
+                if (!oResponse.ok) {
+                    var sError = oRaw && oRaw.error && oRaw.error.message ? oRaw.error.message : "Failed to delete vector.";
+                    throw new Error(sError);
+                }
+                if (!bDeleted) {
+                    throw new Error("Saved vector was not found.");
+                }
+
+                oViewModel.setProperty("/selectedSavedVectorKey", "");
+                oViewModel.setProperty("/currentPlanKey", "");
+                oViewModel.setProperty("/svgContent", "");
+                oViewModel.setProperty("/placedMarkers", []);
+                window.localStorage.setItem(SAVED_VECTOR_STORAGE_KEY, "");
+                await this._loadSavedVectors();
+                this._setUploadStatus("Saved vector deleted.", "Success");
+            } catch (error) {
+                console.error("Error deleting vector:", error);
+                MessageBox.error("Error deleting saved vector: " + error.message);
+            }
         },
 
         onTypeMissmatch: function (oEvent) {
@@ -732,6 +839,10 @@ sap.ui.define([
             return this.getView().getModel("view").getProperty("/markerColor") || "#FF0000";
         },
 
+        _getUnitStatusColor: function (sUnitStatusDescription) {
+            return this._getStatusMeta(sUnitStatusDescription).color;
+        },
+
         onMarkerColorChange: function (oEvent) {
             var oSelectedItem = oEvent.getParameter("selectedItem");
             var sColor = (oSelectedItem && oSelectedItem.getKey && oSelectedItem.getKey()) || oEvent.getParameter("selectedKey");
@@ -947,8 +1058,8 @@ sap.ui.define([
 
         onDragStart: function (oEvent) {
             console.log("Drag start event fired");
-            var oTarget = oEvent.target;
-            var oItem = sap.ui.getCore().byId(oTarget.id);
+            var sControlId = (oEvent.currentTarget && oEvent.currentTarget.id) || (oEvent.target && oEvent.target.id);
+            var oItem = sap.ui.getCore().byId(sControlId);
             if (oItem && oItem.getBindingContext) {
                 var oContext = oItem.getBindingContext("view");
                 if (oContext) {
@@ -960,7 +1071,7 @@ sap.ui.define([
                     var dragImage = document.createElement('div');
                     dragImage.style.width = '10px';
                     dragImage.style.height = '10px';
-                    dragImage.style.backgroundColor = this._getCurrentMarkerColor();
+                    dragImage.style.backgroundColor = oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription);
                     dragImage.style.borderRadius = '50%';
                     dragImage.style.border = '1px solid black';
                     document.body.appendChild(dragImage);
@@ -1010,7 +1121,7 @@ sap.ui.define([
                     x: gx,
                     y: gy,
                     size: 5, // Small marker size relative to SVG coordinates
-                    color: this._getCurrentMarkerColor(),
+                    color: oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription),
                     reservationPartnerId: this._getSelectedReservationPartnerId(),
                     unit: oUnit
                 });

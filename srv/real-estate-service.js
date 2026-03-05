@@ -483,6 +483,43 @@ this.on('ConvertMasterplanToSvg', async (req) => {
     };
   });
 
+  this.on('DeleteMyMasterplanVector', async (req) => {
+    const tx = cds.transaction(req);
+    const payload = req.data || {};
+    const planKey = String(payload.planKey || '').trim();
+    const scope = _normalizeLayoutScope(payload.scope);
+    const customerId = payload.customerId ? String(payload.customerId).trim() : null;
+    const ownerUser = req.user?.id || 'anonymous';
+
+    if (!planKey) {
+      return req.reject(400, 'planKey is required.');
+    }
+    if (scope === 'CUSTOMER' && !customerId) {
+      return req.reject(400, 'customerId is required for CUSTOMER scope.');
+    }
+
+    const where = { planKey, scope };
+    if (scope === 'USER') {
+      where.ownerUser = ownerUser;
+    } else if (scope === 'CUSTOMER') {
+      where.customerId = customerId;
+    }
+
+    const layouts = await tx.run(
+      SELECT.from(DbMasterplanLayouts)
+        .columns('ID')
+        .where(where)
+    );
+    const layoutIds = Array.isArray(layouts) ? layouts.map((l) => l.ID).filter(Boolean) : [];
+    if (layoutIds.length > 0) {
+      await tx.run(DELETE.from(DbMasterplanMarkers).where({ layout_ID: { in: layoutIds } }));
+      await tx.run(DELETE.from(DbMasterplanLayouts).where({ ID: { in: layoutIds } }));
+    }
+
+    const deletedRows = await tx.run(DELETE.from(DbMasterplanVectors).where(where));
+    return Number(deletedRows || 0) > 0;
+  });
+
 
   /*-------------------------Company Codes-----------------------*/
   //Read

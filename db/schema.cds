@@ -408,3 +408,8 @@ entity MasterplanVectors : managed {
         customerId: String(36);
         svgContent: LargeString;
 }
+action DeleteMyMasterplanVector(
+        planKey    : String(255),
+        scope      : String(20),
+        customerId : String(36)
+    ) returns Boolean;

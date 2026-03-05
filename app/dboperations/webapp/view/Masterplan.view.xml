@@ -40,6 +40,15 @@
                             text="{view>fileName}"
                         />
                     </Select>
+                    <Button
+                        id="deleteSavedVectorButton"
+                        text="Delete"
+                        type="Reject"
+                        icon="sap-icon://delete"
+                        press="onDeleteSavedVector"
+                        enabled="{= ${view>/selectedSavedVectorKey} !== '' }"
+                        class="sapUiTinyMarginBegin"
+                    />
                 </HBox>
                 <HBox id="_IDGenHBox11" class="sapUiTinyMarginBegin" alignItems="Center">
                     <Text id="_IDGenText118" text="Marker Color" class="sapUiTinyMarginEnd" />
@@ -93,13 +102,15 @@
                     <Title id="_IDGenTitle3" text="Available Units" level="H3" />
                     <List
                         id="unitsList"
+                        class="masterplanUnitsList"
                         items="{view>/units}"
                         mode="None"
                         growing="true"
                         growingThreshold="20"
+                        updateFinished="onUnitsListUpdateFinished"
                     >
                         <items>
-                            <CustomListItem id="_IDGenCustomListItem">
+                            <CustomListItem id="_IDGenCustomListItem" highlight="{view>statusHighlight}">
                                 <HBox id="_IDGenHBox4" alignItems="Center" justifyContent="Start">
                                     <Avatar id="_IDGenAvatar"
                                         src=""
