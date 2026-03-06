@@ -14,11 +14,12 @@
       "authenticationType": "none",
       "destination": "ui5"
     },
-      {
+ {
       "source": "^/odata/(.*)$",
       "target": "/odata/$1",
       "destination": "RealEstate-srv-api",
-      "authenticationType": "xsuaa"
+      "authenticationType": "xsuaa",
+      "csrfProtection": false
     },
     {
       "source": "^(.*)$",
