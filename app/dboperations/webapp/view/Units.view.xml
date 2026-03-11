@@ -17,6 +17,11 @@
                 text="New Unit"
                 press="onNavigateToAddUnit"
             />
+            <Button id="btnUnitSimulate" icon="sap-icon://simulate" text="Simulate" press="onOpenPaymentSimulation" enabled="false" />
+            <Button id="btnUnitDetails" icon="sap-icon://information" text="Details" press="onDetails" enabled="false" />
+            <Button id="btnEditUnit" icon="sap-icon://edit" text="Edit" press="onEditUnit" enabled="false" />
+            <Button id="btnDeleteUnit" icon="sap-icon://delete" type="Reject" text="Delete" press="onDelete" enabled="false" />
+            <Button id="btnCreateReservationFromUnit" icon="sap-icon://add-document" text="Create Reservation" press="onCreateReservation" enabled="false" />
         </headerContent>
         <content>
             <!-- FILTER AREA (Flat, No Panels or Headers) -->
@@ -217,6 +222,8 @@
                     id="unitsTable"
                     items="{ path: '/Units' }"
                     width="150%"
+                    mode="SingleSelectLeft"
+                    selectionChange="onUnitSelectionChange"
                     class="sapUiSmallMarginTop"
                 >
                     <columns>
@@ -340,21 +347,6 @@
                                 text="Original Price"
                             />
                         </Column>
-                        <Column id="_IDGenColumn64">
-                            <Text
-                                id="_IDGenText95"
-                                text="Actions"
-                            />
-                        </Column>
-                        <Column
-                            id="_IDGenColumn68"
-                            width="120px"
-                        >
-                            <Text
-                                id="_IDGenText96"
-                                text="Reservation"
-                            />
-                        </Column>
                     </columns>
                     <items>
                         <ColumnListItem id="_IDGenColumnListItem5">
@@ -438,40 +430,6 @@
                                 <Text
                                     id="_IDGenText119"
                                     text="{originalPrice}"
-                                />
-                                <HBox
-                                    id="_IDGenHBox3"
-                                    wrap="Wrap"
-                                >
-                                    <Button
-                                        id="_IDGenButton220"
-                                        icon="sap-icon://simulate"
-                                        press="onOpenPaymentSimulation"
-                                        tooltip="Simulate"
-                                    />
-                                    <Button
-                                        id="_IDGenButton21"
-                                        icon="sap-icon://information"
-                                        press="onDetails"
-                                    />
-                                    <Button
-                                        id="_IDGenButton22"
-                                        icon="sap-icon://edit"
-                                        press="onEditUnit"
-                                    />
-                                    <Button
-                                        id="_IDGenButton23"
-                                        icon="sap-icon://delete"
-                                        type="Reject"
-                                        press="onDelete"
-                                    />
-                                </HBox>
-                                <Button
-                                    id="_IDGenButton24"
-                                    text="Create Reservation"
-                                    icon="sap-icon://add-document"
-                                    press="onCreateReservation"
-                                    visible="{= ${unitStatusDescription} === 'Open' }"
                                 />
                             </cells>
                         </ColumnListItem>

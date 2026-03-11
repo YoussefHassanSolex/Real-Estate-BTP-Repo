@@ -19,7 +19,34 @@ sap.ui.define([
         onInit: function () {
             this._loadReservationPartners()
         },
+        onPartnerSelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnEditPartner").setEnabled(bHasSelection);
+            this.byId("btnDeletePartner").setEnabled(bHasSelection);
+        },
+        _getSelectedPartnerContext: function () {
+            const oSelectedItem = this.byId("partnerTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext("Partners") : null;
+        },
+        _getSelectedPartnerId: function () {
+            const oCtx = this._getSelectedPartnerContext();
+            return oCtx ? oCtx.getObject().ID : null;
+        },
+        _restorePartnerSelection: function (sId) {
+            const oTable = this.byId("partnerTable");
+            const oItem = sId ? oTable.getItems().find(i => i.getBindingContext("Partners")?.getObject().ID === sId) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnEditPartner").setEnabled(true);
+                this.byId("btnDeletePartner").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnEditPartner").setEnabled(false);
+                this.byId("btnDeletePartner").setEnabled(false);
+            }
+        },
         _loadReservationPartners: function () {
+            const sSelectedId = this._getSelectedPartnerId();
             fetch("/odata/v4/real-estate/ReservationPartners")
                 .then(res => res.json())
                 .then(data => {
@@ -27,6 +54,7 @@ sap.ui.define([
                         index === self.findIndex(t => t.customerCode === item.customerCode)
                     );
                     this.getView().setModel(new JSONModel(uniqueData), "Partners");
+                    this._restorePartnerSelection(sSelectedId);
                 })
                 .catch(err => console.error("Failed to load Partners:", err));
         },
@@ -50,8 +78,12 @@ sap.ui.define([
         onAddPartner: function () {
             this._openPartnerDialog({});
         },
-        onEditPartner: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("Partners");
+        onEditPartner: function () {
+            const oCtx = this._getSelectedPartnerContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a partner first.");
+                return;
+            }
             const oData = oCtx.getObject();
             this._openPartnerDialog(oData);
         },
@@ -99,10 +131,12 @@ sap.ui.define([
             this._oDialog.close();
         },
 
-        onDeletePartner: function (oEvent) {
-
-
-            const oCtx = oEvent.getSource().getBindingContext("Partners");
+        onDeletePartner: function () {
+            const oCtx = this._getSelectedPartnerContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a partner first.");
+                return;
+            }
             const oData = oCtx.getObject();
 
             MessageBox.confirm(`Delete Partner ${oData.ID}?`, {

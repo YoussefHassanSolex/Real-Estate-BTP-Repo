@@ -11,6 +11,10 @@
                 tooltip="Add"
                 text="New Building"
                 press="onAddBuilding" />
+            <Button id="btnBuildingDetails" icon="sap-icon://information" text="Details" tooltip="Details" press="onDetails" enabled="false" />
+            <Button id="btnEditBuilding" icon="sap-icon://edit" text="Edit" tooltip="Edit" press="onEdit" enabled="false" />
+            <Button id="btnAddUnitFromBuilding" icon="sap-icon://sys-add" text="Add Unit" tooltip="Add Unit" press="onNavigateToAddUnit" enabled="false" />
+            <Button id="btnDeleteBuilding" icon="sap-icon://delete" type="Reject" text="Delete" tooltip="Delete" press="onDelete" enabled="false" />
         </headerContent>
 
         <content>
@@ -27,6 +31,8 @@
                     id="buildingsTable"
                     items="{ path: '/Buildings' }"
                     width="150%"
+                    mode="SingleSelectLeft"
+                    selectionChange="onBuildingSelectionChange"
                     inset="false"
                     class="noPaddingTable">
                     
@@ -51,7 +57,6 @@
                         <!-- Supplementary Text (optional) -->
                         <!-- <Column><Text text="Supplementary Text" /></Column> -->
 
-                        <Column id="_IDGenColumn13"><Text id="_IDGenText13" text="Actions" /></Column>
                     </columns>
 
                     <items>
@@ -71,13 +76,6 @@
                                 <Text id="_IDGenText24" text="{businessArea}" />
                                 <Text id="_IDGenText25" text="{profitCenter}" />
                                 <Text id="_IDGenText26" text="{functionalArea}" />
-
-                                <HBox id="_IDGenHBox">
-                                    <Button id="_IDGenButton1g" icon="sap-icon://information" tooltip="Details" press="onDetails" />
-                                    <Button id="_IDGenButton2g" icon="sap-icon://edit" tooltip="Edit" press="onEdit" />
-                                    <Button id="_IDGenButton3g" icon="sap-icon://sys-add" tooltip="Add Unit" press="onNavigateToAddUnit" />
-                                    <Button id="_IDGenButton4g" icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDelete" />
-                                </HBox>
                             </cells>
                         </ColumnListItem>
                     </items>

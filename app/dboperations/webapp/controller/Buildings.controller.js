@@ -73,18 +73,52 @@ sap.ui.define([
             // Added: Building ID counter for auto-generation
             this._buildingIdCounter = parseInt(localStorage.getItem("buildingIdCounter")) || 0;
         },
+        onBuildingSelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnBuildingDetails").setEnabled(bHasSelection);
+            this.byId("btnEditBuilding").setEnabled(bHasSelection);
+            this.byId("btnAddUnitFromBuilding").setEnabled(bHasSelection);
+            this.byId("btnDeleteBuilding").setEnabled(bHasSelection);
+        },
 
+        _getSelectedBuildingContext: function () {
+            const oSelectedItem = this.byId("buildingsTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext() : null;
+        },
+        _getSelectedBuildingId: function () {
+            const oCtx = this._getSelectedBuildingContext();
+            return oCtx ? oCtx.getObject().buildingId : null;
+        },
+        _restoreBuildingSelection: function (sBuildingId) {
+            const oTable = this.byId("buildingsTable");
+            const oItem = sBuildingId ? oTable.getItems().find(i => i.getBindingContext()?.getObject().buildingId === sBuildingId) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnBuildingDetails").setEnabled(true);
+                this.byId("btnEditBuilding").setEnabled(true);
+                this.byId("btnAddUnitFromBuilding").setEnabled(true);
+                this.byId("btnDeleteBuilding").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnBuildingDetails").setEnabled(false);
+                this.byId("btnEditBuilding").setEnabled(false);
+                this.byId("btnAddUnitFromBuilding").setEnabled(false);
+                this.byId("btnDeleteBuilding").setEnabled(false);
+            }
+        },
         _onRouteMatched: function () {
             this._loadBuildings();
         },
 
         _loadBuildings: function () {
+            const sSelectedBuildingId = this._getSelectedBuildingId();
             var oModel = new sap.ui.model.json.JSONModel();
             fetch("/odata/v4/real-estate/Buildings")
                 .then(response => response.json())
                 .then(data => {
                     oModel.setData({ Buildings: data.value });
                     this.getView().byId("buildingsTable").setModel(oModel);
+                    this._restoreBuildingSelection(sSelectedBuildingId);
 
                     // Calculate max building ID counter
                     const buildings = data.value;
@@ -373,8 +407,12 @@ sap.ui.define([
         },
 
         // Updated: Enhanced to match Units' full dialog with fixes for Company Code Description and Building ID
-        onNavigateToAddUnit: function (oEvent) {
-            const oContext = oEvent.getSource().getBindingContext();
+        onNavigateToAddUnit: function () {
+            const oContext = this._getSelectedBuildingContext();
+            if (!oContext) {
+                MessageToast.show("Please select a building first.");
+                return;
+            }
             const oBuildingData = oContext.getObject();
 
             const oData = {
@@ -925,9 +963,8 @@ sap.ui.define([
             this._oAddBuildingDialog.open();
         },
 
-        onEdit: function (oEvent) {
-            var oButton = oEvent.getSource();
-            var oContext = oButton.getParent().getParent().getBindingContext();
+        onEdit: function () {
+            var oContext = this._getSelectedBuildingContext();
 
             if (!oContext) {
                 sap.m.MessageBox.warning("Error: Unable to retrieve row data");
@@ -1059,8 +1096,12 @@ sap.ui.define([
             this._oEditDialog.open();
         },
 
-        onDelete: function (oEvent) {
-            const oContext = oEvent.getSource().getBindingContext();
+        onDelete: function () {
+            const oContext = this._getSelectedBuildingContext();
+            if (!oContext) {
+                MessageToast.show("Please select a building first.");
+                return;
+            }
             const sBuildingId = oContext.getProperty("buildingId");
             MessageBox.confirm(`Delete Building ${sBuildingId}?`, {
                 actions: [MessageBox.Action.OK, MessageBox.Action.CANCEL],
@@ -1080,8 +1121,12 @@ sap.ui.define([
         },
 
 
-        onDetails: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext();
+        onDetails: function () {
+            var oBindingContext = this._getSelectedBuildingContext();
+            if (!oBindingContext) {
+                MessageToast.show("Please select a building first.");
+                return;
+            }
             if (!oBindingContext) {
                 return;
             }

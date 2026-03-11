@@ -15,6 +15,10 @@
                 text="New EOI"
                 press="onNavigateToAddEOI"
             />
+            <Button id="btnEoiDetails" icon="sap-icon://information" text="Details" press="onDetails" enabled="false" />
+            <Button id="btnEditEOI" icon="sap-icon://edit" text="Edit" press="onEditEOI" enabled="false" />
+            <Button id="btnAddReservationEOI" icon="sap-icon://sys-add" text="Add Reservation" press="onAddReservationFromEOI" enabled="false" />
+            <Button id="btnDeleteEOI" icon="sap-icon://delete" type="Reject" text="Delete" press="onDelete" enabled="false" />
         </headerContent>
 
         <VBox id="_IDGenVBox6" class="sapUiSizeCompact sapUiSmallMargin">
@@ -49,9 +53,6 @@
                     <Column id="_IDGenColumn133">
                         <Text id="_IDGenText191" text="Remaining Amount" />
                     </Column>
-                    <Column id="_IDGenColumn134">
-                        <Text id="_IDGenText195" text="Actions" />
-                    </Column>
                 </columns>
                 <items>
                     <ColumnListItem id="_IDGenColumnListItem13">
@@ -64,26 +65,6 @@
                             <Text id="_IDGenText222" text="{totalEoiValue}" />
                             <Text id="_IDGenText223" text="{collectedAmount}" />
                             <Text id="_IDGenText224" text="{remainingAmount}" />
-                            <HBox id="_IDGenHBox8">
-                                <Button id="_IDGenButton31"
-                                    icon="sap-icon://information"
-                                    press="onDetails"
-                                />
-                                <Button id="_IDGenButton43"
-                                    icon="sap-icon://edit"
-                                    press="onEditEOI"
-                                />
-                                <Button id="_IDGenButton44"
-                                    icon="sap-icon://sys-add"
-                                    tooltip="Add Reservation"
-                                    press="onAddReservationFromEOI"
-                                />
-                                <Button id="_IDGenButton45"
-                                    icon="sap-icon://delete"
-                                    type="Reject"
-                                    press="onDelete"
-                                />
-                            </HBox>
                         </cells>
                     </ColumnListItem>
                 </items>

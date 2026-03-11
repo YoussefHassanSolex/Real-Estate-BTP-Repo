@@ -61,12 +61,56 @@ sap.ui.define([
             this._unitIdCounter = parseInt(localStorage.getItem("unitIdCounter")) || 0;
 
         },
+        onUnitSelectionChange: function (oEvent) {
+            const oSelectedItem = oEvent.getSource().getSelectedItem();
+            const bHasSelection = !!oSelectedItem;
+            this.byId("btnUnitSimulate").setEnabled(bHasSelection);
+            this.byId("btnUnitDetails").setEnabled(bHasSelection);
+            this.byId("btnEditUnit").setEnabled(bHasSelection);
+            this.byId("btnDeleteUnit").setEnabled(bHasSelection);
 
+            let bCanCreateReservation = false;
+            if (oSelectedItem) {
+                const oData = oSelectedItem.getBindingContext().getObject();
+                bCanCreateReservation = (oData.unitStatusDescription === "Open");
+            }
+            this.byId("btnCreateReservationFromUnit").setEnabled(bCanCreateReservation);
+        },
+
+        _getSelectedUnitContext: function () {
+            const oSelectedItem = this.byId("unitsTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext() : null;
+        },
+        _getSelectedUnitId: function () {
+            const oCtx = this._getSelectedUnitContext();
+            return oCtx ? oCtx.getObject().unitId : null;
+        },
+        _restoreUnitSelection: function (sUnitId) {
+            const oTable = this.byId("unitsTable");
+            const oItem = sUnitId ? oTable.getItems().find(i => i.getBindingContext()?.getObject().unitId === sUnitId) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                const oData = oItem.getBindingContext().getObject();
+                this.byId("btnUnitSimulate").setEnabled(true);
+                this.byId("btnUnitDetails").setEnabled(true);
+                this.byId("btnEditUnit").setEnabled(true);
+                this.byId("btnDeleteUnit").setEnabled(true);
+                this.byId("btnCreateReservationFromUnit").setEnabled(oData.unitStatusDescription === "Open");
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnUnitSimulate").setEnabled(false);
+                this.byId("btnUnitDetails").setEnabled(false);
+                this.byId("btnEditUnit").setEnabled(false);
+                this.byId("btnDeleteUnit").setEnabled(false);
+                this.byId("btnCreateReservationFromUnit").setEnabled(false);
+            }
+        },
         _onRouteMatched: function () {
             this._loadUnits();
         },
 
         _loadUnits: function () {
+            const sSelectedUnitId = this._getSelectedUnitId();
             var oModel = new sap.ui.model.json.JSONModel();
             fetch("/odata/v4/real-estate/Units?$expand=measurements,conditions,simulations")
                 .then(response => response.json())
@@ -159,6 +203,7 @@ sap.ui.define([
 
 
                     this.getView().byId("unitsTable").setModel(oModel);[]
+                    this._restoreUnitSelection(sSelectedUnitId);
                 })
                 .catch(err => {
                     console.error("Error fetching units", err);
@@ -810,9 +855,10 @@ sap.ui.define([
             });
         },
 
-        onDetails: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext();
+        onDetails: function () {
+            var oBindingContext = this._getSelectedUnitContext();
             if (!oBindingContext) {
+                MessageToast.show("Please select a unit first.");
                 return;
             }
 
@@ -1031,8 +1077,12 @@ sap.ui.define([
             this._oDetailsDialog.open();
         },
 
-        onDelete: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext();
+        onDelete: function () {
+            var oBindingContext = this._getSelectedUnitContext();
+            if (!oBindingContext) {
+                MessageToast.show("Please select a unit first.");
+                return;
+            }
             if (oBindingContext) {
                 var sPath = oBindingContext.getPath();
                 var oModel = this.getView().byId("unitsTable").getModel();
@@ -1143,8 +1193,8 @@ sap.ui.define([
                 oModel.setProperty("/unitTypeDescription", aTypes[0] || "");
             }
         },
-        onEditUnit: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext();
+        onEditUnit: function () {
+            var oBindingContext = this._getSelectedUnitContext();
             if (!oBindingContext) return;
 
             var oData = oBindingContext.getObject();
@@ -1733,8 +1783,13 @@ sap.ui.define([
 
             oBinding.filter(oCombinedFilter ? [oCombinedFilter] : []);
         },
-        onCreateReservation: function (oEvent) {
-            var oUnit = oEvent.getSource().getBindingContext().getObject();
+        onCreateReservation: function () {
+            var oContext = this._getSelectedUnitContext();
+            if (!oContext) {
+                MessageToast.show("Please select a unit first.");
+                return;
+            }
+            var oUnit = oContext.getObject();
             var oReservationData = {
                 bua: oUnit.measurements?.find(m => m.code?.trim() === "BUA")?.quantity || 0,
                 companyCodeId: oUnit.companyCodeId,
@@ -2181,8 +2236,13 @@ sap.ui.define([
                 sap.ui.getCore().byId("paymentPlanIdInputPPS").setValue("");
             }
         },
-        onOpenPaymentSimulation: async function (oEvent) {  // Added async
-            var unitId = oEvent.getSource().getBindingContext().getObject().unitId;
+        onOpenPaymentSimulation: async function () {
+            var oContext = this._getSelectedUnitContext();
+            if (!oContext) {
+                MessageToast.show("Please select a unit first.");
+                return;
+            }
+            var unitId = oContext.getObject().unitId;
             var units = this.getView().getModel("view").getProperty("/Units");
             if (!units || units.length === 0 || !units[0].bua) {  // Updated: Also check if units are enriched
                 await this._loadUnitsForSim();  // Await to ensure data is loaded and enriched
@@ -2565,3 +2625,4 @@ sap.ui.define([
 
     });
 });
+

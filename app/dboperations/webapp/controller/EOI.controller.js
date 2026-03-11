@@ -29,13 +29,49 @@ sap.ui.define([
             this._loadEOIs();
         },
 
+        onSelectEOI: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnEoiDetails").setEnabled(bHasSelection);
+            this.byId("btnEditEOI").setEnabled(bHasSelection);
+            this.byId("btnAddReservationEOI").setEnabled(bHasSelection);
+            this.byId("btnDeleteEOI").setEnabled(bHasSelection);
+        },
+
+        _getSelectedEOIContext: function () {
+            const oSelectedItem = this.byId("eoiTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext() : null;
+        },
+        _getSelectedEOIId: function () {
+            const oCtx = this._getSelectedEOIContext();
+            return oCtx ? oCtx.getObject().eoiId : null;
+        },
+        _restoreEOISelection: function (sEoiId) {
+            const oTable = this.byId("eoiTable");
+            const oItem = sEoiId ? oTable.getItems().find(i => i.getBindingContext()?.getObject().eoiId === sEoiId) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnEoiDetails").setEnabled(true);
+                this.byId("btnEditEOI").setEnabled(true);
+                this.byId("btnAddReservationEOI").setEnabled(true);
+                this.byId("btnDeleteEOI").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnEoiDetails").setEnabled(false);
+                this.byId("btnEditEOI").setEnabled(false);
+                this.byId("btnAddReservationEOI").setEnabled(false);
+                this.byId("btnDeleteEOI").setEnabled(false);
+            }
+        },
+
         _loadEOIs: function () {
+            const sSelectedEoiId = this._getSelectedEOIId();
             const oModel = new JSONModel();
             fetch("/odata/v4/real-estate/EOI?$expand=paymentDetails")
                 .then(res => res.json())
                 .then(data => {
                     oModel.setData({ EOI: data.value || [] });
                     this.getView().byId("eoiTable").setModel(oModel);
+                    this._restoreEOISelection(sSelectedEoiId);
                 })
                 .catch(err => {
                     console.error("Error loading EOIs:", err);
@@ -65,8 +101,8 @@ sap.ui.define([
             this._openAddEditDialog(oData, false);
         },
 
-        onEditEOI: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext();
+        onEditEOI: function () {
+            const oCtx = this._getSelectedEOIContext();
             if (!oCtx) return MessageBox.warning("No EOI selected.");
             const oData = Object.assign({}, oCtx.getObject());
             this._openAddEditDialog(oData, true);
@@ -206,8 +242,8 @@ sap.ui.define([
                 });
         },
 
-        onDetails: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext();
+        onDetails: function () {
+            const oCtx = this._getSelectedEOIContext();
             if (!oCtx) return MessageBox.warning("No EOI selected.");
 
             const oData = oCtx.getObject();
@@ -289,8 +325,8 @@ sap.ui.define([
             this._oDetailsDialog.open();
         },
 
-        onAddReservationFromEOI: async function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext();
+        onAddReservationFromEOI: async function () {
+            const oCtx = this._getSelectedEOIContext();
             if (!oCtx) {
                 sap.m.MessageToast.show("No EOI selected.");
                 return;
@@ -485,8 +521,8 @@ sap.ui.define([
         },
 
         /* --------------------------- DELETE --------------------------- */
-        onDelete: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext();
+        onDelete: function () {
+            const oCtx = this._getSelectedEOIContext();
             if (!oCtx) return;
             const sEoiId = oCtx.getObject().eoiId;
 

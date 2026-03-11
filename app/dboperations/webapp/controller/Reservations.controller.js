@@ -42,8 +42,54 @@ sap.ui.define([
         _onRouteMatched: function () {
             this._loadReservations();
         },
+        onReservationSelectionChange: function (oEvent) {
+            const oSelectedItem = oEvent.getSource().getSelectedItem();
+            const bHasSelection = !!oSelectedItem;
+            this.byId("btnReservationDetails").setEnabled(bHasSelection);
+            this.byId("btnEditReservation").setEnabled(bHasSelection);
+            this.byId("btnReservationPrint").setEnabled(bHasSelection);
+            this.byId("btnDeleteReservation").setEnabled(bHasSelection);
 
+            let bCanCreateContract = false;
+            if (oSelectedItem) {
+                const oReservation = oSelectedItem.getBindingContext().getObject();
+                bCanCreateContract = this.formatCreateContractVisible(oReservation);
+            }
+            this.byId("btnCreateContract").setEnabled(bCanCreateContract);
+        },
+
+        _getSelectedReservationContext: function () {
+            const oSelectedItem = this.byId("reservationsTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext() : null;
+        },
+        _getSelectedReservationId: function () {
+            const oCtx = this._getSelectedReservationContext();
+            return oCtx ? oCtx.getObject().reservationId : null;
+        },
+        _restoreReservationSelection: function (iReservationId) {
+            const oTable = this.byId("reservationsTable");
+            const oItem = (iReservationId !== null && iReservationId !== undefined)
+                ? oTable.getItems().find(i => i.getBindingContext()?.getObject().reservationId === iReservationId)
+                : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                const oReservation = oItem.getBindingContext().getObject();
+                this.byId("btnReservationDetails").setEnabled(true);
+                this.byId("btnEditReservation").setEnabled(true);
+                this.byId("btnReservationPrint").setEnabled(true);
+                this.byId("btnDeleteReservation").setEnabled(true);
+                this.byId("btnCreateContract").setEnabled(this.formatCreateContractVisible(oReservation));
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnReservationDetails").setEnabled(false);
+                this.byId("btnEditReservation").setEnabled(false);
+                this.byId("btnReservationPrint").setEnabled(false);
+                this.byId("btnCreateContract").setEnabled(false);
+                this.byId("btnDeleteReservation").setEnabled(false);
+            }
+        },
         _loadReservations: function () {
+            const iSelectedReservationId = this._getSelectedReservationId();
             var oModel = this.getView().getModel();
             // Add $expand for compositions (partners, conditions, payments) along with associations
             fetch("/odata/v4/real-estate/Reservations?$expand=project,building,unit,paymentPlan,partners,conditions,payments")
@@ -62,6 +108,7 @@ sap.ui.define([
                         oModel.setData({ Reservations: [] });
                         this.getView().byId("reservationsTable").setModel(oModel);
                     }
+                    this._restoreReservationSelection(iSelectedReservationId);
                 })
                 .catch(err => {
                     console.error("Error fetching reservations:", err);
@@ -213,9 +260,13 @@ sap.ui.define([
             oDialogModel.setProperty("/conditions", aConditions);
         },
 
-        onDetails: async function (oEvent) {
-            debugger
-            var oData = oEvent.getSource().getBindingContext().getObject();
+        onDetails: async function () {
+            var oContext = this._getSelectedReservationContext();
+            if (!oContext) {
+                MessageToast.show("Please select a reservation first.");
+                return;
+            }
+            var oData = oContext.getObject();
             console.log(oData.conditions);
             console.log(oData);
 
@@ -488,8 +539,13 @@ sap.ui.define([
         },
 
         // UPDATED: onEditReservation - Navigate to CreateReservation in edit mode
-        onEditReservation: function (oEvent) {
-            var oData = oEvent.getSource().getBindingContext().getObject();
+        onEditReservation: function () {
+            var oContext = this._getSelectedReservationContext();
+            if (!oContext) {
+                MessageToast.show("Please select a reservation first.");
+                return;
+            }
+            var oData = oContext.getObject();
             var sReservationId = oData.reservationId;
 
             // Fetch full reservation data with compositions for editing
@@ -1071,8 +1127,13 @@ sap.ui.define([
         },
 
 
-        onDelete: function (oEvent) {
-            var oData = oEvent.getSource().getBindingContext().getObject();
+        onDelete: function () {
+            var oContext = this._getSelectedReservationContext();
+            if (!oContext) {
+                MessageToast.show("Please select a reservation first.");
+                return;
+            }
+            var oData = oContext.getObject();
             MessageBox.confirm("Delete reservation " + oData.reservationId + "?", {
                 onClose: function (oAction) {
                     if (oAction === MessageBox.Action.OK) {
@@ -1126,8 +1187,13 @@ sap.ui.define([
         // =========================
         // OPEN CONTRACT DIALOG
         // =========================
-        onCreateContract: function (oEvent) {
-            const oReservation = oEvent.getSource().getBindingContext().getObject();
+        onCreateContract: function () {
+            const oContext = this._getSelectedReservationContext();
+            if (!oContext) {
+                MessageToast.show("Please select a reservation first.");
+                return;
+            }
+            const oReservation = oContext.getObject();
 
             // Pre-fill contract model with reservation values
             this.getView().getModel("contractModel").setData({

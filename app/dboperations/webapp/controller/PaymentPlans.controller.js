@@ -19,6 +19,35 @@ sap.ui.define([
             this._loadCompanyCodesList();
 
         },
+        onPlanSelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnPlanDetails").setEnabled(bHasSelection);
+            this.byId("btnEditPaymentPlan").setEnabled(bHasSelection);
+            this.byId("btnDeletePaymentPlan").setEnabled(bHasSelection);
+        },
+        _getSelectedPlanContext: function () {
+            const oSelectedItem = this.byId("plansTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext("plans") : null;
+        },
+        _getSelectedPlanId: function () {
+            const oCtx = this._getSelectedPlanContext();
+            return oCtx ? oCtx.getObject().paymentPlanId : null;
+        },
+        _restorePlanSelection: function (sPlanId) {
+            const oTable = this.byId("plansTable");
+            const oItem = sPlanId ? oTable.getItems().find(i => i.getBindingContext("plans")?.getObject().paymentPlanId === sPlanId) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnPlanDetails").setEnabled(true);
+                this.byId("btnEditPaymentPlan").setEnabled(true);
+                this.byId("btnDeletePaymentPlan").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnPlanDetails").setEnabled(false);
+                this.byId("btnEditPaymentPlan").setEnabled(false);
+                this.byId("btnDeletePaymentPlan").setEnabled(false);
+            }
+        },
         _loadCompanyCodesList: function () {
             fetch("/odata/v4/real-estate/Projects")
                 .then(res => res.json())
@@ -139,19 +168,24 @@ onOpenCompanyCodeVHD: function (oEvent) {
 
         // Load all payment plans
         _loadPlans: function () {
+            const sSelectedPlanId = this._getSelectedPlanId();
             // 🔹 Fixed: Deep expand associations in schedule and assignedProjects
             fetch("/odata/v4/real-estate/PaymentPlans?$expand=schedule($expand=conditionType,basePrice,calculationMethod,frequency),assignedProjects($expand=project)")
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "plans");
+                    this._restorePlanSelection(sSelectedPlanId);
                 })
                 .catch(err => console.error("Failed to load plans:", err));
         },
 
         // Show plan details dialog
-        onShowPlanDetails: async function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("plans");
-            if (!oCtx) return;
+        onShowPlanDetails: async function () {
+            const oCtx = this._getSelectedPlanContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a payment plan first.");
+                return;
+            }
             const sPlanId = oCtx.getProperty("paymentPlanId");
 
             try {
@@ -276,8 +310,12 @@ onOpenCompanyCodeVHD: function (oEvent) {
             this._openPlanDialog({});
         },
 
-        onEditPlan: async function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("plans");
+        onEditPlan: async function () {
+            const oCtx = this._getSelectedPlanContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a payment plan first.");
+                return;
+            }
             const sPlanId = oCtx.getProperty("paymentPlanId");
 
             try {
@@ -474,8 +512,12 @@ onSavePlan: async function () {
             return "PP" + paddedNumber;
         },
 
-        onDeletePlan: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("plans");
+        onDeletePlan: function () {
+            const oCtx = this._getSelectedPlanContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a payment plan first.");
+                return;
+            }
             const oData = oCtx.getObject();
 
             MessageBox.confirm(`Delete plan ${oData.paymentPlanId}?`, {
@@ -745,3 +787,5 @@ onSavePlan: async function () {
 
     });
 });
+
+

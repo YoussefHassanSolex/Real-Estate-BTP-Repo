@@ -12,7 +12,36 @@ sap.ui.define([
             this._loadConditions();
         },
 
+        onConditionSelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnEditCondition").setEnabled(bHasSelection);
+            this.byId("btnDeleteCondition").setEnabled(bHasSelection);
+        },
+
+        _getSelectedConditionContext: function () {
+            const oSelectedItem = this.byId("conditionsTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext("conditions") : null;
+        },
+        _getSelectedConditionId: function () {
+            const oCtx = this._getSelectedConditionContext();
+            return oCtx ? oCtx.getObject().ID : null;
+        },
+        _restoreConditionSelection: function (sId) {
+            const oTable = this.byId("conditionsTable");
+            const oItem = sId ? oTable.getItems().find(i => i.getBindingContext("conditions")?.getObject().ID === sId) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnEditCondition").setEnabled(true);
+                this.byId("btnDeleteCondition").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnEditCondition").setEnabled(false);
+                this.byId("btnDeleteCondition").setEnabled(false);
+            }
+        },
+
         _loadConditions: function () {
+            const sSelectedId = this._getSelectedConditionId();
             fetch("/odata/v4/real-estate/Conditions")
                 .then(res => res.json())
                 .then(data => {
@@ -20,6 +49,7 @@ sap.ui.define([
                         index === self.findIndex(t => t.code === item.code)
                     );
                     this.getView().setModel(new JSONModel(uniqueData), "conditions");
+                    this._restoreConditionSelection(sSelectedId);
                 })
                 .catch(err => console.error("Failed to load Conditions:", err));
         },
@@ -28,8 +58,12 @@ sap.ui.define([
             this._openConditionDialog({});
         },
 
-        onEditCondition: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("conditions");
+        onEditCondition: function () {
+            const oCtx = this._getSelectedConditionContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a condition first.");
+                return;
+            }
             const oData = oCtx.getObject();
             this._openConditionDialog(oData);
         },
@@ -86,8 +120,12 @@ sap.ui.define([
             this._oDialog.close();
         },
 
-        onDeleteCondition: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("conditions");
+        onDeleteCondition: function () {
+            const oCtx = this._getSelectedConditionContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a condition first.");
+                return;
+            }
             const oData = oCtx.getObject();
 
             MessageBox.confirm(`Delete Condition ${oData.code}?`, {

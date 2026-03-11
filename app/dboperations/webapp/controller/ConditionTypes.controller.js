@@ -12,12 +12,42 @@ sap.ui.define([
             this._loadConditionTypes();
         },
 
+        onConditionTypeSelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnEditConditionType").setEnabled(bHasSelection);
+            this.byId("btnDeleteConditionType").setEnabled(bHasSelection);
+        },
+
+        _getSelectedConditionTypeContext: function () {
+            const oSelectedItem = this.byId("conditionTypesTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext("conditionTypes") : null;
+        },
+        _getSelectedConditionTypeCode: function () {
+            const oCtx = this._getSelectedConditionTypeContext();
+            return oCtx ? oCtx.getObject().code : null;
+        },
+        _restoreConditionTypeSelection: function (sCode) {
+            const oTable = this.byId("conditionTypesTable");
+            const oItem = sCode ? oTable.getItems().find(i => i.getBindingContext("conditionTypes")?.getObject().code === sCode) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnEditConditionType").setEnabled(true);
+                this.byId("btnDeleteConditionType").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnEditConditionType").setEnabled(false);
+                this.byId("btnDeleteConditionType").setEnabled(false);
+            }
+        },
+
         // Load all ConditionTypes
         _loadConditionTypes: function () {
+            const sSelectedCode = this._getSelectedConditionTypeCode();
             fetch("/odata/v4/real-estate/ConditionTypes")
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "conditionTypes");
+                    this._restoreConditionTypeSelection(sSelectedCode);
                 })
                 .catch(err => console.error("Failed to load ConditionTypes:", err));
         },
@@ -28,8 +58,12 @@ sap.ui.define([
         },
 
         // Edit existing ConditionType
-        onEditConditionType: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("conditionTypes");
+        onEditConditionType: function () {
+            const oCtx = this._getSelectedConditionTypeContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a condition type first.");
+                return;
+            }
             const oData = oCtx.getObject();
             this._openConditionTypeDialog(oData);
         },
@@ -89,8 +123,12 @@ sap.ui.define([
         },
 
         // Delete ConditionType
-        onDeleteConditionType: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("conditionTypes");
+        onDeleteConditionType: function () {
+            const oCtx = this._getSelectedConditionTypeContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a condition type first.");
+                return;
+            }
             const oData = oCtx.getObject();
 
             MessageBox.confirm(`Delete ConditionType ${oData.code}?`, {

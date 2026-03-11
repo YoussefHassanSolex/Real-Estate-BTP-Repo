@@ -7,14 +7,15 @@
     <Page id="_IDGenPage2" title="Measurements">
         <headerContent>
             <Button id="_IDGenButton38" icon="sap-icon://add" text="Add Measurement" press="onAddMeasurement"/>
+            <Button id="btnEditMeasurement" icon="sap-icon://edit" text="Edit" press="onEditMeasurement" enabled="false"/>
+            <Button id="btnDeleteMeasurement" icon="sap-icon://delete" type="Reject" text="Delete" press="onDeleteMeasurement" enabled="false"/>
         </headerContent>
 
         <content>
-            <Table id="measurementsTable" items="{measurements>/}" width="100%">
+            <Table id="measurementsTable" items="{measurements>/}" width="100%" mode="SingleSelectLeft" selectionChange="onMeasurementSelectionChange">
                 <columns>
                     <Column id="_IDGenColumn77"><Text id="_IDGenText213" text="Code"/></Column>
                     <Column id="_IDGenColumn129"><Text id="_IDGenText214" text="Description"/></Column>
-                    <Column id="_IDGenColumn130"><Text id="_IDGenText215" text="Actions"/></Column>
                 </columns>
 
                 <items>
@@ -22,10 +23,6 @@
                         <cells>
                             <Text id="_IDGenText216" text="{measurements>code}"/>
                             <Text id="_IDGenText217" text="{measurements>description}"/>
-                            <HBox id="_IDGenHBox7">
-                                <Button id="_IDGenButton39" icon="sap-icon://edit" press="onEditMeasurement"/>
-                                <Button id="_IDGenButton40" icon="sap-icon://delete" type="Reject" press="onDeleteMeasurement"/>
-                            </HBox>
                         </cells>
                     </ColumnListItem>
                 </items>

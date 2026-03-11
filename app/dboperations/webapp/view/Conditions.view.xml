@@ -7,14 +7,15 @@
     <Page id="_IDGenPage5" title="Conditions">
         <headerContent>
             <Button id="_IDGenButton46" icon="sap-icon://add" text="Add Condition" press="onAddCondition"/>
+            <Button id="btnEditCondition" icon="sap-icon://edit" text="Edit" press="onEditCondition" enabled="false"/>
+            <Button id="btnDeleteCondition" icon="sap-icon://delete" type="Reject" text="Delete" press="onDeleteCondition" enabled="false"/>
         </headerContent>
 
         <content>
-            <Table id="conditionsTable" items="{conditions>/}" width="100%">
+            <Table id="conditionsTable" items="{conditions>/}" width="100%" mode="SingleSelectLeft" selectionChange="onConditionSelectionChange">
                 <columns>
                     <Column id="_IDGenColumn135"><Text id="_IDGenText225" text="Code"/></Column>
                     <Column id="_IDGenColumn136"><Text id="_IDGenText226" text="Description"/></Column>
-                    <Column id="_IDGenColumn137"><Text id="_IDGenText227" text="Actions"/></Column>
                 </columns>
 
                 <items>
@@ -22,10 +23,6 @@
                         <cells>
                             <Text id="_IDGenText228" text="{conditions>code}"/>
                             <Text id="_IDGenText229" text="{conditions>description}"/>
-                            <HBox id="_IDGenHBox9">
-                                <Button id="_IDGenButton47" icon="sap-icon://edit" press="onEditCondition"/>
-                                <Button id="_IDGenButton48" icon="sap-icon://delete" type="Reject" press="onDeleteCondition"/>
-                            </HBox>
                         </cells>
                     </ColumnListItem>
                 </items>

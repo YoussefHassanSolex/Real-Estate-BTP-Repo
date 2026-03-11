@@ -7,14 +7,15 @@
     <Page id="_IDGenPageBP" title="Base Prices">
         <headerContent>
             <Button id="btnAddBP" icon="sap-icon://add" text="Add Base Price" press="onAddBasePrice"/>
+            <Button id="btnEditBP" icon="sap-icon://edit" text="Edit" press="onEditBasePrice" enabled="false"/>
+            <Button id="btnDeleteBP" icon="sap-icon://delete" type="Reject" text="Delete" press="onDeleteBasePrice" enabled="false"/>
         </headerContent>
 
         <content>
-            <Table id="basePricesTable" items="{basePrices>/}" width="100%">
+            <Table id="basePricesTable" items="{basePrices>/}" width="100%" mode="SingleSelectLeft" selectionChange="onBasePriceSelectionChange">
                 <columns>
                     <Column id="_IDGenColumnBP1"><Text id="_IDGenTextBP1" text="Code"/></Column>
                     <Column id="_IDGenColumnBP2"><Text id="_IDGenTextBP2" text="Description"/></Column>
-                    <Column id="_IDGenColumnBP3"><Text id="_IDGenTextBP3" text="Actions"/></Column>
                 </columns>
 
                 <items>
@@ -22,10 +23,6 @@
                         <cells>
                             <Text id="_IDGenTextBP4" text="{basePrices>code}"/>
                             <Text id="_IDGenTextBP5" text="{basePrices>description}"/>
-                            <HBox id="_IDGenHBoxBP1">
-                                <Button id="_IDGenButtonBP1" icon="sap-icon://edit" press="onEditBasePrice"/>
-                                <Button id="_IDGenButtonBP2" icon="sap-icon://delete" type="Reject" press="onDeleteBasePrice"/>
-                            </HBox>
                         </cells>
                     </ColumnListItem>
                 </items>

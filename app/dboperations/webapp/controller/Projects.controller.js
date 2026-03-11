@@ -36,6 +36,14 @@ sap.ui.define([
                 .then(data => {
                     oModel.setData({ Projects: data.value });
                     this.getView().setModel(oModel, "projects");
+                    const oTable = this.byId("projectsTable");
+                    if (oTable) {
+                        oTable.removeSelections(true);
+                    }
+                    this.byId("btnProjectDetails").setEnabled(false);
+                    this.byId("btnEditProject").setEnabled(false);
+                    this.byId("btnProjectAddBuilding").setEnabled(false);
+                    this.byId("btnDeleteProject").setEnabled(false);
                 })
                 .catch(err => {
                     console.error("Error fetching projects", err);
@@ -50,18 +58,52 @@ sap.ui.define([
             });
             this.getView().setModel(oCompanyCodesModel, "companyCodes");
         },
+        onProjectSelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnProjectDetails").setEnabled(bHasSelection);
+            this.byId("btnEditProject").setEnabled(bHasSelection);
+            this.byId("btnProjectAddBuilding").setEnabled(bHasSelection);
+            this.byId("btnDeleteProject").setEnabled(bHasSelection);
+        },
 
+        _getSelectedProjectContext: function () {
+            const oSelectedItem = this.byId("projectsTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext("projects") : null;
+        },
+        _getSelectedProjectId: function () {
+            const oCtx = this._getSelectedProjectContext();
+            return oCtx ? oCtx.getObject().projectId : null;
+        },
+        _restoreProjectSelection: function (sProjectId) {
+            const oTable = this.byId("projectsTable");
+            const oItem = sProjectId ? oTable.getItems().find(i => i.getBindingContext("projects")?.getObject().projectId === sProjectId) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnProjectDetails").setEnabled(true);
+                this.byId("btnEditProject").setEnabled(true);
+                this.byId("btnProjectAddBuilding").setEnabled(true);
+                this.byId("btnDeleteProject").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnProjectDetails").setEnabled(false);
+                this.byId("btnEditProject").setEnabled(false);
+                this.byId("btnProjectAddBuilding").setEnabled(false);
+                this.byId("btnDeleteProject").setEnabled(false);
+            }
+        },
         _onRouteMatched: function () {
             this._loadProjects();
         },
 
         _loadProjects: function () {
+            const sSelectedProjectId = this._getSelectedProjectId();
             var oModel = new sap.ui.model.json.JSONModel();
             fetch("/odata/v4/real-estate/Projects")
                 .then(response => response.json())
                 .then(data => {
                     oModel.setData({ Projects: data.value });
                     this.getView().setModel(oModel, "projects");
+                    this._restoreProjectSelection(sSelectedProjectId);
                 })
                 .catch(err => {
                     console.error("Error fetching projects", err);
@@ -300,9 +342,10 @@ sap.ui.define([
 
 
 
-        onDetails: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext("projects");
+        onDetails: function () {
+            var oBindingContext = this._getSelectedProjectContext();
             if (!oBindingContext) {
+                sap.m.MessageToast.show("Please select a project first.");
                 return;
             }
 
@@ -437,8 +480,12 @@ sap.ui.define([
 
 
 
-        onDelete: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext("projects");
+        onDelete: function () {
+            var oBindingContext = this._getSelectedProjectContext();
+            if (!oBindingContext) {
+                sap.m.MessageToast.show("Please select a project first.");
+                return;
+            }
             if (oBindingContext) {
                 var sPath = oBindingContext.getPath();
                 var oModel = this.getView().getModel("projects");
@@ -481,8 +528,8 @@ sap.ui.define([
                 sap.m.MessageBox.error("Could not find binding context for the selected row.");
             }
         },
-        onEditProject: function (oEvent) {
-            var oBindingContext = oEvent.getSource().getBindingContext("projects");
+        onEditProject: function () {
+            var oBindingContext = this._getSelectedProjectContext();
             if (!oBindingContext) return;
 
             var oData = oBindingContext.getObject();
@@ -498,10 +545,10 @@ sap.ui.define([
                             new sap.m.Input({ value: "{/projectId}", editable: false }),
 
                             new sap.m.Label({ text: "Description", required: true }),
-                            new sap.m.Input("editProjectDescInput", { value: "{/projectDescription}" }),
+                            new sap.m.Input(this.createId("editProjectDescInput"), { value: "{/projectDescription}" }),
 
                             new sap.m.Label({ text: "Company Code", required: true }),
-                            new sap.m.ComboBox("editCompanyCodeComboBox", {
+                            new sap.m.ComboBox(this.createId("editCompanyCodeComboBox"), {
                                 selectedKey: "{/companyCodeId}",
                                 selectionChange: function (oEvent) {
                                     var oSelectedItem = oEvent.getParameter("selectedItem");
@@ -519,14 +566,14 @@ sap.ui.define([
                             }),
 
                             new sap.m.Label({ text: "Company Code Description", required: true }),
-                            new sap.m.Input("editCompanyCodeDescInput", {
+                            new sap.m.Input(this.createId("editCompanyCodeDescInput"), {
                                 value: "{/companyCodeDescription}",
                                 editable: false,
                                 tooltip: "Auto-populated from Company Code selection"
                             }),
 
                             new sap.m.Label({ text: "Valid From", required: true }),
-                            new sap.m.DatePicker("editValidFromInput", {
+                            new sap.m.DatePicker(this.createId("editValidFromInput"), {
                                 value: "{/validFrom}",
                                 displayFormat: "long",
                                 valueFormat: "yyyy-MM-dd",
@@ -534,7 +581,7 @@ sap.ui.define([
                             }),
 
                             new sap.m.Label({ text: "Valid To", required: true }),
-                            new sap.m.DatePicker("editValidToInput", {
+                            new sap.m.DatePicker(this.createId("editValidToInput"), {
                                 value: "{/validTo}",
                                 displayFormat: "long",
                                 valueFormat: "yyyy-MM-dd",
@@ -542,19 +589,19 @@ sap.ui.define([
                             }),
 
                             new sap.m.Label({ text: "Location", required: true }),
-                            new sap.m.Input("editLocationInput", { value: "{/location}" }),
+                            new sap.m.Input(this.createId("editLocationInput"), { value: "{/location}" }),
 
                             new sap.m.Label({ text: "Business Area", required: true }),
-                            new sap.m.Input("editBusinessAreaInput", { value: "{/businessArea}" }),
+                            new sap.m.Input(this.createId("editBusinessAreaInput"), { value: "{/businessArea}" }),
 
                             new sap.m.Label({ text: "Profit Center", required: true }),
-                            new sap.m.Input("editProfitCenterInput", { value: "{/profitCenter}" }),
+                            new sap.m.Input(this.createId("editProfitCenterInput"), { value: "{/profitCenter}" }),
 
                             new sap.m.Label({ text: "Functional Area", required: true }),
-                            new sap.m.Input("editFunctionalAreaInput", { value: "{/functionalArea}" }),
+                            new sap.m.Input(this.createId("editFunctionalAreaInput"), { value: "{/functionalArea}" }),
 
                             new sap.m.Label({ text: "Supplementary Text", required: true }),
-                            new sap.m.Input("editSupplementaryTextInput", { value: "{/supplementaryText}" })
+                            new sap.m.Input(this.createId("editSupplementaryTextInput"), { value: "{/supplementaryText}" })
                         ]
                     }),
 
@@ -579,8 +626,8 @@ sap.ui.define([
                             ];
 
                             var bValid = true;
-                            aRequiredFields.forEach(function (field) {
-                                var oControl = sap.ui.getCore().byId(field.id);
+                            aRequiredFields.forEach((field) => {
+                                var oControl = this.byId(field.id);
                                 if (!oControl.getValue()) {
                                     oControl.setValueState("Error");
                                     oControl.setValueStateText(field.name + " is required");
@@ -596,16 +643,16 @@ sap.ui.define([
                             }
 
                             // 🧠 Date validation
-                            var oValidFrom = sap.ui.getCore().byId("editValidFromInput").getDateValue();
-                            var oValidTo = sap.ui.getCore().byId("editValidToInput").getDateValue();
+                            var oValidFrom = this.byId("editValidFromInput").getDateValue();
+                            var oValidTo = this.byId("editValidToInput").getDateValue();
 
                             if (oValidFrom && oValidTo && oValidTo < oValidFrom) {
-                                sap.ui.getCore().byId("editValidToInput").setValueState("Error");
-                                sap.ui.getCore().byId("editValidToInput").setValueStateText("'Valid To' must be later than 'Valid From'");
+                                this.byId("editValidToInput").setValueState("Error");
+                                this.byId("editValidToInput").setValueStateText("'Valid To' must be later than 'Valid From'");
                                 sap.m.MessageBox.error("'Valid To' date must be later than 'Valid From' date.");
                                 return;
                             } else {
-                                sap.ui.getCore().byId("editValidToInput").setValueState("None");
+                                this.byId("editValidToInput").setValueState("None");
                             }
 
                             // 🟢 Proceed with PATCH request
@@ -649,8 +696,8 @@ sap.ui.define([
             this._oEditDialog.open();
         },
 
-        onAddBuilding: function (oEvent) {
-            var oContext = oEvent.getSource().getBindingContext("projects");
+        onAddBuilding: function () {
+            var oContext = this._getSelectedProjectContext();
             if (!oContext) {
                 sap.m.MessageToast.show("No project selected.");
                 return;
@@ -842,3 +889,4 @@ sap.ui.define([
         }
     });
 });
+

@@ -12,12 +12,42 @@ sap.ui.define([
             this._loadBasePrices();
         },
 
+        onBasePriceSelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnEditBP").setEnabled(bHasSelection);
+            this.byId("btnDeleteBP").setEnabled(bHasSelection);
+        },
+
+        _getSelectedBasePriceContext: function () {
+            const oSelectedItem = this.byId("basePricesTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext("basePrices") : null;
+        },
+        _getSelectedBasePriceCode: function () {
+            const oCtx = this._getSelectedBasePriceContext();
+            return oCtx ? oCtx.getObject().code : null;
+        },
+        _restoreBasePriceSelection: function (sCode) {
+            const oTable = this.byId("basePricesTable");
+            const oItem = sCode ? oTable.getItems().find(i => i.getBindingContext("basePrices")?.getObject().code === sCode) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnEditBP").setEnabled(true);
+                this.byId("btnDeleteBP").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnEditBP").setEnabled(false);
+                this.byId("btnDeleteBP").setEnabled(false);
+            }
+        },
+
         // Load all BasePrices
         _loadBasePrices: function () {
+            const sSelectedCode = this._getSelectedBasePriceCode();
             fetch("/odata/v4/real-estate/BasePrices")
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "basePrices");
+                    this._restoreBasePriceSelection(sSelectedCode);
                 })
                 .catch(err => console.error("Failed to load BasePrices:", err));
         },
@@ -28,8 +58,12 @@ sap.ui.define([
         },
 
         // Edit existing BasePrice
-        onEditBasePrice: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("basePrices");
+        onEditBasePrice: function () {
+            const oCtx = this._getSelectedBasePriceContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a base price first.");
+                return;
+            }
             const oData = oCtx.getObject();
             this._openBasePriceDialog(oData);
         },
@@ -89,8 +123,12 @@ sap.ui.define([
         },
 
         // Delete BasePrice
-        onDeleteBasePrice: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("basePrices");
+        onDeleteBasePrice: function () {
+            const oCtx = this._getSelectedBasePriceContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a base price first.");
+                return;
+            }
             const oData = oCtx.getObject();
 
             MessageBox.confirm(`Delete BasePrice ${oData.code}?`, {

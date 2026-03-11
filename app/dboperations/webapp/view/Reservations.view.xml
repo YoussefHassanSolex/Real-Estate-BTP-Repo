@@ -1,8 +1,15 @@
 <mvc:View controllerName="dboperations.controller.Reservations" xmlns="sap.m" xmlns:mvc="sap.ui.core.mvc">
     <Page id="ReservationsPage" title="Reservations">
+        <headerContent>
+            <Button id="btnReservationDetails" icon="sap-icon://information" text="Details" tooltip="Details" press="onDetails" enabled="false" />
+            <Button id="btnEditReservation" icon="sap-icon://edit" text="Edit" tooltip="Edit" press="onEditReservation" enabled="false" />
+            <Button id="btnReservationPrint" icon="sap-icon://print" text="Print" tooltip="Print" press="onPrint" enabled="false" />
+            <Button id="btnCreateContract" icon="sap-icon://create" text="Create Contract" tooltip="Create Contract" press="onCreateContract" enabled="false" />
+            <Button id="btnDeleteReservation" icon="sap-icon://delete" type="Reject" text="Delete" tooltip="Delete" press="onDelete" enabled="false" />
+        </headerContent>
         <content>
             <ScrollContainer id="_IDGenScrollContainer5" horizontal="true" vertical="false" height="100%" width="100%">
-                <Table id="reservationsTable" items="{/Reservations}" width="300%">
+                <Table id="reservationsTable" items="{/Reservations}" width="300%" mode="SingleSelectLeft" selectionChange="onReservationSelectionChange">
                     <columns>
                         <Column id="_IDGenColumn69"><Text id="_IDGenText120" text="Reservation ID" /></Column>
                         <Column id="_IDGenColumn78"><Text id="_IDGenText135" text="Company Code ID" /></Column>
@@ -35,7 +42,6 @@
                         <Column id="_IDGenColumn122"><Text id="_IDGenText179" text="Cancellation Status" /></Column>
                         <Column id="_IDGenColumn123"><Text id="_IDGenText180" text="Rejection Reason" /></Column>
                         <!-- <Column id="_IDGenColumn124"><Text id="_IDGenText181" text="Cancellation Fees" /></Column> -->
-                        <Column id="_IDGenColumn76"><Text id="_IDGenText127" text="Actions" /></Column>
                     </columns>
                     <items>
                         <ColumnListItem id="_IDGenColumnListItem7">
@@ -71,13 +77,6 @@
                                 <Text id="_IDGenText203" text="{cancellationStatus}" />
                                 <Text id="_IDGenText204" text="{rejectionReason}" />
                                 <!-- <Text id="_IDGenText205" text="{cancellationFees}" /> -->
-                                <HBox id="_IDGenHBox5">
-                                    <Button id="_IDGenButton17" icon="sap-icon://information" tooltip="Details" press="onDetails" />
-                                    <Button id="_IDGenButton20" icon="sap-icon://edit" tooltip="Edit" press="onEditReservation" />
-                                    <Button id="_IDGenButton99" icon="sap-icon://print" tooltip="Print" press="onPrint" />
-                                    <Button id="createContractBtn" icon="sap-icon://create" text="" tooltip="Create Contract" press="onCreateContract" visible="{path: '', formatter: '.formatCreateContractVisible'}" />
-                                    <Button id="_IDGenButton25" icon="sap-icon://delete" type="Reject" tooltip="Delete" press="onDelete" />
-                                </HBox>
                             </cells>
                         </ColumnListItem>
                     </items>
@@ -92,23 +91,23 @@
         draggable="true"
         resizable="true">
 
-        <VBox class="sapUiSmallMargin">
-            <Input
+        <VBox id="_IDGenVBox11" class="sapUiSmallMargin">
+            <Input id="_IDGenInput55"
                 placeholder="Company Code"
                 value="{contractModel>/CompanyCode}"
                 required="true"/>
 
-            <Input
+            <Input id="_IDGenInput56"
                 placeholder="Responsible BP"
                 value="{contractModel>/Responsible}"
                 required="true"/>
 
-            <Input
+            <Input id="_IDGenInput57"
                 placeholder="Contract Type"
                 value="{contractModel>/REContractType}"
                 required="true"/>
 
-            <DatePicker
+            <DatePicker id="_IDGenDatePicker6"
                 placeholder="Start Date"
                 value="{contractModel>/ContractStartDate}"
                 valueFormat="yyyy-MM-dd"
@@ -117,23 +116,23 @@
         </VBox>
 
         <beginButton>
-            <Button
+            <Button id="_IDGenButton"
                 text="Create"
                 type="Emphasized"
                 press="onConfirmCreateContract"/>
         </beginButton>
 
         <endButton>
-            <Button
+            <Button id="_IDGenButton1"
                 text="Cancel"
                 press="onCancelCreateContract"/>
         </endButton>
     </Dialog>
 
-    <List
+    <List id="_IDGenList"
         headerText="Contracts"
         items="{contractsModel>/}">
-        <StandardListItem
+        <StandardListItem id="_IDGenStandardListItem1"
             title="{contractsModel>REContract}"
             description="{contractsModel>CompanyCode} - {contractsModel>REContractType}" />
     </List>

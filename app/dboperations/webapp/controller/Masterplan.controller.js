@@ -35,7 +35,6 @@ sap.ui.define([
                 placedMarkers: [],
                 loading: true,
                 converting: false,
-                markerColor: "#FF0000",
                 layoutScope: "USER",
                 currentPlanKey: "",
                 uploadStatusText: "Please upload a masterplan file (SVG or any supported format) to view the plan",
@@ -47,7 +46,6 @@ sap.ui.define([
 
             // Load units data
             this._loadUnits();
-            this._loadReservationPartners();
             this._loadSavedVectors({ autoLoadSelected: true });
         },
 
@@ -159,18 +157,6 @@ sap.ui.define([
             this._applyUnitListItemStylingAndDnD();
         },
 
-        _loadReservationPartners: function () {
-            fetch("/odata/v4/real-estate/ReservationPartners?$select=ID,customerCode,customerName")
-                .then(response => response.json())
-                .then(data => {
-                    var aPartners = Array.isArray(data && data.value) ? data.value : [];
-                    aPartners.unshift({ ID: "", customerCode: "General", customerName: "(No Partner)" });
-                    this.getView().getModel("view").setProperty("/reservationPartners", aPartners);
-                })
-                .catch(err => {
-                    console.error("Error fetching reservation partners", err);
-                });
-        },
 
         _setUploadStatus: function (sText, sType) {
             var oViewModel = this.getView().getModel("view");
@@ -574,23 +560,6 @@ sap.ui.define([
             return sId ? String(sId).trim() : null;
         },
 
-        _getReservationPartnerLabel: function (sPartnerId) {
-            var aPartners = this.getView().getModel("view").getProperty("/reservationPartners") || [];
-            var sNormalizedId = sPartnerId ? String(sPartnerId).trim() : "";
-            if (!sNormalizedId) {
-                return "General (No Partner)";
-            }
-            var oPartner = aPartners.find(function (p) {
-                return String(p.ID || "") === sNormalizedId;
-            });
-            if (!oPartner) {
-                return "Partner: " + sNormalizedId;
-            }
-            var sCode = oPartner.customerCode || "";
-            var sName = oPartner.customerName || "";
-            return (sCode && sName) ? (sCode + " - " + sName) : (sCode || sName || ("Partner: " + sNormalizedId));
-        },
-
         _getCoordinateBounds: function (svgElement, gElement) {
             var target = gElement || svgElement;
             var fallback = { minX: 0, minY: 0, width: 1, height: 1 };
@@ -672,7 +641,7 @@ sap.ui.define([
                         unitId: oMarker.unit.unitId,
                         xNorm: Number(oNorm.xNorm.toFixed(6)),
                         yNorm: Number(oNorm.yNorm.toFixed(6)),
-                        color: oMarker.color || this._getCurrentMarkerColor(),
+                        color: (oMarker.unit && (oMarker.unit.unitStatusColor || this._getUnitStatusColor(oMarker.unit.unitStatusDescription))) || oMarker.color || "#FF0000",
                         size: Number(oMarker.size || 5),
                         reservationPartnerId: sSelectedPartnerId
                     };
@@ -747,7 +716,7 @@ sap.ui.define([
                         x: oPos.x,
                         y: oPos.y,
                         size: Number(oSaved.size || 5),
-                        color: oSaved.color || this._getCurrentMarkerColor(),
+                        color: (oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription)) || oSaved.color || "#FF0000",
                         reservationPartnerId: oSaved.reservationPartnerId || null,
                         unit: oUnit
                     };
@@ -835,51 +804,10 @@ sap.ui.define([
             return "#" + toHex(r) + toHex(g) + toHex(b);
         },
 
-        _getCurrentMarkerColor: function () {
-            return this.getView().getModel("view").getProperty("/markerColor") || "#FF0000";
-        },
-
         _getUnitStatusColor: function (sUnitStatusDescription) {
             return this._getStatusMeta(sUnitStatusDescription).color;
         },
 
-        onMarkerColorChange: function (oEvent) {
-            var oSelectedItem = oEvent.getParameter("selectedItem");
-            var sColor = (oSelectedItem && oSelectedItem.getKey && oSelectedItem.getKey()) || oEvent.getParameter("selectedKey");
-            if (!sColor) {
-                return;
-            }
-            this.getView().getModel("view").setProperty("/markerColor", sColor);
-
-            var svgContainer = this.getView().byId("svgContainer");
-            var oDomRef = svgContainer && svgContainer.getDomRef();
-            var svgElement = oDomRef && oDomRef.querySelector("svg");
-            if (!svgElement) {
-                return;
-            }
-
-            var gElement = svgElement.querySelector("g");
-            this._renderMarkers(svgElement, gElement);
-        },
-
-        onReservationPartnerChange: function () {
-            var oViewModel = this.getView().getModel("view");
-            var sPartnerId = this._getSelectedReservationPartnerId();
-            var aPartners = oViewModel.getProperty("/reservationPartners") || [];
-            var oPartner = aPartners.find(function (p) { return p.ID === sPartnerId; });
-            var sPartnerText = oPartner ? ((oPartner.customerCode || "") + " - " + (oPartner.customerName || "")).trim() : "General";
-
-            var svgContainer = this.getView().byId("svgContainer");
-            var oDomRef = svgContainer && svgContainer.getDomRef();
-            var svgElement = oDomRef && oDomRef.querySelector("svg");
-            if (!svgElement) {
-                return;
-            }
-
-            var gElement = svgElement.querySelector("g");
-            this._loadMarkersForCurrentPlan(svgElement, gElement);
-            this._setUploadStatus("Loaded marker layout for: " + sPartnerText, "Information");
-        },
 
 
 
@@ -897,9 +825,8 @@ sap.ui.define([
 
             aMarkers.forEach(function (oMarker, index) {
                 var sUnitId = oMarker && oMarker.unit ? oMarker.unit.unitId : "Unknown";
-                var sMarkerColor = oMarker.color || this._getCurrentMarkerColor();
+                var sMarkerColor = (oMarker.unit && (oMarker.unit.unitStatusColor || this._getUnitStatusColor(oMarker.unit.unitStatusDescription))) || oMarker.color || "#FF0000";
                 var sHoverColor = this._darkenColor(sMarkerColor, 0.8);
-                var sPartnerLabel = this._getReservationPartnerLabel(oMarker.reservationPartnerId);
                 var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", oMarker.x);
                 circle.setAttribute("cy", oMarker.y);
@@ -917,7 +844,7 @@ sap.ui.define([
 
                 // Add unit ID as title for debugging
                 var title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-                title.textContent = "Unit: " + sUnitId + " | Partner: " + sPartnerLabel + " (x:" + oMarker.x.toFixed(2) + ", y:" + oMarker.y.toFixed(2) + ")";
+                title.textContent = "Unit: " + sUnitId + " (x:" + oMarker.x.toFixed(2) + ", y:" + oMarker.y.toFixed(2) + ")";
                 circle.appendChild(title);
 
                 console.log("Marker", index, "- Unit:", sUnitId, "Position:", oMarker.x, oMarker.y, "Size:", oMarker.size);
@@ -1139,34 +1066,10 @@ sap.ui.define([
             // Get the clicked marker element
             var oMarker = event.target;
             var oUnit = oMarkerData.unit;
-            var sPartnerLabel = this._getReservationPartnerLabel(oMarkerData.reservationPartnerId);
-            var aColorOptions = [
-                { key: "#FF0000", text: "Red" },
-                { key: "#0070F2", text: "Blue" },
-                { key: "#107E3E", text: "Green" },
-                { key: "#E9730C", text: "Orange" },
-                { key: "#6A1B9A", text: "Violet" },
-                { key: "#1F2937", text: "Charcoal" }
-            ];
-            var oColorSelect = new sap.m.Select({
-                width: "11rem",
-                selectedKey: oMarkerData.color || this._getCurrentMarkerColor()
-            });
-            aColorOptions.forEach(function (oOption) {
-                oColorSelect.addItem(new sap.ui.core.Item({
-                    key: oOption.key,
-                    text: oOption.text
-                }));
-            });
-
             var oPopover = new Popover({
                 title: "Unit Options",
                 placement: "Bottom",
                 content: [
-                    new sap.m.ObjectStatus({
-                        title: "Reservation Partner",
-                        text: sPartnerLabel
-                    }),
                     new sap.m.HBox({
                         wrap: "Wrap",
                         items: [
@@ -1185,51 +1088,7 @@ sap.ui.define([
                                     this._navigateToCreateReservation(oUnit);
                                     oPopover.close();
                                 }.bind(this)
-                            }),
-                            new sap.m.Button({
-                                icon: "sap-icon://palette",
-                                text: "Apply Color",
-                                press: function () {
-                                    var sSelectedPartnerId = this._getSelectedReservationPartnerId();
-                                    var sMarkerPartnerId = oMarkerData.reservationPartnerId ? String(oMarkerData.reservationPartnerId).trim() : null;
-                                    if ((sSelectedPartnerId || null) !== sMarkerPartnerId) {
-                                        MessageBox.warning("You can only edit markers for the selected reservation partner.");
-                                        return;
-                                    }
-
-                                    var sSelectedColor = oColorSelect.getSelectedKey();
-                                    if (!sSelectedColor) {
-                                        return;
-                                    }
-
-                                    oMarkerData.color = sSelectedColor;
-
-                                    var oViewModel = this.getView().getModel("view");
-                                    var aMarkers = oViewModel.getProperty("/placedMarkers") || [];
-                                    oViewModel.setProperty("/placedMarkers", aMarkers);
-
-                                    var svgContainer = this.getView().byId("svgContainer");
-                                    var oDomRef = svgContainer && svgContainer.getDomRef();
-                                    var svgElement = oDomRef && oDomRef.querySelector("svg");
-                                    if (svgElement) {
-                                        var gElement = svgElement.querySelector("g");
-                                        this._renderMarkers(svgElement, gElement);
-                                        this._schedulePersistMarkers(svgElement, gElement);
-                                    }
-                                    oPopover.close();
-                                }.bind(this)
                             })
-                        ]
-                    }),
-                    new sap.m.HBox({
-                        class: "sapUiTinyMarginTop",
-                        alignItems: "Center",
-                        items: [
-                            new sap.m.Text({
-                                text: "Marker Color",
-                                class: "sapUiTinyMarginEnd"
-                            }),
-                            oColorSelect
                         ]
                     })
                 ]

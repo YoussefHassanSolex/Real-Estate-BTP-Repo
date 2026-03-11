@@ -12,12 +12,42 @@ sap.ui.define([
             this._loadCalculationMethods();
         },
 
+        onCalculationMethodSelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnEditCM").setEnabled(bHasSelection);
+            this.byId("btnDeleteCM").setEnabled(bHasSelection);
+        },
+
+        _getSelectedCalculationMethodContext: function () {
+            const oSelectedItem = this.byId("calculationMethodsTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext("calculationMethods") : null;
+        },
+        _getSelectedCalculationMethodCode: function () {
+            const oCtx = this._getSelectedCalculationMethodContext();
+            return oCtx ? oCtx.getObject().code : null;
+        },
+        _restoreCalculationMethodSelection: function (sCode) {
+            const oTable = this.byId("calculationMethodsTable");
+            const oItem = sCode ? oTable.getItems().find(i => i.getBindingContext("calculationMethods")?.getObject().code === sCode) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnEditCM").setEnabled(true);
+                this.byId("btnDeleteCM").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnEditCM").setEnabled(false);
+                this.byId("btnDeleteCM").setEnabled(false);
+            }
+        },
+
         // Load all CalculationMethods
         _loadCalculationMethods: function () {
+            const sSelectedCode = this._getSelectedCalculationMethodCode();
             fetch("/odata/v4/real-estate/CalculationMethods")
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "calculationMethods");
+                    this._restoreCalculationMethodSelection(sSelectedCode);
                 })
                 .catch(err => console.error("Failed to load CalculationMethods:", err));
         },
@@ -28,8 +58,12 @@ sap.ui.define([
         },
 
         // Edit existing CalculationMethod
-        onEditCalculationMethod: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("calculationMethods");
+        onEditCalculationMethod: function () {
+            const oCtx = this._getSelectedCalculationMethodContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a calculation method first.");
+                return;
+            }
             const oData = oCtx.getObject();
             this._openCalculationMethodDialog(oData);
         },
@@ -89,8 +123,12 @@ sap.ui.define([
         },
 
         // Delete CalculationMethod
-        onDeleteCalculationMethod: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("calculationMethods");
+        onDeleteCalculationMethod: function () {
+            const oCtx = this._getSelectedCalculationMethodContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a calculation method first.");
+                return;
+            }
             const oData = oCtx.getObject();
 
             MessageBox.confirm(`Delete CalculationMethod ${oData.code}?`, {

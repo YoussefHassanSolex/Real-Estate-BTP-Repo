@@ -105,4 +105,9 @@ service RealEstateService {
         scope      : String(20),
         customerId : String(36)
     ) returns MasterplanVectorResult;
+    action DeleteMyMasterplanVector(
+        planKey    : String(255),
+        scope      : String(20),
+        customerId : String(36)
+    ) returns Boolean;
 }

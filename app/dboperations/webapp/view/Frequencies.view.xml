@@ -7,14 +7,15 @@
     <Page id="_IDGenPageFR" title="Frequencies">
         <headerContent>
             <Button id="btnAddFR" icon="sap-icon://add" text="Add Frequency" press="onAddFrequency"/>
+            <Button id="btnEditFR" icon="sap-icon://edit" text="Edit" press="onEditFrequency" enabled="false"/>
+            <Button id="btnDeleteFR" icon="sap-icon://delete" type="Reject" text="Delete" press="onDeleteFrequency" enabled="false"/>
         </headerContent>
 
         <content>
-            <Table id="frequenciesTable" items="{frequencies>/}" width="100%">
+            <Table id="frequenciesTable" items="{frequencies>/}" width="100%" mode="SingleSelectLeft" selectionChange="onFrequencySelectionChange">
                 <columns>
                     <Column id="_IDGenColumnFR1"><Text id="_IDGenTextFR1" text="Code"/></Column>
                     <Column id="_IDGenColumnFR2"><Text id="_IDGenTextFR2" text="Description"/></Column>
-                    <Column id="_IDGenColumnFR3"><Text id="_IDGenTextFR3" text="Actions"/></Column>
                 </columns>
 
                 <items>
@@ -22,10 +23,6 @@
                         <cells>
                             <Text id="_IDGenTextFR4" text="{frequencies>code}"/>
                             <Text id="_IDGenTextFR5" text="{frequencies>description}"/>
-                            <HBox id="_IDGenHBoxFR1">
-                                <Button id="_IDGenButtonFR1" icon="sap-icon://edit" press="onEditFrequency"/>
-                                <Button id="_IDGenButtonFR2" icon="sap-icon://delete" type="Reject" press="onDeleteFrequency"/>
-                            </HBox>
                         </cells>
                     </ColumnListItem>
                 </items>

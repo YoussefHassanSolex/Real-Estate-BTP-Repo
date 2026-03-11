@@ -12,12 +12,42 @@ sap.ui.define([
             this._loadFrequencies();
         },
 
+        onFrequencySelectionChange: function (oEvent) {
+            const bHasSelection = !!oEvent.getSource().getSelectedItem();
+            this.byId("btnEditFR").setEnabled(bHasSelection);
+            this.byId("btnDeleteFR").setEnabled(bHasSelection);
+        },
+
+        _getSelectedFrequencyContext: function () {
+            const oSelectedItem = this.byId("frequenciesTable").getSelectedItem();
+            return oSelectedItem ? oSelectedItem.getBindingContext("frequencies") : null;
+        },
+        _getSelectedFrequencyCode: function () {
+            const oCtx = this._getSelectedFrequencyContext();
+            return oCtx ? oCtx.getObject().code : null;
+        },
+        _restoreFrequencySelection: function (sCode) {
+            const oTable = this.byId("frequenciesTable");
+            const oItem = sCode ? oTable.getItems().find(i => i.getBindingContext("frequencies")?.getObject().code === sCode) : null;
+            if (oItem) {
+                oTable.setSelectedItem(oItem, true);
+                this.byId("btnEditFR").setEnabled(true);
+                this.byId("btnDeleteFR").setEnabled(true);
+            } else {
+                oTable.removeSelections(true);
+                this.byId("btnEditFR").setEnabled(false);
+                this.byId("btnDeleteFR").setEnabled(false);
+            }
+        },
+
         // Load all Frequencies
         _loadFrequencies: function () {
+            const sSelectedCode = this._getSelectedFrequencyCode();
             fetch("/odata/v4/real-estate/Frequencies")
                 .then(res => res.json())
                 .then(data => {
                     this.getView().setModel(new JSONModel(data.value || []), "frequencies");
+                    this._restoreFrequencySelection(sSelectedCode);
                 })
                 .catch(err => console.error("Failed to load Frequencies:", err));
         },
@@ -28,8 +58,12 @@ sap.ui.define([
         },
 
         // Edit existing Frequency
-        onEditFrequency: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("frequencies");
+        onEditFrequency: function () {
+            const oCtx = this._getSelectedFrequencyContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a frequency first.");
+                return;
+            }
             const oData = oCtx.getObject();
             this._openFrequencyDialog(oData);
         },
@@ -89,8 +123,12 @@ sap.ui.define([
         },
 
         // Delete Frequency
-        onDeleteFrequency: function (oEvent) {
-            const oCtx = oEvent.getSource().getBindingContext("frequencies");
+        onDeleteFrequency: function () {
+            const oCtx = this._getSelectedFrequencyContext();
+            if (!oCtx) {
+                MessageToast.show("Please select a frequency first.");
+                return;
+            }
             const oData = oCtx.getObject();
 
             MessageBox.confirm(`Delete Frequency ${oData.code}?`, {
