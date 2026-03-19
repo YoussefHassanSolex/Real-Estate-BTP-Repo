@@ -64,33 +64,37 @@
             <BusyIndicator
                 id="pageBusyIndicator"
                 visible="{view>/loading}"
-                text="Loading units..."
+                text="Loading buildings..."
             />
             <HBox id="_IDGenHBox_1" width="100%" height="100%" visible="{= !${view>/loading} }">
                 <VBox id="_IDGenVBox7" width="20%" height="100%">
-                    <Title id="_IDGenTitle3" text="Available Units" level="H3" />
+                    <Title id="_IDGenTitle3" text="Buildings" level="H3" />
                     <List
-                        id="unitsList"
-                        class="masterplanUnitsList"
-                        items="{view>/units}"
+                        id="buildingsList"
+                        class="masterplanBuildingsList"
+                        items="{view>/buildings}"
                         mode="None"
                         growing="true"
                         growingThreshold="20"
-                        updateFinished="onUnitsListUpdateFinished"
+                        updateFinished="onBuildingsListUpdateFinished"
                     >
                         <items>
                             <CustomListItem id="_IDGenCustomListItem" highlight="{view>statusHighlight}">
-                                <HBox id="_IDGenHBox4" alignItems="Center" justifyContent="Start">
-                                    <Avatar id="_IDGenAvatar"
-                                        src=""
-                                        displayShape="Circle"
-                                        displaySize="M"
-                                        backgroundColor="Accent1"
-                                        press="onUnitPress"
-                                    />
-                                    <VBox id="_IDGenVBox10" class="sapUiSmallMarginBegin">
-                                        <Text id="_IDGenText116" text="{view>unitId}" />
-                                        <Text id="_IDGenText117" text="{view>bua} sqm" />
+                                <HBox id="_IDGenHBox4" alignItems="Center" justifyContent="SpaceBetween" width="100%">
+                                    <HBox id="_IDGenHBox5" alignItems="Center" justifyContent="Start">
+                                        <Avatar id="_IDGenAvatar"
+                                            src=""
+                                            displayShape="Circle"
+                                            displaySize="M"
+                                            backgroundColor="Accent1"
+                                        />
+                                        <VBox id="_IDGenVBox10" class="sapUiSmallMarginBegin">
+                                            <Text id="_IDGenText116" text="{view>buildingId}" />
+                                            <Text id="_IDGenText117" text="{view>buildingDescription}" />
+                                        </VBox>
+                                    </HBox>
+                                    <VBox id="_IDGenVBox11_" class="sapUiSmallMarginEnd" alignItems="End">
+                                        <Text id="_IDGenText118" text="{view>unitCount} Units" />
                                     </VBox>
                                 </HBox>
                             </CustomListItem>

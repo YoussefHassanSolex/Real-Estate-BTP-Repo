@@ -10,9 +10,11 @@ sap.ui.define([
     "sap/m/Table",
     "sap/m/Column",
     "sap/m/ColumnListItem",
-    "sap/m/Popover"
+    "sap/m/Popover",
+    "sap/m/List",
+    "sap/m/StandardListItem"
 ], function (
-    Controller, MessageBox, Dialog, Button, Text, JSONModel, Title, SimpleForm, Table, Column, ColumnListItem, Popover
+    Controller, MessageBox, Dialog, Button, Text, JSONModel, Title, SimpleForm, Table, Column, ColumnListItem, Popover, List, StandardListItem
 ) {
     "use strict";
     var SAVED_VECTOR_STORAGE_KEY = "masterplan.selectedSavedVectorKey";
@@ -29,6 +31,7 @@ sap.ui.define([
                 savedVectors: [],
                 selectedSavedVectorKey: "",
                 units: [],
+                buildings: [],
                 reservationPartners: [],
                 selectedReservationPartnerId: "",
                 selectedUnit: null,
@@ -94,11 +97,13 @@ sap.ui.define([
                         };
                     });
 
-                    this.getView().getModel("view").setProperty("/units", enrichedUnits);
-                    this.getView().getModel("view").setProperty("/loading", false);
+                    var oViewModel = this.getView().getModel("view");
+                    oViewModel.setProperty("/units", enrichedUnits);
+                    oViewModel.setProperty("/buildings", this._buildBuildingsFromUnits(enrichedUnits));
+                    oViewModel.setProperty("/loading", false);
 
                     setTimeout(function() {
-                        this._applyUnitListItemStylingAndDnD();
+                        this._applyBuildingListItemStylingAndDnD();
                     }.bind(this), 100);
                 })
                 .catch(err => {
@@ -123,8 +128,85 @@ sap.ui.define([
             return { highlight: "Information", color: "#0070F2" };
         },
 
-        _applyUnitListItemStylingAndDnD: function () {
-            var oList = this.getView().byId("unitsList");
+        _getBuildingStatusMeta: function (aUnits) {
+            var hasAvailable = false;
+            var hasReserved = false;
+            var hasSold = false;
+
+            (aUnits || []).forEach(function (oUnit) {
+                var sStatus = String(oUnit && oUnit.unitStatusDescription || "").trim().toUpperCase();
+                if (sStatus.includes("OPEN") || sStatus.includes("AVAILABLE")) {
+                    hasAvailable = true;
+                } else if (sStatus.includes("RESERVED") || sStatus.includes("PENDING") || sStatus.includes("HOLD")) {
+                    hasReserved = true;
+                } else if (sStatus.includes("SOLD") || sStatus.includes("CLOSED") || sStatus.includes("BOOKED")) {
+                    hasSold = true;
+                }
+            });
+
+            if (hasAvailable) {
+                return { highlight: "Success", color: "#107E3E" };
+            }
+            if (hasReserved) {
+                return { highlight: "Warning", color: "#E9730C" };
+            }
+            if (hasSold) {
+                return { highlight: "Error", color: "#BB0000" };
+            }
+
+            return { highlight: "Information", color: "#0070F2" };
+        },
+
+        _buildBuildingsFromUnits: function (aUnits) {
+            var mBuildings = {};
+            (aUnits || []).forEach(function (oUnit) {
+                var sBuildingId = oUnit && oUnit.buildingId ? String(oUnit.buildingId).trim() : "";
+                if (!sBuildingId) {
+                    return;
+                }
+                if (!mBuildings[sBuildingId]) {
+                    mBuildings[sBuildingId] = {
+                        buildingId: sBuildingId,
+                        buildingDescription: oUnit.buildingDescription || "",
+                        units: [],
+                        unitCount: 0,
+                        statusHighlight: "Information",
+                        statusColor: "#0070F2"
+                    };
+                }
+                mBuildings[sBuildingId].units.push(oUnit);
+            });
+
+            return Object.keys(mBuildings)
+                .map(function (sKey) {
+                    var oBuilding = mBuildings[sKey];
+                    oBuilding.unitCount = oBuilding.units.length;
+                    var oStatus = this._getBuildingStatusMeta(oBuilding.units);
+                    oBuilding.statusHighlight = oStatus.highlight;
+                    oBuilding.statusColor = oStatus.color;
+                    return oBuilding;
+                }.bind(this))
+                .sort(function (a, b) {
+                    return String(a.buildingId).localeCompare(String(b.buildingId));
+                });
+        },
+
+        _getBuildingById: function (sBuildingId) {
+            var aBuildings = this.getView().getModel("view").getProperty("/buildings") || [];
+            return aBuildings.find(function (b) {
+                return String(b.buildingId || "") === String(sBuildingId || "");
+            });
+        },
+
+        _getUnitsForBuilding: function (sBuildingId) {
+            var aUnits = this.getView().getModel("view").getProperty("/units") || [];
+            return aUnits.filter(function (oUnit) {
+                return String(oUnit.buildingId || "") === String(sBuildingId || "");
+            });
+        },
+
+        _applyBuildingListItemStylingAndDnD: function () {
+            var oList = this.getView().byId("buildingsList");
             if (!oList) {
                 return;
             }
@@ -132,8 +214,8 @@ sap.ui.define([
             oList.getItems().forEach(function (oItem) {
                 var domRef = oItem.getDomRef();
                 var oContext = oItem.getBindingContext("view");
-                var oUnit = oContext && oContext.getObject();
-                var sColor = oUnit && oUnit.unitStatusColor;
+                var oBuilding = oContext && oContext.getObject();
+                var sColor = oBuilding && oBuilding.statusColor;
                 if (!domRef) {
                     return;
                 }
@@ -153,8 +235,8 @@ sap.ui.define([
             }.bind(this));
         },
 
-        onUnitsListUpdateFinished: function () {
-            this._applyUnitListItemStylingAndDnD();
+        onBuildingsListUpdateFinished: function () {
+            this._applyBuildingListItemStylingAndDnD();
         },
 
 
@@ -330,7 +412,7 @@ sap.ui.define([
                 console.log(svgContent);
 
                 // Update status
-                this._setUploadStatus("SVG loaded successfully. Click on units to view details.", "Success");
+                this._setUploadStatus("SVG loaded successfully. Click on buildings to view units.", "Success");
 
                 // Parse SVG and attach click handlers
                 this._attachSvgClickHandlers(svgContent);
@@ -378,7 +460,7 @@ sap.ui.define([
 
                     var svgString = oResult.svgContent.replace(/width="[^"]*" height="[^"]*"/, 'width="100%" height="100%"');
                     this.getView().getModel("view").setProperty("/svgContent", svgString);
-                    this._setUploadStatus("File converted successfully. Click on units to view details.", "Success");
+                    this._setUploadStatus("File converted successfully. Click on buildings to view units.", "Success");
                     this._attachSvgClickHandlers(svgString);
                     await this._saveCurrentVector(this._buildPlanKey(oFile.name), oFile.name, svgString);
                 } catch (error) {
@@ -712,12 +794,21 @@ sap.ui.define([
                     var oUnit = aUnits.find(function (u) {
                         return u.unitId === oSaved.unitId;
                     }) || { unitId: oSaved.unitId };
+                    var sBuildingId = oUnit.buildingId || "";
+                    var oBuilding = sBuildingId ? this._getBuildingById(sBuildingId) : null;
+                    var aUnitsForBuilding = sBuildingId ? this._getUnitsForBuilding(sBuildingId) : [];
+                    var oBuildingStatus = this._getBuildingStatusMeta(aUnitsForBuilding);
+                    var sBuildingColor = (oBuilding && oBuilding.statusColor) || oBuildingStatus.color;
                     return {
                         x: oPos.x,
                         y: oPos.y,
                         size: Number(oSaved.size || 5),
-                        color: (oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription)) || oSaved.color || "#FF0000",
+                        color: sBuildingColor || (oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription)) || "#FF0000",
                         reservationPartnerId: oSaved.reservationPartnerId || null,
+                        buildingId: sBuildingId,
+                        buildingDescription: (oBuilding && oBuilding.buildingDescription) || oUnit.buildingDescription || "",
+                        unitCount: aUnitsForBuilding.length,
+                        statusHighlight: oBuildingStatus.highlight,
                         unit: oUnit
                     };
                 }.bind(this));
@@ -824,8 +915,8 @@ sap.ui.define([
             console.log("Rendering", aMarkers.length, "markers");
 
             aMarkers.forEach(function (oMarker, index) {
-                var sUnitId = oMarker && oMarker.unit ? oMarker.unit.unitId : "Unknown";
-                var sMarkerColor = (oMarker.unit && (oMarker.unit.unitStatusColor || this._getUnitStatusColor(oMarker.unit.unitStatusDescription))) || oMarker.color || "#FF0000";
+                var sBuildingId = oMarker && oMarker.buildingId ? oMarker.buildingId : (oMarker.unit && oMarker.unit.buildingId) || "Unknown";
+                var sMarkerColor = oMarker.color || (oMarker.unit && (oMarker.unit.unitStatusColor || this._getUnitStatusColor(oMarker.unit.unitStatusDescription))) || "#FF0000";
                 var sHoverColor = this._darkenColor(sMarkerColor, 0.8);
                 var circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                 circle.setAttribute("cx", oMarker.x);
@@ -842,12 +933,12 @@ sap.ui.define([
                 circle.style.opacity = "1";
                 circle.style.mixBlendMode = "normal";
 
-                // Add unit ID as title for debugging
+                // Add building ID as title for debugging
                 var title = document.createElementNS("http://www.w3.org/2000/svg", "title");
-                title.textContent = "Unit: " + sUnitId + " (x:" + oMarker.x.toFixed(2) + ", y:" + oMarker.y.toFixed(2) + ")";
+                title.textContent = "Building: " + sBuildingId + " (x:" + oMarker.x.toFixed(2) + ", y:" + oMarker.y.toFixed(2) + ")";
                 circle.appendChild(title);
 
-                console.log("Marker", index, "- Unit:", sUnitId, "Position:", oMarker.x, oMarker.y, "Size:", oMarker.size);
+                console.log("Marker", index, "- Building:", sBuildingId, "Position:", oMarker.x, oMarker.y, "Size:", oMarker.size);
 
                 // Hover effects
                 circle.addEventListener("mouseover", function () {
@@ -859,9 +950,9 @@ sap.ui.define([
                     this.setAttribute("r", Math.max(oMarker.size, 8));
                 });
 
-                // Click for unit options
+                // Click for building units
                 circle.addEventListener("click", function (event) {
-                    this._showUnitOptions(oMarker, event);
+                    this._showBuildingUnits(oMarker, event);
                 }.bind(this));
 
                 markerLayer.appendChild(circle);
@@ -990,15 +1081,21 @@ sap.ui.define([
             if (oItem && oItem.getBindingContext) {
                 var oContext = oItem.getBindingContext("view");
                 if (oContext) {
-                    var oUnit = oContext.getObject();
-                    console.log("Dragging unit:", oUnit.unitId);
-                    oEvent.dataTransfer.setData("application/json", JSON.stringify(oUnit));
+                    var oBuilding = oContext.getObject();
+                    if (!oBuilding || !oBuilding.buildingId) {
+                        return;
+                    }
+                    console.log("Dragging building:", oBuilding.buildingId);
+                    oEvent.dataTransfer.setData("application/json", JSON.stringify({
+                        type: "building",
+                        buildingId: oBuilding.buildingId
+                    }));
 
                     // Create a small drag image (circle like the marker)
                     var dragImage = document.createElement('div');
                     dragImage.style.width = '10px';
                     dragImage.style.height = '10px';
-                    dragImage.style.backgroundColor = oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription);
+                    dragImage.style.backgroundColor = oBuilding.statusColor || "#0070F2";
                     dragImage.style.borderRadius = '50%';
                     dragImage.style.border = '1px solid black';
                     document.body.appendChild(dragImage);
@@ -1041,31 +1138,135 @@ sap.ui.define([
 
             var data = oEvent.dataTransfer.getData("application/json");
             if (data) {
-                var oUnit = JSON.parse(data);
-                console.log("Dropped unit:", oUnit.unitId);
-                var aMarkers = this.getView().getModel("view").getProperty("/placedMarkers") || [];
-                aMarkers.push({
-                    x: gx,
-                    y: gy,
-                    size: 5, // Small marker size relative to SVG coordinates
-                    color: oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription),
-                    reservationPartnerId: this._getSelectedReservationPartnerId(),
-                    unit: oUnit
-                });
-                this.getView().getModel("view").setProperty("/placedMarkers", aMarkers);
-                console.log("Total markers:", aMarkers.length);
-                var gElement = svgElement.querySelector("g");
-                this._renderMarkers(svgElement, gElement);
-                this._schedulePersistMarkers(svgElement, gElement);
+                var oPayload = JSON.parse(data);
+                if (!oPayload) {
+                    return;
+                }
+
+                if (oPayload.type === "building" || oPayload.buildingId) {
+                    var sBuildingId = oPayload.buildingId || "";
+                    var oBuilding = this._getBuildingById(sBuildingId);
+                    if (!oBuilding) {
+                        console.log("Building not found for drop:", sBuildingId);
+                        return;
+                    }
+
+                    var aUnitsForBuilding = this._getUnitsForBuilding(oBuilding.buildingId);
+                    var oRepresentativeUnit = aUnitsForBuilding[0] || null;
+                    console.log("Dropped building:", oBuilding.buildingId);
+
+                    var aMarkers = this.getView().getModel("view").getProperty("/placedMarkers") || [];
+                    aMarkers.push({
+                        x: gx,
+                        y: gy,
+                        size: 7,
+                        color: oBuilding.statusColor || "#0070F2",
+                        reservationPartnerId: this._getSelectedReservationPartnerId(),
+                        buildingId: oBuilding.buildingId,
+                        buildingDescription: oBuilding.buildingDescription || "",
+                        unitCount: aUnitsForBuilding.length,
+                        unit: oRepresentativeUnit
+                    });
+                    this.getView().getModel("view").setProperty("/placedMarkers", aMarkers);
+                    console.log("Total markers:", aMarkers.length);
+                    var gElement = svgElement.querySelector("g");
+                    this._renderMarkers(svgElement, gElement);
+                    this._schedulePersistMarkers(svgElement, gElement);
+                    return;
+                }
+
+                if (oPayload.unitId) {
+                    var oUnit = oPayload;
+                    console.log("Dropped unit:", oUnit.unitId);
+                    var aMarkersLegacy = this.getView().getModel("view").getProperty("/placedMarkers") || [];
+                    aMarkersLegacy.push({
+                        x: gx,
+                        y: gy,
+                        size: 5,
+                        color: oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription),
+                        reservationPartnerId: this._getSelectedReservationPartnerId(),
+                        unit: oUnit
+                    });
+                    this.getView().getModel("view").setProperty("/placedMarkers", aMarkersLegacy);
+                    console.log("Total markers:", aMarkersLegacy.length);
+                    var gElementLegacy = svgElement.querySelector("g");
+                    this._renderMarkers(svgElement, gElementLegacy);
+                    this._schedulePersistMarkers(svgElement, gElementLegacy);
+                    return;
+                }
             } else {
                 console.log("No data in dataTransfer");
             }
         },
 
-        _showUnitOptions: function (oMarkerData, event) {
-            // Get the clicked marker element
+        _showBuildingUnits: function (oMarkerData, event) {
             var oMarker = event.target;
-            var oUnit = oMarkerData.unit;
+            var sBuildingId = oMarkerData.buildingId || (oMarkerData.unit && oMarkerData.unit.buildingId) || "";
+            if (!sBuildingId) {
+                return;
+            }
+
+            var aUnits = this._getUnitsForBuilding(sBuildingId);
+            var oListModel = new sap.ui.model.json.JSONModel({ units: aUnits });
+            var oUnitList = new List({
+                updateFinished: function () {
+                    this._applyUnitListItemStyling(oUnitList);
+                }.bind(this),
+                items: {
+                    path: "/units",
+                    template: new StandardListItem({
+                        title: "{unitId}",
+                        description: "{unitDescription}",
+                        info: "{bua}",
+                        infoState: "None",
+                        type: "Active",
+                        press: function (oEvent) {
+                            var oUnit = oEvent.getSource().getBindingContext().getObject();
+                            this._openUnitOptions(oUnit, oEvent.getSource());
+                        }.bind(this)
+                    })
+                }
+            });
+            oUnitList.setModel(oListModel);
+
+            var oPopover = new Popover({
+                title: "Building " + sBuildingId + " Units",
+                placement: "Bottom",
+                contentWidth: "22rem",
+                content: [oUnitList]
+            });
+
+            oPopover.openBy(oMarker);
+        },
+
+        _applyUnitListItemStyling: function (oList) {
+            if (!oList) {
+                return;
+            }
+
+            oList.getItems().forEach(function (oItem) {
+                var domRef = oItem.getDomRef();
+                var oContext = oItem.getBindingContext();
+                var oUnit = oContext && oContext.getObject();
+                var sColor = oUnit && (oUnit.unitStatusColor || this._getUnitStatusColor(oUnit.unitStatusDescription));
+                if (!domRef) {
+                    return;
+                }
+
+                domRef.style.backgroundColor = sColor || "";
+                domRef.style.color = sColor ? "#FFFFFF" : "";
+                domRef.style.borderRadius = sColor ? "0.25rem" : "";
+                domRef.querySelectorAll(".sapMText, .sapUiIcon, .sapMLIBContent .sapMText").forEach(function (el) {
+                    el.style.color = sColor ? "#FFFFFF" : "";
+                });
+            }.bind(this));
+        },
+
+        _openUnitOptions: function (oUnit, oAnchor) {
+            if (!oUnit || !oAnchor) {
+                return;
+            }
+
             var oPopover = new Popover({
                 title: "Unit Options",
                 placement: "Bottom",
@@ -1094,8 +1295,7 @@ sap.ui.define([
                 ]
             });
 
-            // Open popover by the clicked marker
-            oPopover.openBy(oMarker);
+            oPopover.openBy(oAnchor);
         },
 
         _navigateToCreateReservation: function (unit) {
