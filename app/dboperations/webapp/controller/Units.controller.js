@@ -72,7 +72,7 @@ sap.ui.define([
             let bCanCreateReservation = false;
             if (oSelectedItem) {
                 const oData = oSelectedItem.getBindingContext().getObject();
-                bCanCreateReservation = (oData.unitStatusDescription === "Open");
+                bCanCreateReservation = (oData.unitStatusDescription === "Available");
             }
             this.byId("btnCreateReservationFromUnit").setEnabled(bCanCreateReservation);
         },
@@ -95,7 +95,7 @@ sap.ui.define([
                 this.byId("btnUnitDetails").setEnabled(true);
                 this.byId("btnEditUnit").setEnabled(true);
                 this.byId("btnDeleteUnit").setEnabled(true);
-                this.byId("btnCreateReservationFromUnit").setEnabled(oData.unitStatusDescription === "Open");
+                this.byId("btnCreateReservationFromUnit").setEnabled(oData.unitStatusDescription === "Available");
             } else {
                 oTable.removeSelections(true);
                 this.byId("btnUnitSimulate").setEnabled(false);
@@ -344,8 +344,15 @@ sap.ui.define([
                     filteredBuildings: []  // New: for filtered buildings
                 });
 
+                var that = this;
                 this._oAddDialog = new sap.m.Dialog({
                     title: "Add New Unit",
+                    afterClose: function () {
+                        if (that._oAddDialog) {
+                            that._oAddDialog.destroy();
+                            that._oAddDialog = null;
+                        }
+                    },
                     content: new sap.m.VBox({
                         items: [
                             new sap.m.Label({ text: "Unit Description", required: true }),
@@ -434,10 +441,11 @@ sap.ui.define([
                                 selectedKey: "{/unitStatusDescription}",
                                 items: [
                                     new sap.ui.core.Item({ key: "", text: "" }),
-                                    new sap.ui.core.Item({ key: "Open", text: "Open" }),
-                                    new sap.ui.core.Item({ key: "Closed", text: "Closed" }),
-                                    new sap.ui.core.Item({ key: "Cancelled", text: "Cancelled" }),
-                                    new sap.ui.core.Item({ key: "Terminated", text: "Terminated" })
+                                    new sap.ui.core.Item({ key: "Unreleased", text: "Unreleased" }),
+                                    new sap.ui.core.Item({ key: "Available", text: "Available" }),
+                                    new sap.ui.core.Item({ key: "Hold", text: "Hold" }),
+                                    new sap.ui.core.Item({ key: "Reserved", text: "Reserved" }),
+                                    new sap.ui.core.Item({ key: "Contracted", text: "Contracted" })
                                 ]
                             }),
                             new sap.m.Label({ text: "Floor Description", required: true }),
@@ -718,6 +726,8 @@ sap.ui.define([
                                     this._resetAddDialogFields();
 
                                     this._oAddDialog.close();
+                                    this._oAddDialog.destroy();
+                                    this._oAddDialog = null;
                                 })
                                 .catch(err => {
                                     sap.m.MessageBox.error("Error: " + err.message);
@@ -731,6 +741,8 @@ sap.ui.define([
                             // 🧹 Clear data on cancel
                             this._resetAddDialogFields();
                             this._oAddDialog.close();
+                            this._oAddDialog.destroy();
+                            this._oAddDialog = null;
                         }.bind(this)
                     })
                 });
@@ -1288,10 +1300,11 @@ sap.ui.define([
 
                                 items: [
 
-                                    new sap.ui.core.Item({ key: "Open", text: "Open" }),
-                                    new sap.ui.core.Item({ key: "Closed", text: "Closed" }),
-                                    new sap.ui.core.Item({ key: "Cancelled", text: "Cancelled" }),
-                                    new sap.ui.core.Item({ key: "Terminated", text: "Terminated" })
+                                    new sap.ui.core.Item({ key: "Unreleased", text: "Unreleased" }),
+                                    new sap.ui.core.Item({ key: "Available", text: "Available" }),
+                                    new sap.ui.core.Item({ key: "Hold", text: "Hold" }),
+                                    new sap.ui.core.Item({ key: "Reserved", text: "Reserved" }),
+                                    new sap.ui.core.Item({ key: "Contracted", text: "Contracted" })
                                 ]
                             }),
                             // new sap.m.Label({ text: "Unit Type Description", required: true }),
@@ -1708,6 +1721,9 @@ sap.ui.define([
             if (sUnitType) {
                 aFilters.push(new sap.ui.model.Filter("unitTypeDescription", sap.ui.model.FilterOperator.EQ, sUnitType));
             }
+
+            // Always filter by Available unit status on search
+            aFilters.push(new sap.ui.model.Filter("unitStatusDescription", sap.ui.model.FilterOperator.EQ, "Available"));
 
             // Floor range
             var sFloorFrom = this.byId("_IDGenInput17").getValue();

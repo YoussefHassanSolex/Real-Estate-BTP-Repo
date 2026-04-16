@@ -549,7 +549,7 @@ sap.ui.define([
             var sReservationId = oData.reservationId;
 
             // Fetch full reservation data with compositions for editing
-            fetch(`/odata/v4/real-estate/Reservations(reservationId=${sReservationId})?$expand=project,building,unit,paymentPlan,partners,conditions,payments`)
+            fetch(`/odata/v4/real-estate/Reservations(reservationId='${sReservationId}')?$expand=project,building,unit,paymentPlan,partners,conditions,payments`)
                 .then(response => {
                     if (!response.ok) throw new Error("Failed to fetch reservation");
                     return response.json();

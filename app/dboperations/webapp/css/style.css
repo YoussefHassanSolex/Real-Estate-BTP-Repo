@@ -3,3 +3,8 @@
 .TinyPadding{
     padding-right: 1px !important; 
 }
+.horizontalScrollOnly {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    width: 100% !important;
+}

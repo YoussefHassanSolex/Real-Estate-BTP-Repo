@@ -46,14 +46,6 @@
                         <Column id="_IDGenColumn37"><Text id="_IDGenText57" text="Valid To" /></Column>
                         <Column id="_IDGenColumn38"><Text id="_IDGenText58" text="Location" /></Column>
 
-                        <!-- Posting Parameters -->
-                        <Column id="_IDGenColumn39"><Text id="_IDGenText59" text="Business Area" /></Column>
-                        <Column id="_IDGenColumn40"><Text id="_IDGenText60" text="Profit Center" /></Column>
-                        <Column id="_IDGenColumn41"><Text id="_IDGenText61" text="Functional Area" /></Column>
-
-                        <!-- Supplementary Text -->
-                        <Column id="_IDGenColumn42"><Text id="_IDGenText62" text="Supplementary Text" /></Column>
-
                     </columns>
 
                     <items>
@@ -66,10 +58,8 @@
                                     <Text id="_IDGenText68" text="{projects>validFrom}" />
                                     <Text id="_IDGenText69" text="{projects>validTo}" />
                                     <Text id="_IDGenText70" text="{projects>location}" />
-                                    <Text id="_IDGenText71" text="{projects>businessArea}" />
                                     <Text id="_IDGenText72" text="{projects>profitCenter}" />
                                     <Text id="_IDGenText73" text="{projects>functionalArea}" />
-                                    <Text id="_IDGenText74" text="{projects>supplementaryText}" />
                             </cells>
                         </ColumnListItem>
                     </items>

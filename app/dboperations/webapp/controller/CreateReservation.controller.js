@@ -16,6 +16,8 @@ sap.ui.define([
             this.getView().setModel(this._oPaymentPlansModel, "paymentPlans");
             this._loadPartners()
 
+            // Initialize reservation ID counter
+            this._reservationIdCounter = parseInt(localStorage.getItem("reservationIdCounter")) || 0;
         },
         formatDateToYMD: function (oDate) {
             if (!oDate) {
@@ -115,7 +117,7 @@ sap.ui.define([
                 availableYears: [], // For populating select items
                 selectedPricePlanYears: "",
                 selectedSimulationId: "",
-                selectedSimulationFinalPrice: oReservation.unitPrice || 0,
+                selectedSimulationFinalPrice: bIsEdit ? oReservation.unitPrice || 0 : "",
                 showCreateContractButton: false,
 
                 mode: oReservation.mode || "create",
@@ -135,7 +137,7 @@ sap.ui.define([
                 status: oReservation.status === "O" ? "Open" : oReservation.status || "Open",
                 customerType: oReservation.customerType,
                 currency: oReservation.currency,
-                afterSales: oReservation.afterSales,
+                afterSales: bIsEdit ? oReservation.afterSales : "", // Empty for new reservations
                 project_projectId: oReservation.project_projectId,
                 unit_unitId: oReservation.unit_unitId,
                 building_buildingId: oReservation.buildingId,
@@ -151,11 +153,11 @@ sap.ui.define([
                 reservationType: oReservation.reservationType,
                 unitType: oReservation.unitType,
                 phase: oReservation.phase,
-                pricePlanYears: oReservation.pricePlanYears,
+                pricePlanYears: bIsEdit ? oReservation.pricePlanYears : 0, // Empty for new reservations
                 paymentPlan_paymentPlanId: oReservation.paymentPlan_paymentPlanId,
                 simulations: oReservation.simulations || [],
                 unitConditions: oReservation.unitConditions,
-                selectedPricePlanYears: "",
+                selectedPricePlanYears: "", // Always empty for new selections
                 selectedSimulationId: "",
                 enableImportExport: false, // Switch to enable/disable import/export buttons
                 // result
@@ -348,6 +350,7 @@ sap.ui.define([
         onPricePlanYearsChange: async function (oEvent) {
             const iYears = Number(oEvent.getSource().getSelectedKey());
             const oModel = this.getView().getModel("local");
+
             oModel.setProperty("/pricePlanYears", iYears);
             oModel.setProperty("/planYears", iYears);
 
@@ -668,6 +671,11 @@ oModel.setProperty("/conditions", aConditions);
                 }
             );
         },
+        _generateReservationId: function () {
+            this._reservationIdCounter = (this._reservationIdCounter || 0) + 1;
+            localStorage.setItem("reservationIdCounter", this._reservationIdCounter);
+            return "RES" + ("000" + this._reservationIdCounter).slice(-3);
+        },
         onSaveReservation: async function () {
             const oModel = this.getView().getModel("local");
             const oData = oModel.getData();
@@ -691,7 +699,7 @@ oModel.setProperty("/conditions", aConditions);
             // For edit mode, use existing reservationId; for create, generate new one
             const reservationId = bIsEdit
                 ? oData.reservationId
-                : this._generateUUID();
+                : this._generateReservationId();
 
             const transformedConditions = oData.conditions.map((c, index) => ({
                 ID: c.ID || this._generateUUID(),
@@ -799,7 +807,7 @@ oModel.setProperty("/conditions", aConditions);
             try {
                 const method = bIsEdit ? "PATCH" : "POST";
                 const url = bIsEdit
-                    ? `/odata/v4/real-estate/Reservations(reservationId=${reservationId})`
+                    ? `/odata/v4/real-estate/Reservations(reservationId='${reservationId}')`
                     : "/odata/v4/real-estate/Reservations";
 
                 const res = await fetch(url, {
@@ -869,6 +877,8 @@ oModel.setProperty("/conditions", aConditions);
                 rejectionReason: "",
                 cancellationFees: 0,
                 showCreateContractButton: false,
+                selectedPricePlanYears: "",
+                selectedSimulationFinalPrice: "",
                 payments: [],
                 partners: [],
                 conditions: []

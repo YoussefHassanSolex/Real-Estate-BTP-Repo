@@ -1721,7 +1721,7 @@ this.on('DELETE', ReservationConditions, async (req) => {
     '/srvd_a2x/sap/api_recontract/0001';
 
   const USERNAME = 'BTP_RE_CONTRACT';
-  const PASSWORD = 'z834%S6f}tL&e2V(@rKN&xhz4XgLy$VAg}C9QL4[';
+  const PASSWORD = '~s/g&pmLiSrbtsn5raV[=#TJ@9W&ht&6E[waoZp3';
 
   const BASIC_AUTH = Buffer
     .from(`${USERNAME}:${PASSWORD}`)

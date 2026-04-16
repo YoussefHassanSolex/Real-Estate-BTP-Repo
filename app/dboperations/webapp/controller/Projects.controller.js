@@ -57,6 +57,30 @@ sap.ui.define([
                 ]
             });
             this.getView().setModel(oCompanyCodesModel, "companyCodes");
+
+            // Static dropdown data as per requirements
+            var oLocationsModel = new sap.ui.model.json.JSONModel({
+                locationsList: [
+                    { key: "Cairo", text: "Cairo" },
+                    { key: "KSA", text: "KSA" },
+
+                ]
+            });
+            this.getView().setModel(oLocationsModel, "locations");
+
+            var oProfitCentersModel = new sap.ui.model.json.JSONModel({
+                profitCentersList: [
+                    { key: "110023", text: "110023" }
+                ]
+            });
+            this.getView().setModel(oProfitCentersModel, "profitCenters");
+
+            var oFunctionalAreasModel = new sap.ui.model.json.JSONModel({
+                functionalAreasList: [
+                    { key: "1020", text: "1020" }
+                ]
+            });
+            this.getView().setModel(oFunctionalAreasModel, "functionalAreas");
         },
         onProjectSelectionChange: function (oEvent) {
             const bHasSelection = !!oEvent.getSource().getSelectedItem();
@@ -174,7 +198,7 @@ sap.ui.define([
                                 placeholder: "Select a date"
                             }),
 
-                            new sap.m.Label({ text: "Valid To", required: true }),
+                            new sap.m.Label({ text: "Valid To" }),
                             new sap.m.DatePicker("validToInput", {
                                 value: "{/validTo}",
                                 displayFormat: "long",
@@ -182,23 +206,41 @@ sap.ui.define([
                                 placeholder: "Select a date"
                             }),
 
-                            new sap.m.Label({ text: "Location", required: true }),
-                            new sap.m.Input("locationInput", {
-                                value: "{/location}",
-                                tooltip: "Up to 40 characters"
+                            new sap.m.Label({ text: "Location" }),
+                            new sap.m.ComboBox("locationComboBox", {
+                                selectedKey: "{/location}",
+                                items: {
+                                    path: "locations>/locationsList",
+                                    template: new sap.ui.core.Item({
+                                        key: "{locations>key}",
+                                        text: "{locations>text}"
+                                    })
+                                }
                             }),
 
-                            new sap.m.Label({ text: "Business Area", required: true }),
-                            new sap.m.Input("businessAreaInput", { value: "{/businessArea}" }),
+                            new sap.m.Label({ text: "Profit Center" }),
+                            new sap.m.ComboBox("profitCenterComboBox", {
+                                selectedKey: "{/profitCenter}",
+                                items: {
+                                    path: "profitCenters>/profitCentersList",
+                                    template: new sap.ui.core.Item({
+                                        key: "{profitCenters>key}",
+                                        text: "{profitCenters>text}"
+                                    })
+                                }
+                            }),
 
-                            new sap.m.Label({ text: "Profit Center", required: true }),
-                            new sap.m.Input("profitCenterInput", { value: "{/profitCenter}" }),
-
-                            new sap.m.Label({ text: "Functional Area", required: true }),
-                            new sap.m.Input("functionalAreaInput", { value: "{/functionalArea}" }),
-
-                            new sap.m.Label({ text: "Supplementary Text", required: true }),
-                            new sap.m.Input("supplementaryTextInput", { value: "{/supplementaryText}" })
+                            new sap.m.Label({ text: "Functional Area" }),
+                            new sap.m.ComboBox("functionalAreaComboBox", {
+                                selectedKey: "{/functionalArea}",
+                                items: {
+                                    path: "functionalAreas>/functionalAreasList",
+                                    template: new sap.ui.core.Item({
+                                        key: "{functionalAreas>key}",
+                                        text: "{functionalAreas>text}"
+                                    })
+                                }
+                            })
                         ]
                     }),
 
@@ -213,14 +255,7 @@ sap.ui.define([
                                 { id: "projectDescInput", name: "Description" },
                                 { id: "companyCodeComboBox", name: "Company Code" },
                                 { id: "companyCodeDescInput", name: "Company Code Description" },
-                                { id: "validFromInput", name: "Valid From" },
-                                { id: "validToInput", name: "Valid To" },
-                                { id: "locationInput", name: "Location" },
-                                { id: "businessAreaInput", name: "Business Area" },
-                                { id: "profitCenterInput", name: "Profit Center" },
-                                { id: "functionalAreaInput", name: "Functional Area" },
-                                { id: "supplementaryTextInput", name: "Supplementary Text" },
-
+                                { id: "validFromInput", name: "Valid From" }
                             ];
 
                             var bValid = true;
@@ -240,6 +275,11 @@ sap.ui.define([
                                 return;
                             }
 
+                            // Fix numeric fields for backend validation
+                            oData.businessArea = 0;
+                            oData.profitCenter = parseInt(oData.profitCenter) || 0;
+                            oData.functionalArea = parseInt(oData.functionalArea) || 0;
+
                             // 🧠 Date validation
                             var oValidFrom = sap.ui.getCore().byId("validFromInput").getDateValue();
                             var oValidTo = sap.ui.getCore().byId("validToInput").getDateValue();
@@ -251,6 +291,14 @@ sap.ui.define([
                                 return;
                             } else {
                                 sap.ui.getCore().byId("validToInput").setValueState("None");
+                            }
+
+                            // Convert date values and omit empty optional fields
+                            oData.validFrom = oValidFrom ? oValidFrom.toISOString().split("T")[0] : undefined;
+                            if (oValidTo) {
+                                oData.validTo = oValidTo.toISOString().split("T")[0];
+                            } else {
+                                delete oData.validTo;
                             }
 
                             // ✅ Proceed with POST request
@@ -331,8 +379,8 @@ sap.ui.define([
 
             // Reset value states for validation
             [
-                "projectIdInput", "projectDescInput", "companyCodeInput", "companyCodeDescInput",
-                "validFromInput", "validToInput", "locationInput"
+                "projectDescInput", "companyCodeComboBox", "companyCodeDescInput",
+                "validFromInput", "validToInput", "locationComboBox", "profitCenterComboBox", "functionalAreaComboBox"
             ].forEach(function (id) {
                 var oControl = sap.ui.getCore().byId(id);
                 if (oControl) oControl.setValueState("None");
@@ -421,44 +469,21 @@ sap.ui.define([
                                             labelSpanL: 3,
                                             columnsL: 2,
                                             content: [
-                                                new sap.m.Label({ text: "Business Area" }),
-                                                new sap.m.Text({ text: "{/businessArea}" }),
+                            new sap.m.Label({ text: "Profit Center" }),
+                            new sap.m.Text({ text: "{/profitCenter}" }),
 
-                                                new sap.m.Label({ text: "Profit Center" }),
-                                                new sap.m.Text({ text: "{/profitCenter}" }),
+                            new sap.m.Label({ text: "Functional Area" }),
+                            new sap.m.Text({ text: "{/functionalArea}" })
+                        ]
+                    })
+                ]
+            }),
 
-                                                new sap.m.Label({ text: "Functional Area" }),
-                                                new sap.m.Text({ text: "{/functionalArea}" })
-                                            ]
-                                        })
-                                    ]
-                                }),
 
-                                // 🔹 Tab 3: Supplementary Text
-                                new sap.m.IconTabFilter({
-                                    text: "Supplementary Text",
-                                    icon: "sap-icon://document-text",
-                                    content: [
-                                        new sap.ui.layout.form.SimpleForm({
-                                            editable: false,
-                                            layout: "ResponsiveGridLayout",
-                                            content: [
-                                                new sap.m.Label({ text: "Supplementary Text" }),
-                                                new sap.m.TextArea({
-                                                    value: "{/supplementaryText}",
-                                                    width: "100%",
-                                                    rows: 6,
-                                                    editable: false,
-                                                    growing: true,
-                                                    growingMaxLines: 10
-                                                })
-                                            ]
-                                        })
-                                    ]
-                                })
                             ]
                         })
                     ],
+
                     endButton: new sap.m.Button({
                         text: "Close",
                         type: "Emphasized",
@@ -580,7 +605,7 @@ sap.ui.define([
                                 placeholder: "Select a date"
                             }),
 
-                            new sap.m.Label({ text: "Valid To", required: true }),
+                            new sap.m.Label({ text: "Valid To", required: false }),
                             new sap.m.DatePicker(this.createId("editValidToInput"), {
                                 value: "{/validTo}",
                                 displayFormat: "long",
@@ -588,20 +613,41 @@ sap.ui.define([
                                 placeholder: "Select a date"
                             }),
 
-                            new sap.m.Label({ text: "Location", required: true }),
-                            new sap.m.Input(this.createId("editLocationInput"), { value: "{/location}" }),
+                            new sap.m.Label({ text: "Location" }),
+                            new sap.m.ComboBox(this.createId("editLocationComboBox"), {
+                                selectedKey: "{/location}",
+                                items: {
+                                    path: "locations>/locationsList",
+                                    template: new sap.ui.core.Item({
+                                        key: "{locations>key}",
+                                        text: "{locations>text}"
+                                    })
+                                }
+                            }),
 
-                            new sap.m.Label({ text: "Business Area", required: true }),
-                            new sap.m.Input(this.createId("editBusinessAreaInput"), { value: "{/businessArea}" }),
+                            new sap.m.Label({ text: "Profit Center" }),
+                            new sap.m.ComboBox(this.createId("editProfitCenterComboBox"), {
+                                selectedKey: "{/profitCenter}",
+                                items: {
+                                    path: "profitCenters>/profitCentersList",
+                                    template: new sap.ui.core.Item({
+                                        key: "{profitCenters>key}",
+                                        text: "{profitCenters>text}"
+                                    })
+                                }
+                            }),
 
-                            new sap.m.Label({ text: "Profit Center", required: true }),
-                            new sap.m.Input(this.createId("editProfitCenterInput"), { value: "{/profitCenter}" }),
-
-                            new sap.m.Label({ text: "Functional Area", required: true }),
-                            new sap.m.Input(this.createId("editFunctionalAreaInput"), { value: "{/functionalArea}" }),
-
-                            new sap.m.Label({ text: "Supplementary Text", required: true }),
-                            new sap.m.Input(this.createId("editSupplementaryTextInput"), { value: "{/supplementaryText}" })
+                            new sap.m.Label({ text: "Functional Area" }),
+                            new sap.m.ComboBox(this.createId("editFunctionalAreaComboBox"), {
+                                selectedKey: "{/functionalArea}",
+                                items: {
+                                    path: "functionalAreas>/functionalAreasList",
+                                    template: new sap.ui.core.Item({
+                                        key: "{functionalAreas>key}",
+                                        text: "{functionalAreas>text}"
+                                    })
+                                }
+                            })
                         ]
                     }),
 
@@ -616,14 +662,9 @@ sap.ui.define([
                                 { id: "editProjectDescInput", name: "Description" },
                                 { id: "editCompanyCodeComboBox", name: "Company Code" },
                                 { id: "editCompanyCodeDescInput", name: "Company Code Description" },
-                                { id: "editValidFromInput", name: "Valid From" },
-                                { id: "editValidToInput", name: "Valid To" },
-                                { id: "editLocationInput", name: "Location" },
-                                { id: "editBusinessAreaInput", name: "Business Area" },
-                                { id: "editProfitCenterInput", name: "Profit Center" },
-                                { id: "editFunctionalAreaInput", name: "Functional Area" },
-                                { id: "editSupplementaryTextInput", name: "Supplementary Text" }
+                                { id: "editValidFromInput", name: "Valid From" }
                             ];
+
 
                             var bValid = true;
                             aRequiredFields.forEach((field) => {
@@ -642,6 +683,11 @@ sap.ui.define([
                                 return;
                             }
 
+                            // Fix numeric fields for backend validation
+                            oUpdatedData.businessArea = 0;
+                            oUpdatedData.profitCenter = parseInt(oUpdatedData.profitCenter) || 0;
+                            oUpdatedData.functionalArea = parseInt(oUpdatedData.functionalArea) || 0;
+
                             // 🧠 Date validation
                             var oValidFrom = this.byId("editValidFromInput").getDateValue();
                             var oValidTo = this.byId("editValidToInput").getDateValue();
@@ -653,6 +699,14 @@ sap.ui.define([
                                 return;
                             } else {
                                 this.byId("editValidToInput").setValueState("None");
+                            }
+
+                            // Convert date values and omit empty optional fields
+                            oUpdatedData.validFrom = oValidFrom ? oValidFrom.toISOString().split("T")[0] : undefined;
+                            if (oValidTo) {
+                                oUpdatedData.validTo = oValidTo.toISOString().split("T")[0];
+                            } else {
+                                delete oUpdatedData.validTo;
                             }
 
                             // 🟢 Proceed with PATCH request
@@ -689,7 +743,10 @@ sap.ui.define([
                 });
 
                 this.getView().addDependent(this._oEditDialog);
-                this._oEditDialog.setModel(this.getView().getModel("companyCodes"), "companyCodes");
+this._oEditDialog.setModel(this.getView().getModel("companyCodes"), "companyCodes");
+            this._oEditDialog.setModel(this.getView().getModel("locations"), "locations");
+            this._oEditDialog.setModel(this.getView().getModel("profitCenters"), "profitCenters");
+            this._oEditDialog.setModel(this.getView().getModel("functionalAreas"), "functionalAreas");
             }
 
             this._oEditDialog.setModel(oDialogModel);
@@ -735,7 +792,7 @@ sap.ui.define([
                             new sap.m.Label({ text: "Old Building Code" }),
                             new sap.m.Input({ value: "{/buildingOldCode}" }),
 
-                            new sap.m.Label({ text: "Location", required: true }),
+                            new sap.m.Label({ text: "Location", required: false }),
                             new sap.m.Input("buildingLocationInput", { value: "{/location}" }),
 
                             new sap.m.Label({ text: "Valid From", required: true }),
@@ -747,7 +804,7 @@ sap.ui.define([
                                 showClearIcon: true
                             }),
 
-                            new sap.m.Label({ text: "Valid To", required: true }),
+                            new sap.m.Label({ text: "Valid To" }),
                             new sap.m.DatePicker("buildingValidToInput", {
                                 value: "{/validTo}",
                                 displayFormat: "long",
@@ -768,14 +825,7 @@ sap.ui.define([
                             new sap.m.Label({ text: "Project Description" }), // 🧩 Added
                             new sap.m.Text({ text: "{/projectDescription}" }),
 
-                            new sap.m.Label({ text: "Business Area", required: true }),
-                            new sap.m.Input("businessAreaInput", { value: "{/businessArea}" }),
 
-                            new sap.m.Label({ text: "Profit Center", required: true }),
-                            new sap.m.Input("profitCenterInput", { value: "{/profitCenter}" }),
-
-                            new sap.m.Label({ text: "Functional Area", required: true }),
-                            new sap.m.Input("functionalAreaInput", { value: "{/functionalArea}" })
                         ]
                     }),
 
@@ -789,11 +839,7 @@ sap.ui.define([
                             var aRequiredFields = [
                                 { id: "buildingDescInput", name: "Building Description" },
                                 { id: "buildingLocationInput", name: "Location" },
-                                { id: "buildingValidFromInput", name: "Valid From" },
-                                { id: "buildingValidToInput", name: "Valid To" },
-                                { id: "businessAreaInput", name: "Business Area" },
-                                { id: "profitCenterInput", name: "Profit Center" },
-                                { id: "functionalAreaInput", name: "Functional Area" }
+                                { id: "buildingValidFromInput", name: "Valid From" }
                             ];
 
                             var bValid = true;

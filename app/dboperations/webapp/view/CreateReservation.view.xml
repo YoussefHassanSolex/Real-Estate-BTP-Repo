@@ -250,6 +250,7 @@
                         id="_IDGenSelect3"
                         selectedKey="{local>/afterSales}"
                         width="100%"
+                        forceSelection="false"
                     >
                         <core:Item
                             id="_IDGenItem14"
@@ -299,6 +300,7 @@
                         width="100%"
                         selectedKey="{local>/selectedPricePlanYears}"
                         change=".onPricePlanYearsChange"
+                        forceSelection="false"
                         items="{path: 'local>/availableYears'}"
                     >
                         <core:Item
@@ -325,8 +327,19 @@
                     />
                     <Input
                         id="_IDGenInput35"
-                        value="{local>/selectedSimulationFinalPrice}"
+                        value="{
+                            path: 'local>/selectedSimulationFinalPrice',
+                            type: 'sap.ui.model.type.Float',
+                            formatOptions: {
+                                minFractionDigits: 2,
+                                maxFractionDigits: 2,
+                                groupingEnabled: true,
+                                groupingSeparator: ',',
+                                decimalSeparator: '.'
+                            }
+                        }"
                         editable="false"
+                        width="200px"
                     />
                 </l:Grid>
                 <!-- Payments Table -->
@@ -453,58 +466,89 @@
                                 <Input
                                     id="_IDGenInput42"
                                     value="{local>receiptType}"
+                                    width="180px"
                                 />
                                 <Input
                                     id="_IDGenInput43"
                                     value="{local>receiptStatus}"
+                                    width="180px"
                                 />
                                 <Input
                                     id="_IDGenInput44"
                                     value="{local>paymentMethod}"
+                                    width="200px"
                                 />
                                 <Input
                                     id="_IDGenInput45"
-                                    value="{local>amount}"
-                                    type="Number"
+                                    value="{
+                                        path: 'local>amount',
+                                        type: 'sap.ui.model.type.Float',
+                                        formatOptions: {
+                                            minFractionDigits: 2,
+                                            maxFractionDigits: 2,
+                                            groupingEnabled: true,
+                                            groupingSeparator: ',',
+                                            decimalSeparator: '.'
+                                        }
+                                    }"
+                                    width="220px"
                                 />
                                 <Input
                                     id="_IDGenInput46"
                                     value="{local>houseBank}"
+                                    width="180px"
                                 />
                                 <Input
                                     id="_IDGenInput47"
                                     value="{local>bankAccount}"
+                                    width="200px"
                                 />
                                 <DatePicker
                                     id="_IDGenDatePicker4"
                                     value="{local>dueDate}"
                                     displayFormat="yyyy-MM-dd"
                                     valueFormat="yyyy-MM-dd"
+                                    width="160px"
                                 />
                                 <Input
                                     id="_IDGenInput48"
                                     value="{local>transferNumber}"
+                                    width="200px"
                                 />
                                 <Input
                                     id="_IDGenInput49"
                                     value="{local>checkNumber}"
+                                    width="180px"
                                 />
                                 <Input
                                     id="_IDGenInput50"
                                     value="{local>customerBank}"
+                                    width="200px"
                                 />
                                 <Input
                                     id="_IDGenInput51"
                                     value="{local>customerBankAccount}"
+                                    width="250px"
                                 />
                                 <Input
                                     id="_IDGenInput52"
                                     value="{local>branch}"
+                                    width="150px"
                                 />
                                 <Input
                                     id="_IDGenInput53"
-                                    value="{local>collectedAmount}"
-                                    type="Number"
+                                    value="{
+                                        path: 'local>collectedAmount',
+                                        type: 'sap.ui.model.type.Float',
+                                        formatOptions: {
+                                            minFractionDigits: 2,
+                                            maxFractionDigits: 2,
+                                            groupingEnabled: true,
+                                            groupingSeparator: ',',
+                                            decimalSeparator: '.'
+                                        }
+                                    }"
+                                    width="200px"
                                 />
                                 <CheckBox
                                     id="_IDGenCheckBox"
@@ -513,6 +557,7 @@
                                 <Input
                                     id="_IDGenInput54"
                                     value="{local>rejectionReason}"
+                                    width="220px"
                                 />
                             </cells>
                         </ColumnListItem>
@@ -580,6 +625,7 @@
                                     id="customerMenu"
                                     selectedKey="{local>customerCode}"
                                     change=".onCustomerCodeChange"
+                                    forceSelection="false"
                                     items="{
                         path: 'partnersList>/'
                     }"

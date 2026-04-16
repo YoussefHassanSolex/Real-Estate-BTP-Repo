@@ -57,7 +57,6 @@
                             path: 'companyCodesList>/',
                             templateShareable: false
                         }"
-                        change="onCompanyCodeChange"
                     >
                         <core:Item
                             id="_IDGenItem1"
@@ -214,9 +213,9 @@
                 id="_IDGenScrollContainer1"
                 horizontal="true"
                 vertical="false"
-                height="100%"
                 width="100%"
                 focusable="true"
+                class="horizontalScrollOnly"
             >
                 <Table
                     id="unitsTable"
