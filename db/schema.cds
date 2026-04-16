@@ -264,7 +264,7 @@ entity PaymentDetails : managed {
 }
 
 entity Reservations : managed {
-    key reservationId      : UUID;
+    key reservationId      : String;
         companyCodeId      : String(4);
         oldReservationId   : String(20);
         eoiId              : String(20);

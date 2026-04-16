@@ -377,21 +377,23 @@ onSavePlan: async function () {
         MessageBox.error("Valid From is required.");
         return;
     }
-    if (!oData.validTo) {
-        MessageBox.error("Valid To is required.");
-        return;
-    }
 
     // Validation: Date parsing and order
     const validFromDate = new Date(oData.validFrom);
-    const validToDate = new Date(oData.validTo);
-    if (isNaN(validFromDate.getTime()) || isNaN(validToDate.getTime())) {
-        MessageBox.error("Valid From and Valid To must be valid dates.");
+    if (isNaN(validFromDate.getTime())) {
+        MessageBox.error("Valid From must be a valid date.");
         return;
     }
-    if (validToDate < validFromDate) {
-        MessageBox.error("Valid To cannot be earlier than Valid From.");
-        return;
+    if (oData.validTo) {
+        const validToDate = new Date(oData.validTo);
+        if (isNaN(validToDate.getTime())) {
+            MessageBox.error("Valid To must be a valid date.");
+            return;
+        }
+        if (validToDate < validFromDate) {
+            MessageBox.error("Valid To cannot be earlier than Valid From.");
+            return;
+        }
     }
 
     // Validation: Plan Years must equal sum of years in schedule rows
@@ -426,7 +428,7 @@ onSavePlan: async function () {
             companyCodeId: oData.companyCodeId,
             planYears: oData.planYears,
             validFrom: oData.validFrom,
-            validTo: oData.validTo,
+            validTo: oData.validTo || null,
             planStatus: oData.planStatus,
             schedule: schedules,
             assignedProjects: assignedProjects

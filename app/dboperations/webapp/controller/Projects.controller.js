@@ -865,7 +865,7 @@ this._oEditDialog.setModel(this.getView().getModel("companyCodes"), "companyCode
                             var buildingFrom = sap.ui.getCore().byId("buildingValidFromInput").getDateValue();
                             var buildingTo = sap.ui.getCore().byId("buildingValidToInput").getDateValue();
 
-                            if (buildingFrom > buildingTo) {
+                            if (buildingTo && buildingFrom > buildingTo) {
                                 sap.ui.getCore().byId("buildingValidToInput").setValueState("Error");
                                 sap.ui.getCore().byId("buildingValidToInput").setValueStateText("'Valid To' must be later than 'Valid From'");
                                 sap.m.MessageBox.error("Building 'Valid From' cannot be after 'Valid To'.");
@@ -879,12 +879,23 @@ this._oEditDialog.setModel(this.getView().getModel("companyCodes"), "companyCode
                                 return;
                             }
 
-                            if (buildingTo > projectTo) {
+                            if (buildingTo && projectTo && buildingTo > projectTo) {
                                 sap.m.MessageBox.error(
                                     "Building 'Valid To' must be on or before the Project 'Valid To' (" + oProject.validTo + ")."
                                 );
                                 return;
                             }
+
+                            // Convert date values
+                            var oValidFrom = sap.ui.getCore().byId("buildingValidFromInput").getDateValue();
+                            var oValidTo = sap.ui.getCore().byId("buildingValidToInput").getDateValue();
+                            oData.validFrom = oValidFrom ? oValidFrom.toISOString().split("T")[0] : null;
+                            oData.validTo = oValidTo ? oValidTo.toISOString().split("T")[0] : null;
+
+                            // Fix numeric fields
+                            oData.businessArea = parseInt(oData.businessArea) || 0;
+                            oData.profitCenter = parseInt(oData.profitCenter) || 0;
+                            oData.functionalArea = parseInt(oData.functionalArea) || 0;
 
                             // ✅ Save to backend
                             fetch("/odata/v4/real-estate/Buildings", {
