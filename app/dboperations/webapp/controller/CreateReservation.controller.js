@@ -963,6 +963,14 @@ oModel.setProperty("/conditions", aConditions);
             }
         },
 
+        onPartnerSelectionChange: function (oEvent) {
+            const oSelectedItem = oEvent.getParameter("listItem");
+            const oDeleteButton = this.byId("_IDGenButton29");
+            if (oDeleteButton) {
+                oDeleteButton.setEnabled(!!oSelectedItem);
+            }
+        },
+
         onAddPartnerRow: function () {
 
             const oModel = this.getView().getModel("local");
@@ -1017,14 +1025,25 @@ oModel.setProperty("/conditions", aConditions);
             }
             oLocalModel.setProperty(sRowPath + "/validFrom", sValidFrom);
         },
-        onDeletePartnerRow: function (oEvent) {
-            const oContext = oEvent.getSource().getBindingContext("local");
+        onDeletePartnerRow: function () {
+            const oTable = this.byId("partnersTable");
+            const oSelectedItem = oTable.getSelectedItem();
+            if (!oSelectedItem) {
+                MessageToast.show("Please select a partner row to delete.");
+                return;
+            }
+            const oContext = oSelectedItem.getBindingContext("local");
             const sPath = oContext.getPath();
             const oModel = this.getView().getModel("local");
             const aPartners = oModel.getProperty("/partners");
             const iIndex = parseInt(sPath.split("/").pop());
             aPartners.splice(iIndex, 1);
             oModel.refresh();
+            oTable.removeSelections(true);
+            const oDeleteButton = this.byId("_IDGenButton29");
+            if (oDeleteButton) {
+                oDeleteButton.setEnabled(false);
+            }
         },
         onAddConditionRow: function () {
             const oModel = this.getView().getModel("local");

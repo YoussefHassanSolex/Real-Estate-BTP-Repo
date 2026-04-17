@@ -581,6 +581,7 @@
                         id="_IDGenButton29"
                         text="Delete Row"
                         icon="sap-icon://delete"
+                        enabled="false"
                         press="onDeletePartnerRow"
                     />
                 </Toolbar>
@@ -589,6 +590,8 @@
                     id="partnersTable"
                     items="{path: 'local>/partners'}"
                     inset="false"
+                    mode="SingleSelectLeft"
+                    selectionChange=".onPartnerSelectionChange"
                 >
                     <columns>
                         <Column id="_IDGenColumn96">
