@@ -16,8 +16,40 @@ sap.ui.define([
             this.getView().setModel(this._oPaymentPlansModel, "paymentPlans");
             this._loadPartners()
 
-            // Initialize reservation ID counter
-            this._reservationIdCounter = parseInt(localStorage.getItem("reservationIdCounter")) || 0;
+            // Initialize reservation ID counter from database
+            this._initializeReservationIdCounter();
+        },
+
+        _initializeReservationIdCounter: async function () {
+            try {
+                // Query all reservations to find the highest ID
+                const response = await fetch("/odata/v4/real-estate/Reservations?$select=reservationId");
+                if (!response.ok) {
+                    throw new Error("Failed to fetch reservations");
+                }
+                const data = await response.json();
+                const reservations = data.value || [];
+
+                // Extract numeric part from reservation IDs and find max
+                let maxCounter = 0;
+                reservations.forEach(res => {
+                    if (res.reservationId && res.reservationId.startsWith("RES")) {
+                        const numPart = parseInt(res.reservationId.substring(3));
+                        if (!isNaN(numPart) && numPart > maxCounter) {
+                            maxCounter = numPart;
+                        }
+                    }
+                });
+
+                // Set counter to max found, or use localStorage value if higher
+                const storedCounter = parseInt(localStorage.getItem("reservationIdCounter")) || 0;
+                this._reservationIdCounter = Math.max(maxCounter, storedCounter);
+                localStorage.setItem("reservationIdCounter", this._reservationIdCounter);
+            } catch (err) {
+                console.error("Error initializing reservation ID counter:", err);
+                // Fallback to localStorage value
+                this._reservationIdCounter = parseInt(localStorage.getItem("reservationIdCounter")) || 0;
+            }
         },
         formatDateToYMD: function (oDate) {
             if (!oDate) {
@@ -918,6 +950,19 @@ oModel.setProperty("/conditions", aConditions);
             aPayments.splice(iIndex, 1);
             oModel.refresh();
         },
+
+        onPaymentDueDateChange: function (oEvent) {
+            const oDatePicker = oEvent.getSource();
+            const oDate = oDatePicker.getDateValue();
+            const oContext = oDatePicker.getBindingContext("local");
+            
+            if (oDate && oContext) {
+                const sFormattedDate = this.formatDateToYMD(oDate);
+                const oModel = this.getView().getModel("local");
+                oModel.setProperty(oContext.getPath() + "/dueDate", sFormattedDate);
+            }
+        },
+
         onAddPartnerRow: function () {
 
             const oModel = this.getView().getModel("local");

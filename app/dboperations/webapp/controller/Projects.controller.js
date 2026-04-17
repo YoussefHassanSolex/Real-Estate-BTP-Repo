@@ -62,8 +62,19 @@ sap.ui.define([
             var oLocationsModel = new sap.ui.model.json.JSONModel({
                 locationsList: [
                     { key: "Cairo", text: "Cairo" },
-                    { key: "KSA", text: "KSA" },
-
+                    { key: "Riyadh", text: "Riyadh" },
+                    { key: "Makkah", text: "Makkah" },
+                    { key: "Madinah", text: "Madinah" },
+                    { key: "Eastern", text: "Eastern" },
+                    { key: "Al-Qassim", text: "Al-Qassim" },
+                    { key: "Asir", text: "Asir" },
+                    { key: "Tabuk", text: "Tabuk" },
+                    { key: "Hail", text: "Hail" },
+                    { key: "Northern Borders", text: "Northern Borders" },
+                    { key: "Jazan", text: "Jazan" },
+                    { key: "Najran", text: "Najran" },
+                    { key: "Al-Baha", text: "Al-Baha" },
+                    { key: "Al-Jouf", text: "Al-Jouf" }
                 ]
             });
             this.getView().setModel(oLocationsModel, "locations");
