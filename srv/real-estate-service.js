@@ -1757,9 +1757,10 @@ this.on('DELETE', ReservationConditions, async (req) => {
 
     const {
       CompanyCode,
-      Responsible,
       REContractType,
-      ContractStartDate
+      ContractStartDate,
+      _REPartnerAssgmtTP,
+      _REConditionTP
     } = req.data;
 
     try {
@@ -1785,9 +1786,10 @@ this.on('DELETE', ReservationConditions, async (req) => {
       //POST contract
       const payload = {
         CompanyCode,
-        Responsible,
         REContractType,
-        ContractStartDate
+        ContractStartDate,
+        _REPartnerAssgmtTP: _REPartnerAssgmtTP || [],
+        _REConditionTP: _REConditionTP || []
       };
 
       const postResponse = await axios.post(

@@ -446,7 +446,6 @@ onSavePlan: async function () {
             if (s.conditionType?.code !== "ZZ03") {
                 return sum + (parseFloat(s.percentage) || 0);
             }
-            debugger
             return sum;
         }, 0);
         if (totalPercentage !== 100) {

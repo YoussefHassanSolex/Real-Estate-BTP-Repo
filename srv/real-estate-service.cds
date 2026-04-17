@@ -35,12 +35,25 @@ service RealEstateService {
             ContractStartDate : Date;
     }
 
+    type REPartnerAssignment {
+        BusinessPartner     : String;
+        BusinessPartnerRole : String;
+    }
+
+    type RECondition {
+        REConditionType      : String;
+        REExtConditionPurpose : String;
+        ValidityStartDate    : Date;
+        REUnitPrice          : Decimal;
+    }
+
     action CreateREContract(
-    CompanyCode        : String,
-    Responsible        : String,
-    REContractType     : String,
-    ContractStartDate  : Date
-  ) returns RealEstateContracts;
+        CompanyCode        : String,
+        REContractType     : String,
+        ContractStartDate  : Date,
+        _REPartnerAssgmtTP : many REPartnerAssignment,
+        _REConditionTP     : many RECondition
+    ) returns RealEstateContracts;
 
     type SvgConversionResult {
         svgContent : LargeString;

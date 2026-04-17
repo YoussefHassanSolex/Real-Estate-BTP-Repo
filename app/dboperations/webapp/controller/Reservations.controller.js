@@ -9,8 +9,9 @@ sap.ui.define([
     "sap/m/DatePicker",
     "sap/m/TextArea",
     "sap/ui/model/json/JSONModel",
-    "sap/m/MessageToast"
-], function (Controller, MessageBox, Dialog, Input, Button, Label, ComboBox, DatePicker, TextArea, JSONModel, MessageToast) {
+    "sap/m/MessageToast",
+    "sap/m/BusyDialog"
+], function (Controller, MessageBox, Dialog, Input, Button, Label, ComboBox, DatePicker, TextArea, JSONModel, MessageToast, BusyDialog) {
     "use strict";
 
     return Controller.extend("dboperations.controller.Reservations", {
@@ -1153,7 +1154,6 @@ sap.ui.define([
 
 
         formatCreateContractVisible: function (oReservation) {
-            debugger
             if (!oReservation || !oReservation.conditions || !oReservation.payments) {
                 return false;
             }
@@ -1181,7 +1181,7 @@ sap.ui.define([
                     return s + (parsedAmount || 0);
                 }, 0);
 
-            return totalPaymentAmount > 0 && downPaymentAmount > 0;
+            return totalPaymentAmount === downPaymentAmount && downPaymentAmount > 0;
         },
 
         // =========================
@@ -1195,60 +1195,106 @@ sap.ui.define([
             }
             const oReservation = oContext.getObject();
 
-            // Pre-fill contract model with reservation values
-            this.getView().getModel("contractModel").setData({
-                CompanyCode: oReservation.companyCode || "",
-                Responsible: oReservation.responsibleBP || "",
-                REContractType: oReservation.contractType || "",
-                ContractStartDate: new Date().toISOString().split("T")[0]
+            // Show busy dialog while creating contract
+            const oBusyDialog = new BusyDialog({
+                title: "Creating Contract",
+                text: "Please wait..."
             });
+            oBusyDialog.open();
 
-            // Open inline dialog
-            if (!this._oContractDialog) {
-                this._oContractDialog = new sap.m.Dialog({
-                    title: "Create Contract",
-                    type: "Message",
-                    content: [
-                        new sap.m.Input({ placeholder: "Company Code", value: "{contractModel>/CompanyCode}", required: true }),
-                        new sap.m.Input({ placeholder: "Responsible", value: "{contractModel>/Responsible}", required: true }),
-                        new sap.m.Input({ placeholder: "Contract Type", value: "{contractModel>/REContractType}", required: true }),
-                        new sap.m.DatePicker({
-                            placeholder: "Contract Start Date",
-                            value: "{contractModel>/ContractStartDate}",
-                            valueFormat: "yyyy-MM-dd",
-                            displayFormat: "yyyy-MM-dd",
-                            required: true
-                        })
-                    ],
-                    beginButton: new sap.m.Button({
-                        text: "Create",
-                        type: "Emphasized",
-                        press: this.onConfirmCreateContract.bind(this)
-                    }),
-                    endButton: new sap.m.Button({
-                        text: "Cancel",
-                        press: function () { this._oContractDialog.close(); }.bind(this)
-                    })
-                });
-                this.getView().addDependent(this._oContractDialog);
-            }
-
-            this._oContractDialog.open();
+            // Build and post the contract payload
+            this._buildAndPostContract(oReservation, oBusyDialog);
         },
 
-        // =========================
-        // POST CONTRACT
-        // =========================
-        onConfirmCreateContract: async function () {
-            try {
-                const oPayload = this.getView().getModel("contractModel").getData();
+        _ensureFutureDate: function (dateString, fallbackDate) {
+            if (!dateString) {
+                return fallbackDate;
+            }
 
-                // Basic validation
-                if (!oPayload.CompanyCode || !oPayload.Responsible || !oPayload.REContractType) {
-                    MessageBox.error("Please fill all mandatory fields");
-                    return;
+            const inputDate = new Date(dateString);
+            const today = new Date(fallbackDate);
+
+            // Reset time to start of day for comparison
+            inputDate.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+
+            // If input date is in the past, use today's date
+            if (inputDate < today) {
+                return fallbackDate;
+            }
+
+            // Return the original date string if it's today or future
+            return dateString;
+        },
+
+        _buildAndPostContract: async function (oReservation, oBusyDialog) {
+            try {
+                // Get current date in YYYY-MM-DD format
+                const today = new Date();
+                const currentDate = today.toISOString().split("T")[0];
+
+                // Build conditions array from reservation conditions
+                const aConditions = [];
+                if (oReservation.conditions && Array.isArray(oReservation.conditions)) {
+                    oReservation.conditions.forEach(condition => {
+                        if (condition.conditionType_code && ['ZZ01', 'ZZ02', 'ZZ03'].includes(condition.conditionType_code)) {
+                            // Map condition type codes to REConditionType
+                            let sREConditionType = condition.conditionType_code;
+                            if (condition.conditionType_code === 'ZZ01') {
+                                sREConditionType = 'Z001';
+                            } else if (condition.conditionType_code === 'ZZ02') {
+                                sREConditionType = 'Z002';
+                            } else if (condition.conditionType_code === 'ZZ03') {
+                                sREConditionType = 'Z003';
+                            }
+
+                            // Parse amount based on condition type - remove commas if present
+                            let dAmount = 0;
+                            let amountSource = condition.amount;
+
+                            // Use specific amount fields based on condition type
+                            if (condition.conditionType_code === 'ZZ01') {
+                                amountSource = condition.downPaymentAmount || condition.amount;
+                            } else if (condition.conditionType_code === 'ZZ02') {
+                                amountSource = condition.installmentAmount || condition.amount;
+                            } else if (condition.conditionType_code === 'ZZ03') {
+                                amountSource = condition.maintenanceAmount || condition.amount;
+                            }
+
+                            if (amountSource) {
+                                if (typeof amountSource === 'number') {
+                                    dAmount = amountSource;
+                                } else if (typeof amountSource === 'string') {
+                                    // Remove commas and parse
+                                    dAmount = parseFloat(amountSource.replace(/,/g, ''));
+                                }
+                            }
+
+                            aConditions.push({
+                                REConditionType: sREConditionType,
+                                REExtConditionPurpose: "YB",
+                                ValidityStartDate: this._ensureFutureDate(condition.dueDate, currentDate),
+                                REUnitPrice: dAmount
+                            });
+                        }
+                    });
                 }
 
+                // Build the contract payload
+                const oPayload = {
+                    CompanyCode: "11FW",
+                    REContractType: "ZRES",
+                    ContractStartDate: currentDate,
+                    _REPartnerAssgmtTP: [
+                        {
+                            BusinessPartner: "1000030",
+                            BusinessPartnerRole: "FLCU00"
+                        }
+                    ],
+                    _REConditionTP: aConditions
+                };
+
+                // Post to API
                 const response = await fetch("/odata/v4/real-estate/CreateREContract", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -1260,13 +1306,19 @@ sap.ui.define([
                     throw new Error(err);
                 }
 
-                MessageToast.show("Contract created successfully");
-                this._oContractDialog.close();
+                // Close busy dialog
+                oBusyDialog.close();
+
+                // Show success message
+                MessageBox.success("Contract created successfully");
 
                 // Refresh contracts list
                 this._loadContracts();
 
             } catch (err) {
+                // Close busy dialog
+                oBusyDialog.close();
+
                 console.error("Contract creation failed", err);
                 MessageBox.error(err.message || "Contract creation failed");
             }
@@ -1284,11 +1336,6 @@ sap.ui.define([
                 console.error("Failed to load contracts", err);
             }
         },
-
-        onCancelCreateContract: function () {
-            this.byId("createContractDialog").close();
-        },
-
 
         onPrint: function () {
             var printWindow = window.open('', '_blank');
