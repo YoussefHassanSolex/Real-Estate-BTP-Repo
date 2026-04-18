@@ -8,10 +8,12 @@ sap.ui.define([
     "sap/m/ComboBox",
     "sap/m/DatePicker",
     "sap/m/TextArea",
+    "sap/m/VBox",
+    "sap/m/Text",
     "sap/ui/model/json/JSONModel",
     "sap/m/MessageToast",
     "sap/m/BusyDialog"
-], function (Controller, MessageBox, Dialog, Input, Button, Label, ComboBox, DatePicker, TextArea, JSONModel, MessageToast, BusyDialog) {
+], function (Controller, MessageBox, Dialog, Input, Button, Label, ComboBox, DatePicker, TextArea, VBox, Text, JSONModel, MessageToast, BusyDialog) {
     "use strict";
 
     return Controller.extend("dboperations.controller.Reservations", {
@@ -1306,11 +1308,14 @@ sap.ui.define([
                     throw new Error(err);
                 }
 
+                const oContractResponse = await response.json();
+                const sContractId = oContractResponse && oContractResponse.RealEstateContract;
+
                 // Close busy dialog
                 oBusyDialog.close();
 
-                // Show success message
-                MessageBox.success("Contract created successfully");
+                // Show success dialog with link to public cloud
+                this._showContractSuccessDialog(sContractId);
 
                 // Refresh contracts list
                 this._loadContracts();
@@ -1322,6 +1327,53 @@ sap.ui.define([
                 console.error("Contract creation failed", err);
                 MessageBox.error(err.message || "Contract creation failed");
             }
+        },
+
+        _showContractSuccessDialog: function (sContractId) {
+            var self = this;
+            var oDialog = new Dialog({
+                title: "Contract Created Successfully",
+                type: "Message",
+                state: "Success",
+                content: new VBox({
+                    items: [
+                        new Text({ text: "Contract ID: " + (sContractId || "N/A") }),
+                        new Text({ text: "The contract has been created successfully on the BTP system." })
+                    ]
+                }),
+                buttons: [
+                    new Button({
+                        text: "View in Public Cloud",
+                        type: "Emphasized",
+                        press: function () {
+                            if (sContractId) {
+                                self._openContractInPublicCloud(sContractId);
+                            }
+                            oDialog.close();
+                        }
+                    }),
+                    new Button({
+                        text: "Close",
+                        press: function () {
+                            oDialog.close();
+                        }
+                    })
+                ],
+                afterClose: function () {
+                    oDialog.destroy();
+                }
+            });
+            oDialog.open();
+        },
+
+        _openContractInPublicCloud: function (sContractId) {
+            // Configure your public cloud tenant URL here
+            var sPublicCloudTenant = "https://my405604.s4hana.cloud.sap"; // Update this with your actual tenant URL
+            var sContractApp = "/ui#REContract-manage";
+            var sContractParam = "?RealEstateContract=" + encodeURIComponent(sContractId) + "&CompanyCode=11FW";
+            
+            var sUrl = sPublicCloudTenant + sContractApp + sContractParam;
+            window.open(sUrl, "_blank");
         },
 
         // =========================
