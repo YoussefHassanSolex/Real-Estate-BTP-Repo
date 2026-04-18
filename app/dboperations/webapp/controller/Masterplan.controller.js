@@ -128,6 +128,11 @@ sap.ui.define([
             return { highlight: "Information", color: "#0070F2" };
         },
 
+        _isCreateReservationAllowed: function (oUnit) {
+            var sStatus = String(oUnit && oUnit.unitStatusDescription || "").trim().toUpperCase();
+            return !(sStatus.includes("RESERVED") || sStatus.includes("PENDING") || sStatus.includes("HOLD"));
+        },
+
         _getBuildingStatusMeta: function (aUnits) {
             var hasAvailable = false;
             var hasReserved = false;
@@ -1267,30 +1272,37 @@ sap.ui.define([
                 return;
             }
 
+            var aItems = [
+                new sap.m.Button({
+                    icon: "sap-icon://information",
+                    text: "Details",
+                    press: function () {
+                        this._showUnitDetails(oUnit);
+                        oPopover.close();
+                    }.bind(this)
+                })
+            ];
+
+            if (this._isCreateReservationAllowed(oUnit)) {
+                aItems.push(
+                    new sap.m.Button({
+                        icon: "sap-icon://add-document",
+                        text: "Create Reservation",
+                        press: function () {
+                            this._navigateToCreateReservation(oUnit);
+                            oPopover.close();
+                        }.bind(this)
+                    })
+                );
+            }
+
             var oPopover = new Popover({
                 title: "Unit Options",
                 placement: "Bottom",
                 content: [
                     new sap.m.HBox({
                         wrap: "Wrap",
-                        items: [
-                            new sap.m.Button({
-                                icon: "sap-icon://information",
-                                text: "Details",
-                                press: function () {
-                                    this._showUnitDetails(oUnit);
-                                    oPopover.close();
-                                }.bind(this)
-                            }),
-                            new sap.m.Button({
-                                icon: "sap-icon://add-document",
-                                text: "Create Reservation",
-                                press: function () {
-                                    this._navigateToCreateReservation(oUnit);
-                                    oPopover.close();
-                                }.bind(this)
-                            })
-                        ]
+                        items: aItems
                     })
                 ]
             });
@@ -1302,12 +1314,17 @@ sap.ui.define([
             var oRouter = sap.ui.core.UIComponent.getRouterFor(this);
             var reservationData = {
                 mode: "create",
-                unit_unitId: unit.unitId,
+                bua: unit.bua,
+                companyCodeId: unit.companyCodeId,
                 project_projectId: unit.projectId,
                 buildingId: unit.buildingId,
-                bua: unit.bua,
+                unit_unitId: unit.unitId,
                 unitPrice: unit.originalPrice,
+                unitStatusDescription: unit.unitStatusDescription,
+                phase: unit.salesPhase,
+                reservationType: unit.usageTypeDescription,
                 unitType: unit.unitTypeDescription,
+                currency: unit.conditions?.find(function (m) { return m.currency; })?.currency,
                 description: unit.unitDescription || "",
                 unitConditions: unit.unitConditions || []
             };
